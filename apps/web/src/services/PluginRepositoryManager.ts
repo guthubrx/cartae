@@ -195,6 +195,7 @@ export class PluginRepositoryManager {
 
   /**
    * Validate repository by fetching it
+   * For private GitHub repos, uses GitHub API instead of raw.githubusercontent.com
    */
   private async validateRepository(url: string): Promise<void> {
     try {
@@ -211,8 +212,20 @@ export class PluginRepositoryManager {
         headers.Authorization = `token ${token}`;
       }
 
-      const response = await fetch(url, {
-        method: 'HEAD', // Just check if accessible
+      let fetchUrl = url;
+
+      // If it's a raw.githubusercontent.com URL, convert to GitHub API for better private repo support
+      if (url.includes('raw.githubusercontent.com')) {
+        const match = url.match(/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.*)/);
+        if (match) {
+          const [, owner, repo, branch, path] = match;
+          // Use GitHub API content endpoint (better CORS + auth support)
+          fetchUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+        }
+      }
+
+      const response = await fetch(fetchUrl, {
+        method: 'GET',
         headers,
       });
 
@@ -220,11 +233,20 @@ export class PluginRepositoryManager {
         throw new Error(`Repository not accessible: ${response.status}`);
       }
 
-      // Optionally fetch and validate structure
-      const fullResponse = await fetch(url, { headers });
-      const data = await fullResponse.json();
+      const data = await response.json();
 
-      if (!data.plugins || !Array.isArray(data.plugins)) {
+      // GitHub API returns content in base64 when fetching files
+      let registryData;
+      if (data.content) {
+        // Decode base64 from GitHub API
+        const decoded = atob(data.content);
+        registryData = JSON.parse(decoded);
+      } else {
+        // Direct JSON response (raw.githubusercontent.com or other sources)
+        registryData = data;
+      }
+
+      if (!registryData.plugins || !Array.isArray(registryData.plugins)) {
         throw new Error('Invalid registry format: missing plugins array');
       }
     } catch (error) {
