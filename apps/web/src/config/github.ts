@@ -25,8 +25,9 @@ export const GITHUB_CONFIG = {
 
   // GitHub OAuth scopes
   // - read:user: Get user profile info (login, name, email, avatar)
-  // - read:repository: Access to private repos (needed for plugin registries)
-  scopes: ['read:user', 'read:repository'],
+  // - repo: Full access to repositories (public and private)
+  //   Note: OAuth Apps require 'repo' scope, not 'read:repository'
+  scopes: ['read:user', 'repo'],
 
   // GitHub authorization URL
   authUrl: 'https://github.com/login/oauth/authorize',
