@@ -4,6 +4,7 @@
  */
 
 import { pluginRepositoryManager } from './PluginRepositoryManager';
+import { gitHubAuthService } from './GitHubAuthService';
 
 export interface PluginRegistryEntry {
   id: string;
@@ -92,7 +93,18 @@ export class GitHubPluginRegistry {
     for (const repo of enabledRepos) {
       try {
         const response = await this.fetchWithRetry(repo.url, 3);
-        const data: RegistryResponse = await response.json();
+        const responseData = await response.json();
+
+        // GitHub API returns content in base64 for file contents
+        let data: RegistryResponse;
+        if (responseData.content) {
+          // Decode base64 from GitHub API
+          const decoded = atob(responseData.content);
+          data = JSON.parse(decoded);
+        } else {
+          // Direct JSON response
+          data = responseData;
+        }
 
         // Add repository metadata to each plugin
         const pluginsWithRepoInfo = data.plugins.map(plugin => ({
@@ -227,11 +239,31 @@ export class GitHubPluginRegistry {
   ): Promise<Response> {
     for (let i = 0; i < retries; i++) {
       try {
-        const response = await fetch(url, {
-          headers: {
-            Accept: 'application/json',
-          },
-        });
+        // Get GitHub token for private repos
+        const user = gitHubAuthService.getUser();
+        const token = gitHubAuthService.getToken();
+
+        const headers: Record<string, string> = {
+          Accept: 'application/json',
+        };
+
+        // Add authentication if available
+        if (token && user) {
+          headers.Authorization = `token ${token}`;
+        }
+
+        let fetchUrl = url;
+
+        // Convert raw.githubusercontent.com to GitHub API for better auth support
+        if (url.includes('raw.githubusercontent.com')) {
+          const match = url.match(/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.*)/);
+          if (match) {
+            const [, owner, repo, branch, path] = match;
+            fetchUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+          }
+        }
+
+        const response = await fetch(fetchUrl, { headers });
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
