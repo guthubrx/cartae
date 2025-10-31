@@ -6,7 +6,7 @@
  * en lisant la configuration depuis Supabase qui agit comme panneau de contrôle.
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from './supabaseClient';
 
 /**
  * Types de sources disponibles

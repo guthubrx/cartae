@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { usePlatform, formatShortcut } from '../hooks/usePlatform';
 import { useFileOperations } from '../hooks/useFileOperations';
+import { GitHubLoginButton } from './plugins/GitHubLoginButton';
 import './MenuBar.css';
 // import { useAppSettings } from '../hooks/useAppSettings.ts';
 
@@ -173,51 +174,58 @@ function MenuBar() {
   return (
     <div
       className="menu-bar"
-      style={{ justifyContent: 'flex-start' }}
+      style={{ justifyContent: 'space-between' }}
       onMouseLeave={handleMenuLeave}
     >
-      <img src="/logo-64.png" alt="Cartae" className="menu-logo" />
-      {menuItems.map(menu => (
-        <div
-          key={menu.id}
-          className={`menu-item ${activeMenu === menu.id ? 'active' : ''}`}
-          onMouseEnter={() => handleMenuEnter(menu.id)}
-        >
-          <button type="button" className="menu-button">
-            <menu.icon className="icon-small" />
-            <span>{menu.label}</span>
-            <ChevronDown className="icon-small" />
-          </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <img src="/logo-64.png" alt="Cartae" className="menu-logo" />
+        {menuItems.map(menu => (
+          <div
+            key={menu.id}
+            className={`menu-item ${activeMenu === menu.id ? 'active' : ''}`}
+            onMouseEnter={() => handleMenuEnter(menu.id)}
+          >
+            <button type="button" className="menu-button">
+              <menu.icon className="icon-small" />
+              <span>{menu.label}</span>
+              <ChevronDown className="icon-small" />
+            </button>
 
-          <div className="menu-dropdown" onMouseEnter={() => handleMenuEnter(menu.id)}>
-            {menu.items.map(item => (
-              <button
-                type="button"
-                key={`${menu.id}-${item.label}`}
-                className="menu-item-option"
-                onClick={() => {
-                  if (closeTimeout) {
-                    clearTimeout(closeTimeout);
-                    setCloseTimeout(null);
-                  }
-                  if (menu.id === 'tools' && item.label.startsWith('Préférences')) {
-                    navigate('/settings');
-                    setActiveMenu(null);
-                  } else if (menu.id === 'tools' && item.label.startsWith('Plugins')) {
-                    navigate('/settings?section=plugins');
-                    setActiveMenu(null);
-                  } else {
-                    handleMenuAction(item.label);
-                  }
-                }}
-              >
-                <span className="menu-item-label">{item.label}</span>
-                <span className="menu-item-shortcut">{item.shortcut}</span>
-              </button>
-            ))}
+            <div className="menu-dropdown" onMouseEnter={() => handleMenuEnter(menu.id)}>
+              {menu.items.map(item => (
+                <button
+                  type="button"
+                  key={`${menu.id}-${item.label}`}
+                  className="menu-item-option"
+                  onClick={() => {
+                    if (closeTimeout) {
+                      clearTimeout(closeTimeout);
+                      setCloseTimeout(null);
+                    }
+                    if (menu.id === 'tools' && item.label.startsWith('Préférences')) {
+                      navigate('/settings');
+                      setActiveMenu(null);
+                    } else if (menu.id === 'tools' && item.label.startsWith('Plugins')) {
+                      navigate('/settings?section=plugins');
+                      setActiveMenu(null);
+                    } else {
+                      handleMenuAction(item.label);
+                    }
+                  }}
+                >
+                  <span className="menu-item-label">{item.label}</span>
+                  <span className="menu-item-shortcut">{item.shortcut}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
+
+      {/* GitHub Login Button - Admin Access */}
+      <div style={{ display: 'flex', alignItems: 'center', paddingRight: '16px' }}>
+        <GitHubLoginButton />
+      </div>
     </div>
   );
 }
