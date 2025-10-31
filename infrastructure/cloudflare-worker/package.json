@@ -1,0 +1,29 @@
+{
+  "name": "cartae-marketplace-api",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker API pour le marketplace de plugins Cartae",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:dev": "wrangler deploy --env development",
+    "deploy:prod": "wrangler deploy --env production",
+    "tail": "wrangler tail",
+    "test": "wrangler dev --test",
+    "init:bucket": "wrangler r2 bucket create cartae-plugins && wrangler r2 bucket create cartae-plugins-preview",
+    "init:kv": "wrangler kv:namespace create KV_STORE && wrangler kv:namespace create KV_STORE --preview",
+    "upload:registry": "wrangler r2 object put cartae-plugins/registry.json --file=registry.json"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "marketplace",
+    "api",
+    "cartae"
+  ],
+  "author": "Cartae Team",
+  "license": "AGPL-3.0",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

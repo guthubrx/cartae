@@ -1,0 +1,45 @@
+name = "cartae-marketplace-api"
+main = "worker.js"
+compatibility_date = "2025-01-31"
+
+# Worker settings
+workers_dev = true
+route = ""
+
+# R2 Bucket binding for plugin storage
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "cartae-plugins"
+preview_bucket_name = "cartae-plugins-preview"
+
+# KV Store binding for analytics and caching
+[[kv_namespaces]]
+binding = "KV_STORE"
+id = ""  # Fill with your KV namespace ID
+preview_id = ""  # Fill with your preview KV namespace ID
+
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
+API_VERSION = "v1"
+
+# Development settings
+[env.development]
+name = "cartae-marketplace-api-dev"
+vars = { ENVIRONMENT = "development" }
+
+# Production settings
+[env.production]
+name = "cartae-marketplace-api"
+vars = { ENVIRONMENT = "production" }
+routes = [
+  { pattern = "marketplace.cartae.com/*", zone_name = "cartae.com" }
+]
+
+# Limits
+[limits]
+cpu_ms = 50
+
+# Observability
+[observability]
+enabled = true

@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Wrangler
+.wrangler/
+wrangler.toml.bak
+
+# Environment
+.dev.vars
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build
+dist/
+build/
+
+# Secrets
+secrets.json
+registry.json
+
+# Keep only example
+!registry.example.json

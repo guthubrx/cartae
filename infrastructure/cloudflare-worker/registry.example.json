@@ -1,0 +1,113 @@
+{
+  "version": "1.0.0",
+  "plugins": [
+    {
+      "id": "com.cartae.palette-manager",
+      "name": "Palette Manager",
+      "version": "1.0.0",
+      "description": "Gérez les palettes de couleurs pour personnaliser automatiquement vos nœuds et tags",
+      "longDescription": "Donnez vie à vos cartes mentales avec un système de coloration automatique intelligent.",
+      "author": {
+        "name": "Cartae Team",
+        "email": "team@cartae.com"
+      },
+      "main": "index.js",
+      "icon": "🎨",
+      "logo": "/assets/plugin-logos/palette-manager.svg",
+      "color": "#F59E0B",
+      "category": "theme",
+      "tags": ["colors", "palettes", "theme", "customization"],
+      "license": "MIT",
+      "source": "official",
+      "pricing": "free",
+      "featured": true,
+      "tagline": "Coloration automatique intelligente",
+      "benefits": [
+        "Calcul automatique des couleurs selon la hiérarchie",
+        "Respect des couleurs manuelles existantes",
+        "Contraste optimal pour la lisibilité du texte"
+      ],
+      "downloads": 1250,
+      "rating": 4.8,
+      "numRatings": 42,
+      "updatedAt": "2025-01-28T10:30:00.000Z",
+      "createdAt": "2025-01-15T08:00:00.000Z"
+    },
+    {
+      "id": "com.cartae.tags-manager",
+      "name": "Tags Manager",
+      "version": "1.0.0",
+      "description": "Organisez vos idées avec un système de tags puissant et flexible",
+      "author": {
+        "name": "Cartae Team",
+        "email": "team@cartae.com"
+      },
+      "main": "index.js",
+      "icon": "🏷️",
+      "logo": "/assets/plugin-logos/tags-manager.svg",
+      "color": "#3B82F6",
+      "category": "productivity",
+      "tags": ["tags", "organization", "filtering", "productivity"],
+      "source": "official",
+      "autoActivate": true,
+      "pricing": "free",
+      "featured": true,
+      "license": "MIT",
+      "tagline": "Maîtrisez la complexité avec les tags",
+      "downloads": 2100,
+      "rating": 4.9,
+      "numRatings": 67,
+      "updatedAt": "2025-01-28T12:00:00.000Z",
+      "createdAt": "2025-01-10T09:00:00.000Z"
+    },
+    {
+      "id": "com.example.markdown-export",
+      "name": "Markdown Exporter",
+      "version": "1.2.0",
+      "description": "Exportez vos cartes mentales en format Markdown",
+      "author": {
+        "name": "Community Dev",
+        "email": "dev@example.com"
+      },
+      "main": "index.js",
+      "icon": "📄",
+      "category": "export",
+      "tags": ["export", "markdown", "documentation"],
+      "source": "community",
+      "pricing": "free",
+      "featured": false,
+      "license": "MIT",
+      "downloads": 850,
+      "rating": 4.5,
+      "numRatings": 23,
+      "updatedAt": "2025-01-25T14:20:00.000Z",
+      "createdAt": "2025-01-20T11:00:00.000Z"
+    },
+    {
+      "id": "com.example.ai-summary",
+      "name": "AI Summarizer",
+      "version": "1.0.0",
+      "description": "Générez des résumés AI de vos cartes mentales",
+      "author": {
+        "name": "AI Dev",
+        "email": "ai@example.com"
+      },
+      "main": "index.js",
+      "icon": "🤖",
+      "category": "ai",
+      "tags": ["ai", "openai", "summary", "automation"],
+      "source": "community",
+      "pricing": "paid",
+      "featured": false,
+      "license": "Proprietary",
+      "downloads": 320,
+      "rating": 4.2,
+      "numRatings": 8,
+      "updatedAt": "2025-01-26T16:00:00.000Z",
+      "createdAt": "2025-01-24T13:30:00.000Z"
+    }
+  ],
+  "categories": ["theme", "productivity", "integration", "ai", "developer", "export", "other"],
+  "sources": ["core", "official", "community"],
+  "updatedAt": "2025-01-31T00:00:00.000Z"
+}
