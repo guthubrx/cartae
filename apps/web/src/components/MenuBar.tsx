@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { usePlatform, formatShortcut } from '../hooks/usePlatform';
 import { useFileOperations } from '../hooks/useFileOperations';
-import { GitHubLoginButton } from './plugins/GitHubLoginButton';
 import './MenuBar.css';
 // import { useAppSettings } from '../hooks/useAppSettings.ts';
 
@@ -172,11 +171,7 @@ function MenuBar() {
   ];
 
   return (
-    <div
-      className="menu-bar"
-      style={{ justifyContent: 'space-between' }}
-      onMouseLeave={handleMenuLeave}
-    >
+    <div className="menu-bar" onMouseLeave={handleMenuLeave}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <img src="/logo-64.png" alt="Cartae" className="menu-logo" />
         {menuItems.map(menu => (
@@ -220,11 +215,6 @@ function MenuBar() {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* GitHub Login Button - Admin Access */}
-      <div style={{ display: 'flex', alignItems: 'center', paddingRight: '16px' }}>
-        <GitHubLoginButton />
       </div>
     </div>
   );

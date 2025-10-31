@@ -60,9 +60,9 @@ function SettingsPage() {
   const setShortcut = useShortcuts(s => s.setShortcut);
   const resetShortcuts = useShortcuts(s => s.resetDefaults);
   const [searchParams] = useSearchParams();
-  const [section, setSection] = useState<'appearance' | 'shortcuts' | 'plugins' | 'sources'>(
-    'appearance'
-  );
+  const [section, setSection] = useState<
+    'appearance' | 'shortcuts' | 'plugins' | 'sources' | 'github'
+  >('appearance');
   const platform = usePlatform();
   const { info: showInfo, success: showSuccess } = useToast();
 
@@ -91,7 +91,8 @@ function SettingsPage() {
       sectionParam === 'plugins' ||
       sectionParam === 'appearance' ||
       sectionParam === 'shortcuts' ||
-      sectionParam === 'sources'
+      sectionParam === 'sources' ||
+      sectionParam === 'github'
     ) {
       setSection(sectionParam);
     }
@@ -286,14 +287,13 @@ function SettingsPage() {
                 >
                   📦 Sources de Plugins
                 </button>
-                {/* Administration button removed - provided by com.cartae.admin-panel private plugin */}
-                {/* <button
+                <button
                   type="button"
-                  className={`btn settings-nav-btn ${section === 'developer' ? 'active' : ''}`}
-                  onClick={() => setSection('developer')}
+                  className={`btn settings-nav-btn ${section === 'github' ? 'active' : ''}`}
+                  onClick={() => setSection('github')}
                 >
-                  👨‍💻 Développeur
-                </button> */}
+                  🔐 Connexion GitHub
+                </button>
               </nav>
             </aside>
 
@@ -829,6 +829,27 @@ function SettingsPage() {
               {section === 'sources' && (
                 <div className="settings-section">
                   <PluginRepositorySettings />
+                </div>
+              )}
+
+              {/* GitHub Connection Section */}
+              {section === 'github' && (
+                <div className="settings-section">
+                  <h2 className="settings-section-title">Connexion GitHub</h2>
+                  <p style={{ color: 'var(--fg-secondary)', marginBottom: '24px' }}>
+                    Connectez-vous avec votre compte GitHub pour accéder aux fonctionnalités
+                    administrateur et à la gestion du marketplace.
+                  </p>
+                  <div
+                    style={{
+                      padding: '16px',
+                      backgroundColor: 'var(--bg-secondary)',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border-color)',
+                    }}
+                  >
+                    <GitHubLoginButton />
+                  </div>
                 </div>
               )}
 
