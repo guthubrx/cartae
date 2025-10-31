@@ -28,7 +28,7 @@ export function PluginMarketplace() {
   // showAdmin removed - admin panel provided by private plugin
   const [gridColumns, setGridColumns] = useState(2);
   // itemsPerPage for future pagination support
-  const [, setItemsPerPage] = useState(12);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
 
   // Filter manifests
   const filteredManifests = useMemo(
@@ -118,14 +118,15 @@ export function PluginMarketplace() {
       <PluginFilters
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        statusFilter="all" // Marketplace shows all plugins
+        status="all" // Marketplace shows all plugins
         onStatusChange={() => {}} // No status filter in marketplace
-        categoryFilter={categoryFilter}
+        category={categoryFilter}
         onCategoryChange={setCategoryFilter}
         totalCount={manifests.length}
         filteredCount={filteredManifests.length}
-        showStatusFilter={false} // Hide status filter in marketplace
+        gridColumns={gridColumns}
         onGridColumnsChange={setGridColumns}
+        itemsPerPage={itemsPerPage}
         onItemsPerPageChange={setItemsPerPage}
       />
 
@@ -153,12 +154,11 @@ export function PluginMarketplace() {
                 <PluginCard
                   key={loaded.manifest.id}
                   manifest={loaded.manifest}
-                  state="inactive" // Show as available for install
-                  onActivate={async () => {
+                  isActive={false} // Show as available for install
+                  onToggle={async () => {
                     // TODO: Implement installation
                     showInfo(`Installation de ${loaded.manifest.name} à implémenter`);
                   }}
-                  onDeactivate={async () => {}}
                   onViewDetails={() => setSelectedPluginId(loaded.manifest.id)}
                 />
               ))}
@@ -184,12 +184,10 @@ export function PluginMarketplace() {
                 <PluginCard
                   key={loaded.manifest.id}
                   manifest={loaded.manifest}
-                  state="inactive"
-                  onActivate={async () => {
-                    // eslint-disable-next-line no-alert
-                    alert(`Installation de ${loaded.manifest.name} à implémenter`);
+                  isActive={false}
+                  onToggle={async () => {
+                    showInfo(`Installation de ${loaded.manifest.name} à implémenter`);
                   }}
-                  onDeactivate={async () => {}}
                   onViewDetails={() => setSelectedPluginId(loaded.manifest.id)}
                 />
               ))}
@@ -215,12 +213,10 @@ export function PluginMarketplace() {
                 <PluginCard
                   key={loaded.manifest.id}
                   manifest={loaded.manifest}
-                  state="inactive"
-                  onActivate={async () => {
-                    // eslint-disable-next-line no-alert
-                    alert(`Installation de ${loaded.manifest.name} à implémenter`);
+                  isActive={false}
+                  onToggle={async () => {
+                    showInfo(`Installation de ${loaded.manifest.name} à implémenter`);
                   }}
-                  onDeactivate={async () => {}}
                   onViewDetails={() => setSelectedPluginId(loaded.manifest.id)}
                 />
               ))}
@@ -244,12 +240,11 @@ export function PluginMarketplace() {
       {selectedManifest && (
         <PluginDetailModal
           manifest={selectedManifest}
-          state="inactive"
+          isActive={false}
           onClose={() => setSelectedPluginId(null)}
-          onActivate={async () => {
+          onToggle={async () => {
             showInfo(`Installation de ${selectedManifest.name} à implémenter`);
           }}
-          onDeactivate={async () => {}}
         />
       )}
     </div>

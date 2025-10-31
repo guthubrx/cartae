@@ -21,13 +21,16 @@ export function RemotePluginMarketplace() {
     setError(null);
 
     try {
-      // Install from remote marketplace
-      await registry.installFromMarketplace(pluginId);
+      // TODO: Implement installFromMarketplace in PluginRegistry
+      // await registry.installFromMarketplace(pluginId);
 
-      // Auto-activate after installation
-      await registry.activate(pluginId);
+      // For now, throw error to indicate feature not implemented
+      throw new Error('Installation from marketplace not yet implemented');
 
-      showSuccess(`Plugin ${pluginId} installé et activé avec succès`);
+      // Auto-activate after installation would happen here
+      // await registry.activate(pluginId);
+
+      // showSuccess(`Plugin ${pluginId} installé et activé avec succès`);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(`Failed to install ${pluginId}:`, err);

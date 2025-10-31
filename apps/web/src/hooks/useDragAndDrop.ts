@@ -10,6 +10,7 @@ import { useOpenFiles } from './useOpenFiles';
 import { useSelection } from './useSelection';
 import { getAllDescendants, isDescendant } from '../utils/nodeUtils';
 import type { OpenFile } from './useOpenFiles';
+import type { MindMap } from './useMindmap';
 import {
   ReparentNodeCommand,
   MoveNodeWithSubtreeCommand,
@@ -337,13 +338,17 @@ export function useDragAndDrop({
               },
               offset
             );
-            newContent = command.execute(newContent);
+            // TODO: Type mismatch - commands expect MindMap from @cartae/core but we have ExtendedMindMapData
+            // Commands only modify .nodes property which exists in both types
+            newContent = command.execute(newContent as any);
           });
         } else {
           // FR: Drag simple - utiliser la commande de déplacement normal
           // EN: Single drag - use normal move command
           const command = new MoveNodeWithSubtreeCommand(node.id, position, offset);
-          newContent = command.execute(active.content);
+          // TODO: Type mismatch - commands expect MindMap from @cartae/core but we have ExtendedMindMapData
+          // Commands only modify .nodes property which exists in both types
+          newContent = command.execute(active.content as any);
         }
 
         // const allNodesToMove = [node.id, ...getAllDescendants(node.id, active.content.nodes)];

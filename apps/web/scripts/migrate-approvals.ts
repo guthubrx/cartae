@@ -62,8 +62,8 @@ async function runMigration() {
     // Execute each statement separately
     const statements = migrationSQL
       .split('\n--')
-      .map((stmt, idx) => (idx === 0 ? stmt : '-- ' + stmt))
-      .filter((stmt) => stmt.trim().length > 0);
+      .map((stmt, idx) => (idx === 0 ? stmt : `-- ${stmt}`))
+      .filter(stmt => stmt.trim().length > 0);
 
     for (const statement of statements) {
       if (statement.includes('SELECT') || statement.includes('--')) {
@@ -73,12 +73,16 @@ async function runMigration() {
 
       console.log(`Exécution: ${statement.substring(0, 50)}...`);
 
-      const { error } = await supabase.rpc('exec_sql', {
-        sql: statement,
-      }).catch(() => ({
-        // Fallback: try raw SQL
-        error: 'RPC method not available, trying alternative approach',
-      }));
+      let error: string | null = null;
+      try {
+        const result = await supabase.rpc('exec_sql', {
+          sql: statement,
+        });
+        error = result.error?.message || null;
+      } catch (e) {
+        // Fallback: RPC method not available
+        error = 'RPC method not available, trying alternative approach';
+      }
 
       if (error) {
         // This might fail if the RPC doesn't exist, which is expected
@@ -94,7 +98,7 @@ async function runMigration() {
     console.log('  1. Colonne is_approved ajoutée');
     console.log('  2. Indexes créés');
     console.log('  3. RLS Policies configurées');
-    console.log('\n🧪 Test dans l\'application:');
+    console.log("\n🧪 Test dans l'application:");
     console.log('  - Aller à Settings → Plugins → Marketplace → Admin');
     console.log('  - Les boutons Approuver/Rejeter devraient maintenant fonctionner');
   } catch (error) {
