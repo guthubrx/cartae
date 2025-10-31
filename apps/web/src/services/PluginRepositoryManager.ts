@@ -3,7 +3,7 @@
  * Manages multiple plugin sources (GitHub repositories)
  */
 
-import { GitHubAuthService } from './GitHubAuthService';
+import { gitHubAuthService } from './GitHubAuthService';
 
 export interface PluginRepository {
   id: string;
@@ -199,9 +199,8 @@ export class PluginRepositoryManager {
   private async validateRepository(url: string): Promise<void> {
     try {
       // Get GitHub token if user is authenticated (for private repos)
-      const authService = GitHubAuthService.getInstance();
-      const user = authService.getUser();
-      const token = authService.getToken();
+      const user = gitHubAuthService.getUser();
+      const token = gitHubAuthService.getToken();
 
       const headers: Record<string, string> = {
         Accept: 'application/json',
