@@ -6,10 +6,10 @@
 
 import { GITHUB_CONFIG } from '../config/github';
 
-const GITHUB_TOKEN_KEY = 'bigmind-github-token';
-const GITHUB_USER_KEY = 'bigmind-github-user';
-const OAUTH_STATE_KEY = 'bigmind-oauth-state';
-const OAUTH_RETURN_URL_KEY = 'bigmind-oauth-return-url';
+const GITHUB_TOKEN_KEY = 'cartae-github-token';
+const GITHUB_USER_KEY = 'cartae-github-user';
+const OAUTH_STATE_KEY = 'cartae-oauth-state';
+const OAUTH_RETURN_URL_KEY = 'cartae-oauth-return-url';
 
 export interface GitHubUser {
   login: string; // GitHub username
