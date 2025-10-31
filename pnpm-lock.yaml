@@ -289,6 +289,31 @@ importers:
         specifier: ^5.3.2
         version: 5.9.3
 
+  packages/plugin-admin:
+    dependencies:
+      '@cartae/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
+      '@supabase/supabase-js':
+        specifier: ^2.38.4
+        version: 2.78.0
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.0
+        version: 18.3.26
+      '@types/react-dom':
+        specifier: ^18.2.0
+        version: 18.3.7(@types/react@18.3.26)
+      typescript:
+        specifier: ^5.2.2
+        version: 5.9.3
+
   packages/plugin-marketplace:
     dependencies:
       '@cartae/plugin-system':

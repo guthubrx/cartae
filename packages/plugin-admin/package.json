@@ -1,0 +1,34 @@
+{
+  "name": "@cartae/plugin-admin",
+  "version": "1.0.0",
+  "description": "Plugin Admin pour contrôler le système Cartae (marketplace source, monitoring, etc.)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "cartae",
+    "plugin",
+    "admin",
+    "marketplace",
+    "monitoring"
+  ],
+  "author": "Cartae Team",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "dependencies": {
+    "@cartae/plugin-sdk": "workspace:*",
+    "@supabase/supabase-js": "^2.38.4"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.2.2"
+  }
+}

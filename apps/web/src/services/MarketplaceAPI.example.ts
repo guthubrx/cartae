@@ -4,13 +4,14 @@
  *
  * Ce fichier montre comment utiliser MarketplaceCacheService
  * avec les appels API au backend Cloudflare Worker
+ *
+ * IMPORTANT: Utilise MarketplaceSourceResolver pour basculer dynamiquement
+ * entre Git et Cloudflare CDN sans rebuild.
  */
 
 import { marketplaceCacheService } from './MarketplaceCacheService';
+import { marketplaceSourceResolver } from './MarketplaceSourceResolver';
 import type { PluginListResponse, PluginResponse } from './MarketplaceCacheService';
-
-// Configuration API
-const API_BASE_URL = import.meta.env.VITE_MARKETPLACE_URL || 'https://marketplace.cartae.com';
 
 /**
  * Fetch avec cache intelligent
@@ -67,7 +68,8 @@ export async function fetchPluginList(params: {
     }
   });
 
-  const url = `${API_BASE_URL}/api/plugins?${queryParams.toString()}`;
+  // Résoudre l'URL via le resolver (bascule dynamique Git/Cloudflare)
+  const url = await marketplaceSourceResolver.resolveUrl(`api/plugins?${queryParams.toString()}`);
 
   // Cache key unique basé sur les paramètres
   const cacheKey = `plugin-list:${queryParams.toString()}`;
@@ -84,7 +86,8 @@ export async function fetchPluginList(params: {
  * Récupère les détails d'un plugin
  */
 export async function fetchPluginDetail(pluginId: string): Promise<PluginResponse> {
-  const url = `${API_BASE_URL}/api/plugins/${pluginId}`;
+  // Résoudre l'URL via le resolver
+  const url = await marketplaceSourceResolver.resolveUrl(`api/plugins/${pluginId}`);
 
   return fetchWithCache(
     url,
@@ -98,7 +101,7 @@ export async function fetchPluginDetail(pluginId: string): Promise<PluginRespons
  * Récupère les plugins featured
  */
 export async function fetchFeaturedPlugins(): Promise<{ data: PluginResponse[] }> {
-  const url = `${API_BASE_URL}/api/plugins/featured`;
+  const url = await marketplaceSourceResolver.resolveUrl('api/plugins/featured');
 
   return fetchWithCache(
     url,
@@ -112,7 +115,7 @@ export async function fetchFeaturedPlugins(): Promise<{ data: PluginResponse[] }
  * Récupère les plugins trending
  */
 export async function fetchTrendingPlugins(): Promise<{ data: PluginResponse[] }> {
-  const url = `${API_BASE_URL}/api/plugins/trending`;
+  const url = await marketplaceSourceResolver.resolveUrl('api/plugins/trending');
 
   return fetchWithCache(
     url,
@@ -134,7 +137,7 @@ export async function searchPlugins(query: string): Promise<{
     throw new Error('Query must be at least 2 characters');
   }
 
-  const url = `${API_BASE_URL}/api/search?q=${encodeURIComponent(query)}`;
+  const url = await marketplaceSourceResolver.resolveUrl(`api/search?q=${encodeURIComponent(query)}`);
 
   return fetchWithCache(
     url,
@@ -148,7 +151,9 @@ export async function searchPlugins(query: string): Promise<{
  * Télécharge un plugin
  */
 export async function downloadPlugin(pluginId: string, version: string = 'latest'): Promise<Blob> {
-  const url = `${API_BASE_URL}/api/plugins/${pluginId}/download?version=${version}`;
+  const url = await marketplaceSourceResolver.resolveUrl(
+    `api/plugins/${pluginId}/download?version=${version}`
+  );
 
   const response = await fetch(url);
 
@@ -163,7 +168,7 @@ export async function downloadPlugin(pluginId: string, version: string = 'latest
  * Track une installation
  */
 export async function trackInstall(pluginId: string, version: string): Promise<void> {
-  const url = `${API_BASE_URL}/api/plugins/${pluginId}/track-install`;
+  const url = await marketplaceSourceResolver.resolveUrl(`api/plugins/${pluginId}/track-install`);
 
   await fetch(url, {
     method: 'POST',
