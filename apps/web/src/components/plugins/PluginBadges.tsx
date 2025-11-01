@@ -57,6 +57,9 @@ export function PluginBadges({ source, state, featured }: PluginBadgesProps) {
     : null;
 
   function Badge({ config }: { config: any }) {
+    // Protection contre les configs undefined
+    if (!config) return null;
+
     return (
       <span
         style={{

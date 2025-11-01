@@ -12,6 +12,7 @@ import { PluginRatingsDisplay } from './PluginRatingsDisplay';
 import { PluginDownloadStats } from './PluginDownloadStats';
 import { PluginRatingStats } from './PluginRatingStats';
 import { submitQuickRating } from '../../services/supabaseClient';
+import { isCorePlugin } from '../../utils/pluginUtils';
 import './PluginDetailModal.css';
 
 export interface PluginDetailModalProps {
@@ -78,7 +79,7 @@ export function PluginDetailModal({
 
   const getBadges = (): BadgeType[] => {
     const badges: BadgeType[] = [];
-    if (manifest.source === 'core') badges.push('core');
+    if (isCorePlugin(manifest)) badges.push('core');
     if (isActive) badges.push('active');
     else if (!isActive && canDisable) badges.push('inactive');
     if (manifest.featured) badges.push('featured');

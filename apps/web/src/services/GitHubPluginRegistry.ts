@@ -96,13 +96,14 @@ export class GitHubPluginRegistry {
         const responseData = await response.json();
 
         // GitHub API returns content in base64 for file contents
+        // Check if response has GitHub API structure (content + encoding fields)
         let data: RegistryResponse;
-        if (responseData.content) {
-          // Decode base64 from GitHub API
-          const decoded = atob(responseData.content);
+        if (responseData.content && responseData.encoding === 'base64') {
+          // Decode base64 from GitHub API with proper UTF-8 handling
+          const decoded = this.decodeBase64Content(responseData.content);
           data = JSON.parse(decoded);
         } else {
-          // Direct JSON response
+          // Direct JSON response (from raw.githubusercontent.com or direct JSON)
           data = responseData;
         }
 
@@ -177,6 +178,20 @@ export class GitHubPluginRegistry {
     const url = new URL(plugin.downloadUrl);
     url.searchParams.set('_t', Date.now().toString());
     const response = await this.fetchWithRetry(url.toString(), 3);
+
+    // Check if response is from GitHub API (base64) or direct file (raw.githubusercontent.com)
+    const contentType = response.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      // GitHub API response - content is base64 encoded
+      const responseData = await response.json();
+      if (responseData.content && responseData.encoding === 'base64') {
+        const content = this.decodeBase64Content(responseData.content);
+        return new Blob([content], { type: 'application/javascript' });
+      }
+    }
+
+    // Direct file response from raw.githubusercontent.com
     return response.blob();
   }
 
@@ -226,7 +241,30 @@ export class GitHubPluginRegistry {
     const url = new URL(plugin.manifestUrl);
     url.searchParams.set('_t', Date.now().toString());
     const response = await this.fetchWithRetry(url.toString(), 3);
-    return response.json();
+    const responseData = await response.json();
+
+    // GitHub API returns content in base64 for file contents
+    // Check if response has GitHub API structure
+    if (responseData.content && responseData.encoding === 'base64') {
+      // Decode base64 from GitHub API with proper UTF-8 handling
+      const decoded = this.decodeBase64Content(responseData.content);
+      return JSON.parse(decoded);
+    }
+
+    // Direct JSON response (from raw.githubusercontent.com)
+    return responseData;
+  }
+
+  /**
+   * Decode base64 content from GitHub API with proper UTF-8 handling
+   */
+  private decodeBase64Content(base64Content: string): string {
+    const binaryString = atob(base64Content);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return new TextDecoder('utf-8').decode(bytes);
   }
 
   /**
@@ -247,19 +285,16 @@ export class GitHubPluginRegistry {
           Accept: 'application/json',
         };
 
-        // Add authentication if available
-        if (token && user) {
-          headers.Authorization = `token ${token}`;
-        }
-
         let fetchUrl = url;
 
-        // Convert raw.githubusercontent.com to GitHub API for better auth support
-        if (url.includes('raw.githubusercontent.com')) {
+        // Convert raw.githubusercontent.com to GitHub API ONLY if we have auth
+        // (for private repos - public repos work fine with raw.githubusercontent.com)
+        if (token && user && url.includes('raw.githubusercontent.com')) {
           const match = url.match(/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.*)/);
           if (match) {
             const [, owner, repo, branch, path] = match;
             fetchUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+            headers.Authorization = `token ${token}`;
           }
         }
 

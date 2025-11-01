@@ -237,9 +237,14 @@ export class PluginRepositoryManager {
 
       // GitHub API returns content in base64 when fetching files
       let registryData;
-      if (data.content) {
-        // Decode base64 from GitHub API
-        const decoded = atob(data.content);
+      if (data.content && data.encoding === 'base64') {
+        // Decode base64 from GitHub API with proper UTF-8 handling
+        const binaryString = atob(data.content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const decoded = new TextDecoder('utf-8').decode(bytes);
         registryData = JSON.parse(decoded);
       } else {
         // Direct JSON response (raw.githubusercontent.com or other sources)

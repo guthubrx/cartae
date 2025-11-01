@@ -6,6 +6,7 @@
 
 import { getAllAvailableManifests, type LoadedManifest } from '../core/plugins';
 import type { PluginManifest } from '@cartae/plugin-system';
+import { isCorePlugin } from './pluginUtils';
 
 /**
  * Get all discovered plugin manifests
@@ -28,7 +29,7 @@ export function getManifestById(pluginId: string): PluginManifest | null {
  */
 export function getCorePluginManifests(): LoadedManifest[] {
   const manifests = getAllAvailableManifests();
-  return manifests.filter(m => m.manifest.source === 'core');
+  return manifests.filter(m => isCorePlugin(m.manifest));
 }
 
 /**
@@ -36,7 +37,7 @@ export function getCorePluginManifests(): LoadedManifest[] {
  */
 export function getCommunityPluginManifests(): LoadedManifest[] {
   const manifests = getAllAvailableManifests();
-  return manifests.filter(m => m.manifest.source !== 'core');
+  return manifests.filter(m => !isCorePlugin(m.manifest));
 }
 
 /**
@@ -78,8 +79,8 @@ export function searchPlugins(query: string): LoadedManifest[] {
  */
 export function getPluginStats() {
   const manifests = getAllAvailableManifests();
-  const core = manifests.filter(m => m.manifest.source === 'core');
-  const community = manifests.filter(m => m.manifest.source !== 'core');
+  const core = manifests.filter(m => isCorePlugin(m.manifest));
+  const community = manifests.filter(m => !isCorePlugin(m.manifest));
   const featured = manifests.filter(m => m.manifest.featured === true);
 
   const categoryCounts = manifests.reduce(

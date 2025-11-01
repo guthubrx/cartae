@@ -230,13 +230,6 @@ export function validateCompatibility(manifest: PluginManifest, bigmindVersion: 
 }
 
 /**
- * Check if manifest is a core plugin
- */
-export function isCorePlugin(manifest: PluginManifest): boolean {
-  return manifest.source === 'core' || manifest.id.startsWith('com.bigmind.');
-}
-
-/**
  * Check if manifest requires payment
  */
 export function isPaidPlugin(manifest: PluginManifest): boolean {

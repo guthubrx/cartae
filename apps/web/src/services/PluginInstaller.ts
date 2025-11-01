@@ -8,8 +8,8 @@ import { recordPluginDownload } from './supabaseClient';
 import type { Plugin, PluginManifest } from '@cartae/plugin-system';
 
 // IndexedDB configuration
-const DB_NAME = 'bigmind-plugins';
-const DB_VERSION = 1;
+const DB_NAME = 'cartae-plugins';
+const DB_VERSION = 2;
 const STORE_NAME = 'installed-plugins';
 
 interface InstalledPluginData {
@@ -149,33 +149,53 @@ async function createPluginFromCode(code: string, manifest: PluginManifest): Pro
         esmError instanceof Error ? esmError.message : 'Unknown error'
       );
 
-      // For UMD format, we need to provide both 'exports' and 'module' in the scope
-      // The UMD wrapper checks: typeof exports=="object"&&typeof module<"u"
-      // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
-      const moduleFactory = new Function('exports', 'module', `${code}\n; return exports;`);
+      // Remove source map comment and convert ES6 exports to CommonJS
+      let cleanCode = code.replace(/\/\/# sourceMappingURL=.*$/gm, '');
+
+      // Convert ES6 export statements to CommonJS for eval compatibility
+      // Pattern: export [async] function name → function name
+      // Pattern: export const name → const name
+      // Pattern: export default expr → const __default = expr
+      cleanCode = cleanCode.replace(/^\s*export\s+async\s+function\s+/gm, 'async function ');
+      cleanCode = cleanCode.replace(/^\s*export\s+function\s+/gm, 'function ');
+      cleanCode = cleanCode.replace(/^\s*export\s+const\s+/gm, 'const ');
+      cleanCode = cleanCode.replace(/^\s*export\s+default\s+/gm, 'const __default = ');
+
+      // Wrap the code to capture all declarations and assign to exports
+      const wrappedCode = `
+(function(exports, module) {
+${cleanCode}
+
+// Auto-assign all functions to exports
+if (typeof activate !== 'undefined') exports.activate = activate;
+if (typeof deactivate !== 'undefined') exports.deactivate = deactivate;
+if (typeof metadata !== 'undefined') exports.metadata = metadata;
+if (typeof __default !== 'undefined') {
+  exports.default = __default;
+}
+})(exports, module);
+`;
 
       const exports = {};
       const module = { exports };
-      const pluginModule = moduleFactory(exports, module);
 
-      let pluginInstance = pluginModule;
+      // Execute the wrapped plugin code
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+      new Function('exports', 'module', wrappedCode)(exports, module);
 
-      // If there's a default export, use it
-      if (pluginModule.default) {
-        pluginInstance = pluginModule.default;
-      }
+      // Get activate and deactivate from exports
+      const { activate } = exports;
+      const { deactivate } = exports;
 
-      // Validate that activate exists (either as function or method)
-      if (typeof pluginInstance.activate !== 'function') {
+      // Validate that activate exists
+      if (typeof activate !== 'function') {
         throw new Error('Plugin must export an activate function');
       }
 
       return {
         manifest,
-        activate: pluginInstance.activate.bind(pluginInstance),
-        deactivate: pluginInstance.deactivate
-          ? pluginInstance.deactivate.bind(pluginInstance)
-          : async () => {},
+        activate,
+        deactivate: deactivate || (async () => {}),
       };
     }
   } catch (error) {

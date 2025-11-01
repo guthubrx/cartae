@@ -21,6 +21,7 @@ import { pluginDevService } from '../../services/PluginDevService';
 import { useDeveloperMode } from './DeveloperModeToggle';
 import type { PluginManifest } from '@cartae/plugin-system';
 import { Toast, type ToastType } from '../ui/Toast';
+import { canDisablePlugin, isCorePlugin } from '../../utils/pluginUtils';
 import './PluginManager.css';
 
 export interface PluginManagerProps {
@@ -252,7 +253,7 @@ export function PluginManager({
     const optional: typeof filteredPlugins = [];
 
     filteredPlugins.forEach(item => {
-      if (item.manifest.source === 'core') {
+      if (isCorePlugin(item.manifest)) {
         core.push(item);
       } else if (item.manifest.featured && isCartaePlugin(item)) {
         // Only show featured plugins from Cartae repositories
@@ -535,7 +536,7 @@ export function PluginManager({
   const handleBulkUninstall = async () => {
     const pluginsToUninstall = Array.from(selectedPluginIds).filter(id => {
       const item = unifiedPlugins.find(p => p.manifest.id === id);
-      return item && item.isInstalled && item.manifest.source !== 'core';
+      return item && item.isInstalled && canDisablePlugin(item.manifest);
     });
 
     if (pluginsToUninstall.length === 0) return;
@@ -585,7 +586,7 @@ export function PluginManager({
     const canActivate = selectedItems.some(item => item && item.isInstalled && !item.isActive);
     const canDeactivate = selectedItems.some(item => item && item.isActive);
     const canUninstall = selectedItems.some(
-      item => item && item.isInstalled && item.manifest.source !== 'core'
+      item => item && item.isInstalled && canDisablePlugin(item.manifest)
     );
 
     return { canInstall, canActivate, canDeactivate, canUninstall };
@@ -645,7 +646,6 @@ export function PluginManager({
             >
               {paginatedItems.map(item => {
                 const isActive = item.isActive ?? false;
-                const isCore = item.manifest.source === 'core';
                 const { isInstalled } = item;
                 const isCommunity = item.manifest.source === 'community';
 
@@ -654,10 +654,10 @@ export function PluginManager({
                     key={item.manifest.id}
                     manifest={item.manifest}
                     isActive={isActive}
-                    canDisable={!isCore}
+                    canDisable={canDisablePlugin(item.manifest)}
                     isInstalled={isInstalled}
                     onToggle={() => {
-                      if (isCore) return;
+                      if (!canDisablePlugin(item.manifest)) return;
                       if (!isInstalled) {
                         handleInstall(item.manifest.id);
                       } else {
@@ -800,11 +800,10 @@ export function PluginManager({
             <PluginDetailModal
               manifest={selectedItem.manifest}
               isActive={selectedItem.isActive ?? false}
-              canDisable={selectedItem.manifest.source !== 'core'}
+              canDisable={canDisablePlugin(selectedItem.manifest)}
               onClose={handleCloseModal}
               onToggle={() => {
-                const isCore = selectedItem.manifest.source === 'core';
-                if (!isCore && selectedItem.isInstalled) {
+                if (canDisablePlugin(selectedItem.manifest) && selectedItem.isInstalled) {
                   handleToggle(selectedPlugin, selectedItem.isActive ?? false);
                   handleCloseModal();
                 }

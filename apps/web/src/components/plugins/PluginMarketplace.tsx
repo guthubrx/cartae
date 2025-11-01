@@ -13,6 +13,7 @@ import { PluginDetailModal } from './PluginDetailModal';
 // AdminPanel removed - provided by com.cartae.admin-panel private plugin
 import { TopRatedPlugins } from './TopRatedPlugins';
 import { RatingFilter } from './RatingFilter';
+import { isCorePlugin } from '../../utils/pluginUtils';
 import './PluginManager.css';
 
 export function PluginMarketplace() {
@@ -61,12 +62,12 @@ export function PluginMarketplace() {
 
   // Organize plugins into sections
   const { corePlugins, featuredPlugins, communityPlugins } = useMemo(() => {
-    const core = filteredManifests.filter(m => m.manifest.source === 'core');
+    const core = filteredManifests.filter(m => isCorePlugin(m.manifest));
     const featured = filteredManifests.filter(
-      m => m.manifest.featured === true && m.manifest.source !== 'core'
+      m => m.manifest.featured === true && !isCorePlugin(m.manifest)
     );
     const community = filteredManifests.filter(
-      m => m.manifest.source !== 'core' && !m.manifest.featured
+      m => !isCorePlugin(m.manifest) && !m.manifest.featured
     );
 
     return {
