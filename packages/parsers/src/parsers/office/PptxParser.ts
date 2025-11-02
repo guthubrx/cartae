@@ -40,15 +40,21 @@ export class PptxParser extends BaseAttachmentParser {
       for (const slideName of slideFiles) {
         const xml = await zip.files[slideName].async('text');
 
-        // Parser XML pour extraire texte (regex simple)
-        // Format: <a:t>Texte</a:t>
-        const textMatches = xml.match(/<a:t>([^<]+)<\/a:t>/g) || [];
+        // Parser XML pour extraire texte (regex améliorée)
+        // Format: <a:t>Texte</a:t> et <a:r><a:t>Texte</a:t></a:r>
+        const textMatches = xml.match(/<a:t[^>]*>([^<]*)<\/a:t>/g) || [];
         const slideText = textMatches
-          .map(match => match.replace(/<\/?a:t>/g, ''))
+          .map(match => {
+            const content = match.match(/<a:t[^>]*>([^<]*)<\/a:t>/);
+            return content ? content[1] : '';
+          })
+          .filter(text => text.trim())
           .join(' ')
           .trim();
 
-        slides.push(slideText);
+        if (slideText) {
+          slides.push(slideText);
+        }
       }
 
       // Combiner tout le texte

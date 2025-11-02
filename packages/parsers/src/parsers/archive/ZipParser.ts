@@ -46,7 +46,9 @@ export class ZipParser extends BaseAttachmentParser {
           (f.name.endsWith('.txt') ||
             f.name.endsWith('.csv') ||
             f.name.endsWith('.md') ||
-            f.name.endsWith('.json'))
+            f.name.endsWith('.json') ||
+            // Fichiers sans extension (souvent texte)
+            (!f.name.includes('.') && f.size < 1024 * 1024)) // < 1 MB
       );
 
       const text = files
@@ -58,10 +60,21 @@ export class ZipParser extends BaseAttachmentParser {
       const fileContents: Record<string, string> = {};
       if (textFiles.length > 0 && textFiles.length <= 10) {
         for (const fileInfo of textFiles.slice(0, 10)) {
-          const fileContent = await zip.files[fileInfo.name].async('string');
-          const preview =
-            fileContent.length > 500 ? `${fileContent.slice(0, 500)}\n...(tronqué)` : fileContent;
-          fileContents[fileInfo.name] = preview;
+          try {
+            const fileContent = await zip.files[fileInfo.name].async('string');
+            // Vérifier si c'est du texte lisible (pas binaire)
+            // eslint-disable-next-line no-control-regex
+            const isBinary = /[\x00-\x08\x0E-\x1F]/.test(fileContent.slice(0, 100));
+            if (!isBinary) {
+              const preview =
+                fileContent.length > 500
+                  ? `${fileContent.slice(0, 500)}\n...(tronqué)`
+                  : fileContent;
+              fileContents[fileInfo.name] = preview;
+            }
+          } catch {
+            // Ignore fichiers non-texte
+          }
         }
       }
 
