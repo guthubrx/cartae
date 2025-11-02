@@ -78,6 +78,12 @@ export class ZipParser extends BaseAttachmentParser {
         }
       }
 
+      // Preview URL pour téléchargement
+      let previewUrl: string | undefined;
+      if (options.generatePreview !== false) {
+        previewUrl = this.createBlobUrl(buffer, 'application/zip');
+      }
+
       return {
         type: 'zip',
         text: this.limitText(text, options.textLimit),
@@ -85,6 +91,7 @@ export class ZipParser extends BaseAttachmentParser {
           files,
           ...(Object.keys(fileContents).length > 0 && { fileContents }),
         },
+        previewUrl,
         metadata: {
           size: buffer.byteLength,
           fileCount: files.filter(f => !f.isFolder).length,
