@@ -51,6 +51,23 @@ export class ZipParser extends BaseAttachmentParser {
             (!f.name.includes('.') && f.size < 1024 * 1024)) // < 1 MB
       );
 
+      // Détecter fichiers parsables imbriqués (ZIP, archives, emails, Office)
+      const nestedParsableFiles = files.filter(
+        f =>
+          !f.isFolder &&
+          (f.name.endsWith('.zip') ||
+            f.name.endsWith('.7z') ||
+            f.name.endsWith('.rar') ||
+            f.name.endsWith('.tar') ||
+            f.name.endsWith('.tar.gz') ||
+            f.name.endsWith('.eml') ||
+            f.name.endsWith('.msg') ||
+            f.name.endsWith('.docx') ||
+            f.name.endsWith('.xlsx') ||
+            f.name.endsWith('.pptx') ||
+            f.name.endsWith('.pdf'))
+      );
+
       const text = files
         .filter(f => !f.isFolder)
         .map(f => `${f.name} (${(f.size / 1024).toFixed(1)} KB)`)
@@ -96,6 +113,14 @@ export class ZipParser extends BaseAttachmentParser {
           size: buffer.byteLength,
           fileCount: files.filter(f => !f.isFolder).length,
           format: 'ZIP Archive',
+          // Indiquer fichiers parsables imbriqués (pour exploration récursive future)
+          ...(nestedParsableFiles.length > 0 && {
+            nestedParsableFiles: nestedParsableFiles.map(f => ({
+              name: f.name,
+              size: f.size,
+              type: this.detectFileType(f.name),
+            })),
+          }),
         },
       };
     } catch (error) {
@@ -105,5 +130,31 @@ export class ZipParser extends BaseAttachmentParser {
         error: `Erreur parsing ZIP: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
+  }
+
+  /**
+   * Détecte le type de fichier basé sur son nom/extension
+   */
+  private detectFileType(fileName: string): string {
+    const ext = fileName.toLowerCase().split('.').pop();
+
+    const typeMap: Record<string, string> = {
+      zip: 'archive',
+      '7z': 'archive',
+      rar: 'archive',
+      tar: 'archive',
+      gz: 'archive',
+      eml: 'email',
+      msg: 'email',
+      docx: 'document',
+      xlsx: 'spreadsheet',
+      pptx: 'presentation',
+      pdf: 'pdf',
+      odt: 'document',
+      ods: 'spreadsheet',
+      odp: 'presentation',
+    };
+
+    return typeMap[ext || ''] || 'unknown';
   }
 }
