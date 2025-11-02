@@ -32,20 +32,30 @@ export class AttachmentParserService {
   /**
    * Parse une pièce jointe
    *
+   * @param attachmentId - ID unique (pour cache)
    * @param contentBytes - Contenu base64
    * @param mimeType - Type MIME
-   * @param options - Options parsing
+   * @param options - Options parsing (peut inclure fileName pour fallback extension)
    * @returns Résultat parsing
    */
   async parseAttachment(
+    attachmentId: string,
     contentBytes: string,
     mimeType: string,
-    options: ParseOptions = {}
+    options: ParseOptions & { fileName?: string } = {}
   ): Promise<ParsedAttachment> {
     this.stats.totalParsed++;
 
     // Récupérer parser approprié
-    const parser = ParserFactory.getParser(mimeType);
+    let parser = ParserFactory.getParser(mimeType);
+
+    // Fallback: Si MIME type générique (octet-stream), détecter par extension
+    if (!parser && options.fileName && mimeType === 'application/octet-stream') {
+      console.log(
+        `[AttachmentParserService] MIME générique, détection par extension: ${options.fileName}`
+      );
+      parser = ParserFactory.getParserByExtension(options.fileName);
+    }
 
     if (!parser) {
       console.warn(`[AttachmentParserService] Format non supporté: ${mimeType}`);

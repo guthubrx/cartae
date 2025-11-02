@@ -144,4 +144,27 @@ export class ParserFactory {
     const parser = this.getParser(mimeType);
     return parser ? parser.name : null;
   }
+
+  /**
+   * Trouve le parser approprié par extension de fichier
+   *
+   * @param fileName - Nom du fichier avec extension
+   * @returns Parser approprié ou null
+   */
+  static getParserByExtension(fileName: string): IAttachmentParser | null {
+    const parsers = this.getAllParsers();
+    const extension = fileName.toLowerCase().match(/\.\w+$/)?.[0];
+
+    if (!extension) {
+      return null;
+    }
+
+    for (const parser of parsers) {
+      if (parser.supportedExtensions.includes(extension)) {
+        return parser;
+      }
+    }
+
+    return null;
+  }
 }
