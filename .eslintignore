@@ -4,6 +4,9 @@ scripts/render-icon-from-svg.js
 # Supabase Edge Functions (Deno, not TypeScript)
 supabase/functions/
 
+# Test setup files
+**/tests/setup.ts
+
 # Fichiers générés par TypeScript
 # Generated files by TypeScript
 **/*.d.ts

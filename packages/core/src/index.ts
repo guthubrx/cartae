@@ -8,6 +8,8 @@
  * - Interfaces TypeScript pour CartaeItem (format universel)
  * - Schémas Zod pour validation runtime
  * - Factory functions pour créer des items facilement
+ * - EventBus pour communication pub/sub
+ * - Storage (IndexedDB) pour persistence locale
  *
  * @packageDocumentation
  */
@@ -20,6 +22,12 @@ export * from './schemas';
 
 // Factories
 export * from './factories';
+
+// Events
+export * from './events';
+
+// Storage
+export * from './storage';
 
 // Version
 export const VERSION = '0.1.0';
