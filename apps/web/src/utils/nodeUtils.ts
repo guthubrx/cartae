@@ -3,7 +3,7 @@
  * EN: Utilities for node operations
  */
 
-import type { MindNode } from '@cartae/core';
+import type { MindNode } from '@cartae/mindmap-core';
 
 /**
  * FR: Obtenir tous les descendants d'un nœud (récursif)

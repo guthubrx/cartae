@@ -19,7 +19,7 @@ import {
   MoveNodeCommand,
   ReparentNodeCommand,
   NodeFactory,
-} from '@cartae/core';
+} from '@cartae/mindmap-core';
 
 // FR: État global de l'application
 // EN: Global application state

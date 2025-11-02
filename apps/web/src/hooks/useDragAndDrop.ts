@@ -15,7 +15,7 @@ import {
   ReparentNodeCommand,
   MoveNodeWithSubtreeCommand,
   ReorderSiblingCommand,
-} from '@cartae/core';
+} from '@cartae/mindmap-core';
 
 /**
  * FR: Valide si on peut reparenter un nœud sur un autre
@@ -338,7 +338,7 @@ export function useDragAndDrop({
               },
               offset
             );
-            // TODO: Type mismatch - commands expect MindMap from @cartae/core but we have ExtendedMindMapData
+            // TODO: Type mismatch - commands expect MindMap from @cartae/mindmap-core but we have ExtendedMindMapData
             // Commands only modify .nodes property which exists in both types
             newContent = command.execute(newContent as any);
           });
@@ -346,7 +346,7 @@ export function useDragAndDrop({
           // FR: Drag simple - utiliser la commande de déplacement normal
           // EN: Single drag - use normal move command
           const command = new MoveNodeWithSubtreeCommand(node.id, position, offset);
-          // TODO: Type mismatch - commands expect MindMap from @cartae/core but we have ExtendedMindMapData
+          // TODO: Type mismatch - commands expect MindMap from @cartae/mindmap-core but we have ExtendedMindMapData
           // Commands only modify .nodes property which exists in both types
           newContent = command.execute(active.content as any);
         }

@@ -1,7 +1,7 @@
 {
-  "name": "@cartae/core",
+  "name": "@cartae/mindmap-core",
   "version": "0.1.0",
-  "description": "Logique métier et modèles pour BigMind",
+  "description": "Logique métier et modèles pour Mindmap (parsers, commands, history)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

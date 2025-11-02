@@ -168,11 +168,7 @@ export class NodeFactory {
    * FR: Créer un nouveau nœud
    * EN: Create a new node
    */
-  static createNode(
-    title: string,
-    parentId: NodeID | null = null,
-    style?: NodeStyle
-  ): MindNode {
+  static createNode(title: string, parentId: NodeID | null = null, style?: NodeStyle): MindNode {
     return {
       id: nanoid(),
       parentId,
@@ -193,7 +189,7 @@ export class NodeFactory {
    */
   static createEmptyMindMap(name: string = 'Nouvelle carte'): MindMap {
     const rootNode = NodeFactory.createNode('Racine');
-    
+
     return {
       id: nanoid(),
       rootId: rootNode.id,
@@ -221,8 +217,10 @@ export class NodeUtils {
   static getChildren(map: MindMap, nodeId: NodeID): MindNode[] {
     const node = map.nodes[nodeId];
     if (!node) return [];
-    
-    return node.children.map(childId => map.nodes[childId]).filter((child): child is MindNode => child !== undefined);
+
+    return node.children
+      .map(childId => map.nodes[childId])
+      .filter((child): child is MindNode => child !== undefined);
   }
 
   /**
@@ -232,11 +230,11 @@ export class NodeUtils {
   static getDescendants(map: MindMap, nodeId: NodeID): MindNode[] {
     const children = NodeUtils.getChildren(map, nodeId);
     const descendants = [...children];
-    
+
     children.forEach(child => {
       descendants.push(...NodeUtils.getDescendants(map, child.id));
     });
-    
+
     return descendants;
   }
 
@@ -247,12 +245,12 @@ export class NodeUtils {
   static getPathToRoot(map: MindMap, nodeId: NodeID): MindNode[] {
     const path: MindNode[] = [];
     let currentNode: MindNode | null = map.nodes[nodeId] || null;
-    
+
     while (currentNode) {
       path.unshift(currentNode);
       currentNode = currentNode.parentId ? map.nodes[currentNode.parentId] || null : null;
     }
-    
+
     return path;
   }
 
