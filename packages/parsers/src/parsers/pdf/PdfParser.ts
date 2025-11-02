@@ -37,17 +37,27 @@ export class PdfParser extends BaseAttachmentParser {
 
       const { numPages } = pdf;
 
-      // Extraction texte (première page par défaut)
+      // Extraction texte (3 premières pages max pour avoir plus de contexte)
       let text: string | undefined;
       if (options.extractText !== false) {
-        const page = await pdf.getPage(1);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(' ')
-          .trim();
+        const pagesToExtract = Math.min(numPages, 3);
+        const pageTexts: string[] = [];
 
-        text = this.limitText(pageText, options.textLimit);
+        for (let i = 1; i <= pagesToExtract; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .map((item: any) => item.str)
+            .join(' ')
+            .trim();
+
+          if (pageText) {
+            pageTexts.push(`[Page ${i}]\n${pageText}`);
+          }
+        }
+
+        const fullText = pageTexts.join('\n\n');
+        text = this.limitText(fullText, options.textLimit);
       }
 
       // Extraction métadonnées
