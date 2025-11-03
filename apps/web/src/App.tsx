@@ -6,7 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useMindmap } from './hooks/useMindmap';
-import DockableLayout from './layouts/DockableLayout';
+import DockableLayoutV2 from './layouts/DockableLayoutV2';
 import SettingsPage from './pages/Settings';
 import { MarketplacePage } from './pages/MarketplacePage';
 import { useAppSettings } from './hooks/useAppSettings';
@@ -78,8 +78,8 @@ function App() {
       <ToastContainer />
 
       <Routes>
-        <Route path="/" element={<DockableLayout />} />
-        <Route path="/map/:id" element={<DockableLayout />} />
+        <Route path="/" element={<DockableLayoutV2 />} />
+        <Route path="/map/:id" element={<DockableLayoutV2 />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/marketplace" element={<MarketplacePage />} />
       </Routes>
