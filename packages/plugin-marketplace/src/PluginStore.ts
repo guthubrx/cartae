@@ -201,7 +201,7 @@ export class PluginStore {
   private async validatePlugin(manifest: PluginManifest, zip: JSZip): Promise<void> {
     // Check for dangerous permissions
     const dangerousPermissions = ['filesystem:write', 'network:unrestricted'];
-    const hasDangerous = manifest.permissions?.some(p => dangerousPermissions.includes(p));
+    const hasDangerous = manifest.permissions?.some((p: string) => dangerousPermissions.includes(p));
 
     if (hasDangerous) {
       console.warn(`Plugin ${manifest.id} requests dangerous permissions`);

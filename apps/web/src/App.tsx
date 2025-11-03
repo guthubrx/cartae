@@ -8,6 +8,7 @@ import { Routes, Route } from 'react-router-dom';
 import { useMindmap } from './hooks/useMindmap';
 import DockableLayout from './layouts/DockableLayout';
 import SettingsPage from './pages/Settings';
+import { MarketplacePage } from './pages/MarketplacePage';
 import { useAppSettings } from './hooks/useAppSettings';
 import { useOpenFiles } from './hooks/useOpenFiles';
 import { useTagGraphFileSync } from './hooks/useTagGraphFileSync';
@@ -80,6 +81,7 @@ function App() {
         <Route path="/" element={<DockableLayout />} />
         <Route path="/map/:id" element={<DockableLayout />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/marketplace" element={<MarketplacePage />} />
       </Routes>
     </div>
   );
