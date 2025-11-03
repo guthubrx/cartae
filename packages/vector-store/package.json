@@ -1,0 +1,24 @@
+{
+  "name": "@cartae/vector-store",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Interfaces abstraites pour stockage vectoriel (Qdrant, Pinecone, Milvus...)",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}

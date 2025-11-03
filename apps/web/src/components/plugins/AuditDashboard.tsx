@@ -5,7 +5,25 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { AuditEvent, AuditQueryFilters } from '@cartae/plugin-system';
-import { AuditEventType, AuditSeverity } from '@cartae/plugin-system';
+// TODO: Fix missing exports in @cartae/plugin-system (AuditEventType, AuditSeverity)
+// import { AuditEventType, AuditSeverity } from '@cartae/plugin-system';
+
+// Temporary enums while exports are missing
+enum AuditSeverity {
+  INFO = 'INFO',
+  WARNING = 'WARNING',
+  ERROR = 'ERROR',
+  CRITICAL = 'CRITICAL',
+}
+
+enum AuditEventType {
+  PLUGIN_ACTIVATED = 'PLUGIN_ACTIVATED',
+  PLUGIN_DEACTIVATED = 'PLUGIN_DEACTIVATED',
+  PERMISSION_GRANTED = 'PERMISSION_GRANTED',
+  PERMISSION_DENIED = 'PERMISSION_DENIED',
+  API_CALL = 'API_CALL',
+  SECURITY_ALERT = 'SECURITY_ALERT',
+}
 
 export interface AuditDashboardProps {
   onQuery: (filters: AuditQueryFilters) => Promise<AuditEvent[]>;

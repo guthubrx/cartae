@@ -1,0 +1,29 @@
+{
+  "name": "@cartae/qdrant-store",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Implémentation VectorStore via Qdrant (open-source vector database)",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@cartae/vector-store": "workspace:*",
+    "@cartae/embedding-service": "workspace:*",
+    "@qdrant/js-client-rest": "^1.11.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}

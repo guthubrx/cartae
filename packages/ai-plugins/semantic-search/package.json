@@ -1,0 +1,30 @@
+{
+  "name": "@cartae/semantic-search-plugin",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Plugin AI pour recherche sémantique et découverte de connexions via embeddings",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@cartae/core": "workspace:*",
+    "@cartae/embedding-service": "workspace:*",
+    "@cartae/vector-store": "workspace:*",
+    "@cartae/llm-service": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}
