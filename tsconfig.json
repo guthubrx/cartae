@@ -6,6 +6,12 @@
     "declarationMap": true,
     "outDir": "dist"
   },
-  "include": ["packages/*/src/**/*", "apps/*/src/**/*", "apps/*/scripts/**/*", "tests/**/*"],
+  "include": [
+    "packages/*/src/**/*",
+    "packages/viz-plugins/*/src/**/*",
+    "apps/*/src/**/*",
+    "apps/*/scripts/**/*",
+    "tests/**/*"
+  ],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.test.tsx"]
 }

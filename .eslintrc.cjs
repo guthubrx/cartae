@@ -106,6 +106,7 @@ module.exports = {
           './apps/web/tsconfig.json',
           './apps/desktop/tsconfig.json',
           './packages/*/tsconfig.json',
+          './packages/viz-plugins/*/tsconfig.json',
         ],
       },
     },

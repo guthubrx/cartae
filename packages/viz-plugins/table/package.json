@@ -1,0 +1,32 @@
+{
+  "name": "@cartae/viz-table",
+  "version": "0.1.0",
+  "description": "Table visualization plugin for CartaeItem data with TanStack Table v8",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && tsup src/index.ts --format esm",
+    "dev": "tsc --watch & tsup src/index.ts --format esm --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@cartae/core": "workspace:*",
+    "@cartae/plugin-system": "workspace:*",
+    "@tanstack/react-table": "^8.20.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  }
+}
