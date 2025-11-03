@@ -190,9 +190,9 @@ importers:
       dexie:
         specifier: ^4.0.1
         version: 4.2.1
-      flexlayout-react:
-        specifier: ^0.8.17
-        version: 0.8.17(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      dockview:
+        specifier: ^4.10.0
+        version: 4.10.0(react@18.3.1)
       highlight.js:
         specifier: ^11.11.1
         version: 11.11.1
@@ -2997,6 +2997,14 @@ packages:
   dnd-core@14.0.1:
     resolution: {integrity: sha512-+PVS2VPTgKFPYWo3vAFEA8WPbTf7/xo43TifH9G8S1KqnrQu0o77A3unrF5yOugy4mIz7K5wAVFHUcha7wsz6A==}
 
+  dockview-core@4.10.0:
+    resolution: {integrity: sha512-ihbjQlB2OwoT2M2FVr2z8C+8IbYJmRlR6wz5BRE0NpdeK/Raou8P7NloST2uZfBg9rZ9j3ab3WT20UOhgpL4ZA==}
+
+  dockview@4.10.0:
+    resolution: {integrity: sha512-uj6NIPo/QjKRw6zkCL7xXxUWljme2HIzRKSs0JohXJtnDBAuBoq91f1RinJ/yvCZPzJAmOLoAyf+cCqHZdSRVg==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   doctrine@2.1.0:
     resolution: {integrity: sha512-35mSku4ZXK0vfCuHEDAwt55dg2jNajHZ1odvF+8SSr82EsZY4QmXfuWso8oEd8zRhVObSN18aM0CjSdoBX7zIw==}
     engines: {node: '>=0.10.0'}
@@ -3381,12 +3389,6 @@ packages:
 
   flatted@3.3.3:
     resolution: {integrity: sha512-GX+ysw4PBCz0PzosHDepZGANEuFCMLrnRTiEy9McGjmkCQYwRq4A/X786G/fjM/+OjsWSU1ZrY5qyARZmO/uwg==}
-
-  flexlayout-react@0.8.17:
-    resolution: {integrity: sha512-F0utJcrIGBpF4btqRYLFOoITQcyFxUp19X4dvFvEceD/CJkRoefV96iN1lDU63t9ystgltmWw7AscgNbKJMlcA==}
-    peerDependencies:
-      react: ^18.0.0 || ^19.0.0
-      react-dom: ^18.0.0 || ^19.0.0
 
   foldline@1.1.0:
     resolution: {integrity: sha512-9SheyADS50hjvFYjFJ3OB/GlDz2mD1T2CHd7auIk4Uto5YYWPBcw8iYo3F+gENJ+/SOeH9tT0loHZSqlUlumTA==}
@@ -9064,6 +9066,13 @@ snapshots:
       '@react-dnd/invariant': 2.0.0
       redux: 4.2.1
 
+  dockview-core@4.10.0: {}
+
+  dockview@4.10.0(react@18.3.1):
+    dependencies:
+      dockview-core: 4.10.0
+      react: 18.3.1
+
   doctrine@2.1.0:
     dependencies:
       esutils: 2.0.3
@@ -9638,11 +9647,6 @@ snapshots:
       rimraf: 3.0.2
 
   flatted@3.3.3: {}
-
-  flexlayout-react@0.8.17(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
 
   foldline@1.1.0: {}
 
