@@ -7,11 +7,12 @@ import React from 'react';
 import MenuBar from '../components/MenuBar';
 import FileTabs from '../components/FileTabs';
 import NodeExplorer from '../components/NodeExplorer';
-import MindMapCanvas from '../components/MindMapCanvas';
 import NodeProperties from '../components/NodeProperties';
 import TagLayersPanelRCT from '../components/TagLayersPanelRCT';
 import StatusBar from '../components/StatusBar';
 import CollapseButton from '../components/CollapseButton';
+import ViewSwitcher from '../components/ViewSwitcher';
+import ViewContainer from '../components/ViewContainer';
 import { useColumnCollapse } from '../hooks/useColumnCollapse';
 import { useTagStore } from '../hooks/useTagStore';
 import './MainLayout.css';
@@ -86,10 +87,16 @@ function MainLayout() {
                   {!isCollapsed('explorer') && <NodeExplorer />}
                 </div>
 
-                {/* FR: Carte mentale */}
-                {/* EN: Mind map */}
+                {/* FR: Zone de visualisation (Mindmap / Kanban / Table) */}
+                {/* EN: Visualization area (Mindmap / Kanban / Table) */}
                 <div className="mindmap-column">
-                  <MindMapCanvas />
+                  {/* ViewSwitcher : boutons pour changer de vue */}
+                  <div className="view-switcher-wrapper">
+                    <ViewSwitcher />
+                  </div>
+
+                  {/* ViewContainer : affiche la vue active */}
+                  <ViewContainer />
                 </div>
 
                 {/* FR: Colonne de propriétés du nœud sélectionné */}

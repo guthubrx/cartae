@@ -575,3 +575,28 @@
 .panel-content::-webkit-scrollbar-thumb:hover {
   background: theme('colors.border.DEFAULT');
 }
+
+/* FR: Wrapper pour ViewSwitcher */
+/* EN: Wrapper for ViewSwitcher */
+.view-switcher-wrapper {
+  padding: 8px 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.02);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .view-switcher-wrapper {
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Ajuster mindmap-column pour accueillir ViewSwitcher + ViewContainer */
+.mindmap-column {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}

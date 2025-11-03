@@ -1,0 +1,38 @@
+.view-switcher {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+}
+
+.view-switcher-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-color, #333);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-switcher-button:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.view-switcher-button.active {
+  color: var(--accent-color, #007aff);
+  font-weight: 600;
+}
+
+.view-icon {
+  font-size: 16px;
+}
+
+.view-label {
+  font-size: 13px;
+}
