@@ -18,6 +18,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { DockviewReact, DockviewApi, DockviewReadyEvent, IDockviewPanelProps } from 'dockview';
 import 'dockview/dist/styles/dockview.css';
+import './DockableLayoutV2.css';
 
 // Import core components (composants principaux)
 import FileTabs from '../components/FileTabs';

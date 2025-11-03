@@ -1,0 +1,235 @@
+/**
+ * Dockview Theming - Cartae Design System Integration
+ * Session 54F-54H: Polish & Theming
+ *
+ * Maps Cartae design variables to Dockview CSS properties
+ * Supports light/dark mode via [data-theme] attribute
+ */
+
+/* Root theme - Light mode (défaut) */
+:root {
+  /* Cartae color tokens */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #e5e5e5;
+  --fg: #171717;
+  --fg-secondary: #525252;
+  --fg-tertiary: #737373;
+  --border-color: #e5e5e5;
+  --border-secondary: #d4d4d4;
+  --accent-color: #3b82f6;
+  --state-hover: #f5f5f5;
+
+  /* Dockview CSS Variables Mapping */
+  --dv-group-view-background-color: var(--bg-primary);
+  --dv-tabs-and-actions-container-background-color: var(--bg-secondary);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--bg-primary);
+  --dv-activegroup-visiblepanel-tab-color: var(--accent-color);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--bg-tertiary);
+  --dv-activegroup-hiddenpanel-tab-color: var(--fg-tertiary);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--bg-tertiary);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--fg-secondary);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--bg-tertiary);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--fg-tertiary);
+  --dv-separator-border: 1px solid var(--border-color);
+  --dv-paneview-header-border-color: var(--border-color);
+  --dv-drag-over-border-color: var(--accent-color);
+  --dv-drag-over-background-color: rgba(59, 130, 246, 0.05);
+  --dv-paneview-active-outline-color: var(--accent-color);
+  --dv-tab-divider-color: var(--border-secondary);
+  --dv-icon-hover-background-color: var(--state-hover);
+  --dv-sash-color: var(--border-color);
+  --dv-active-sash-color: var(--accent-color);
+  --dv-tabs-and-actions-container-height: 36px;
+  --dv-tabs-and-actions-container-font-size: 14px;
+  --dv-tab-font-size: 14px;
+  --dv-tab-margin: 4px;
+  --dv-border-radius: 6px;
+  --dv-floating-box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --dv-overlay-z-index: 1300;
+}
+
+/* Dark mode */
+[data-theme='dark'] {
+  --bg-primary: #171717;
+  --bg-secondary: #262626;
+  --bg-tertiary: #404040;
+  --fg: #fafafa;
+  --fg-secondary: #a3a3a3;
+  --fg-tertiary: #737373;
+  --border-color: #404040;
+  --border-secondary: #525252;
+  --accent-color: #60a5fa;
+  --state-hover: #262626;
+  --dv-floating-box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.5);
+}
+
+/* Main container */
+.cartae-dockview-theme {
+  height: 100vh;
+  width: 100vw;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  background: var(--bg-primary);
+  color: var(--fg);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Dockview container */
+.dockview-theme-custom {
+  height: 100%;
+  width: 100%;
+}
+
+/* Panel content wrapper - consistent padding/sizing */
+.panel-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-primary);
+  color: var(--fg);
+}
+
+/* Special styling for canvas panels */
+.panel-content.canvas-panel {
+  background: var(--bg-secondary);
+}
+
+/* Custom tab styling */
+.dockview-custom-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dockview-custom-tab span:first-child {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tab badge styling */
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: var(--accent-color);
+  color: white;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  flex-shrink: 0;
+  animation: badge-pulse 0.3s ease-in-out;
+}
+
+@keyframes badge-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Transitions for smooth interactions */
+.dockview-group-view,
+.dockview-tab,
+.dockview-tabs-container {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Tab hover state */
+.dockview-tab:hover {
+  background-color: var(--state-hover) !important;
+}
+
+/* Resize handles (sash) styling */
+.dockview-sash {
+  transition: background-color 0.15s ease;
+}
+
+.dockview-sash:hover,
+.dockview-sash.active {
+  background-color: var(--dv-active-sash-color) !important;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+  transition: background-color 0.1s ease;
+}
+
+/* Drag over feedback */
+.dockview-panel-container.drag-over {
+  border-color: var(--dv-drag-over-border-color);
+  border-style: dashed;
+  background-color: var(--dv-drag-over-background-color);
+}
+
+/* Placeholder component styling */
+.panel-content-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 20px;
+  text-align: center;
+  color: var(--fg-tertiary);
+}
+
+/* Focus ring for accessibility */
+.dockview-tab:focus-visible {
+  outline: 2px solid var(--dv-paneview-active-outline-color);
+  outline-offset: -2px;
+}
+
+/* Scrollbar styling (webkit browsers) */
+.panel-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.panel-content::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.panel-content::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.panel-content::-webkit-scrollbar-thumb:hover {
+  background: var(--border-secondary);
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+  :root {
+    --border-color: #000000;
+    --border-secondary: #333333;
+  }
+
+  [data-theme='dark'] {
+    --border-color: #ffffff;
+    --border-secondary: #cccccc;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
