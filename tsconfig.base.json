@@ -23,7 +23,8 @@
     "paths": {
       "@cartae/core": ["./packages/core/dist/index.d.ts"],
       "@cartae/ui": ["./packages/ui/dist/index.d.ts"],
-      "@cartae/design": ["./packages/design/dist/index.d.ts"]
+      "@cartae/design": ["./packages/design/dist/index.d.ts"],
+      "@cartae/plugin-system": ["./packages/plugin-system/dist/index.d.ts"]
     }
   },
   "exclude": ["node_modules", "dist", "build"]
