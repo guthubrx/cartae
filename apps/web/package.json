@@ -20,6 +20,8 @@
     "@bytemd/react": "^1.22.0",
     "@cartae/core": "workspace:*",
     "@cartae/design": "workspace:*",
+    "@cartae/kanban-plugin": "workspace:*",
+    "@cartae/mindmap-core": "workspace:*",
     "@cartae/plugin-marketplace": "workspace:*",
     "@cartae/plugin-system": "workspace:*",
     "@cartae/ui": "workspace:*",
