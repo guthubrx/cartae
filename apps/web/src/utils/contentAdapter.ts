@@ -28,6 +28,21 @@ export interface AdaptedContent {
 export function adaptBigMindToContent(bigMindData: BigMindData): AdaptedContent {
   const rootNode = bigMindData.nodes[bigMindData.rootId];
 
+  // Initialize metadata on all nodes if not present
+  // Filter out null/undefined nodes to avoid breaking references
+  const nodesWithMetadata = Object.entries(bigMindData.nodes).reduce(
+    (acc, [nodeId, node]) => {
+      if (node) {
+        acc[nodeId] = {
+          ...node,
+          metadata: node.metadata || {},
+        };
+      }
+      return acc;
+    },
+    {} as Record<string, any>
+  );
+
   return {
     id: bigMindData.id,
     name: bigMindData.name,
@@ -36,7 +51,7 @@ export function adaptBigMindToContent(bigMindData: BigMindData): AdaptedContent 
       title: rootNode?.title || 'Racine',
       children: rootNode?.children || [],
     },
-    nodes: bigMindData.nodes,
+    nodes: nodesWithMetadata,
   };
 }
 

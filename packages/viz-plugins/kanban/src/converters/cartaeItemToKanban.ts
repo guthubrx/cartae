@@ -41,6 +41,15 @@ export function cartaeItemsToKanban(items: CartaeItem[]): KanbanCard[] {
  * Infère le status Kanban depuis les métadonnées CartaeItem
  */
 function inferStatus(item: CartaeItem): KanbanStatus {
+  // 0. PRIORITÉ: Vérifier metadata.kanbanStatus (persisted drag & drop)
+  if (item.metadata?.kanbanStatus) {
+    const kanbanStatus = item.metadata.kanbanStatus.toString() as KanbanStatus;
+    // Valider que c'est un status valide
+    if (['backlog', 'in_progress', 'review', 'done'].includes(kanbanStatus)) {
+      return kanbanStatus;
+    }
+  }
+
   // 1. Vérifier metadata.status explicite
   if (item.metadata?.status) {
     const metaStatus = item.metadata.status.toString().toLowerCase();
