@@ -1,3 +1,5 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+  - 'packages/ai-plugins/*'
+  - 'packages/viz-plugins/*'

@@ -1,0 +1,24 @@
+{
+  "name": "@cartae/semantic-connections-plugin",
+  "version": "1.0.0",
+  "description": "AI plugin for detecting semantic connections between Cartae items",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && tsup src/index.ts --format esm",
+    "dev": "tsc --watch & tsup src/index.ts --format esm --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@cartae/core": "workspace:*",
+    "@cartae/plugin-system": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.24",
+    "tsup": "^8.5.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  }
+}
