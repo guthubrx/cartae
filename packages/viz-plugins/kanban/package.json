@@ -1,0 +1,37 @@
+{
+  "name": "@cartae/kanban-plugin",
+  "version": "1.0.0",
+  "description": "Kanban board visualization plugin for Cartae",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && tsup src/index.ts --format esm",
+    "dev": "tsc --watch & tsup src/index.ts --format esm --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@cartae/core": "workspace:*",
+    "@cartae/plugin-system": "workspace:*",
+    "@dnd-kit/core": "^6.1.0",
+    "@dnd-kit/sortable": "^8.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.24",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@types/uuid": "^9.0.8",
+    "tsup": "^8.5.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  }
+}
