@@ -5,7 +5,7 @@
 
 import { useMemo } from 'react';
 import type { CartaeItem } from '@cartae/core';
-import { useMindmap } from './useMindmap';
+import { useOpenFiles } from './useOpenFiles';
 import { mindNodesToCartaeItems } from '../utils/nodesToCartaeItems';
 
 /**
@@ -13,21 +13,25 @@ import { mindNodesToCartaeItems } from '../utils/nodesToCartaeItems';
  * Utilise React.useMemo pour optimiser les performances (pas de re-render inutile)
  */
 export function useCartaeItems(): CartaeItem[] {
-  const { mindMap } = useMindmap();
+  // Récupérer le fichier actif depuis useOpenFiles (comme MindMapCanvas)
+  const activeFile = useOpenFiles(state => state.openFiles.find(f => f.isActive) || null);
+
+  // Les données XMind sont dans activeFile.content.nodes (format XMind parser)
+  const contentNodes = activeFile?.content?.nodes || null;
 
   // Conversion avec cache pour éviter re-calcul à chaque render
   const cartaeItems = useMemo(() => {
-    if (!mindMap || !mindMap.nodes) {
+    if (!contentNodes) {
       return [];
     }
 
     // Convertir Record<string, MindNode> → CartaeItem[]
-    return mindNodesToCartaeItems(mindMap.nodes, {
+    return mindNodesToCartaeItems(contentNodes, {
       includeRoot: true,
       extractHashtags: true,
-      sourceConnector: 'mindmap',
+      sourceConnector: 'xmind',
     });
-  }, [mindMap]);
+  }, [contentNodes]);
 
   return cartaeItems;
 }

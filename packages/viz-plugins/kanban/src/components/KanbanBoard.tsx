@@ -11,6 +11,7 @@ import {
 import type { KanbanBoard as KanbanBoardType, KanbanCard, KanbanStatus } from '../types/kanban';
 import { KanbanColumnComponent } from './KanbanColumn';
 import { KanbanCardComponent } from './KanbanCard';
+import '../styles/kanban.css';
 
 interface KanbanBoardProps {
   board: KanbanBoardType;
@@ -22,11 +23,7 @@ interface KanbanBoardProps {
  * Composant principal du Kanban Board avec DndContext
  * Gère le drag & drop entre colonnes
  */
-export const KanbanBoard: React.FC<KanbanBoardProps> = ({
-  board,
-  onCardMove,
-  onCardClick,
-}) => {
+export const KanbanBoard: React.FC<KanbanBoardProps> = ({ board, onCardMove, onCardClick }) => {
   const [activeCard, setActiveCard] = useState<KanbanCard | null>(null);
 
   const sensors = useSensors(
@@ -82,18 +79,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       </div>
 
       {/* Board Kanban avec drag & drop */}
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="kanban-board">
-          {board.columns.map((column) => (
-            <KanbanColumnComponent
-              key={column.id}
-              column={column}
-              onCardClick={onCardClick}
-            />
+          {board.columns.map(column => (
+            <KanbanColumnComponent key={column.id} column={column} onCardClick={onCardClick} />
           ))}
         </div>
 

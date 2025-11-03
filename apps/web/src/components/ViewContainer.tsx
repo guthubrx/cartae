@@ -2,8 +2,8 @@ import React, { useMemo } from 'react';
 import { useViewStore } from '../stores/viewStore';
 import { useCartaeItems } from '../hooks/useCartaeItems';
 import MindMapCanvas from './MindMapCanvas';
-import { KanbanBoardView } from '@cartae/kanban-plugin';
-import { KanbanPlugin } from '@cartae/kanban-plugin';
+import { KanbanBoard } from '../../../../packages/viz-plugins/kanban/src/components/KanbanBoard';
+import { KanbanPlugin } from '../../../../packages/viz-plugins/kanban/src/KanbanPlugin';
 import './ViewContainer.css';
 
 interface ViewContainerProps {
@@ -29,7 +29,7 @@ function ViewContainer({ className = '', style }: ViewContainerProps) {
       {activeView === 'mindmap' && <MindMapCanvas />}
 
       {activeView === 'kanban' && kanbanBoard && (
-        <KanbanBoardView
+        <KanbanBoard
           board={kanbanBoard}
           onCardMove={(cardId, newStatus) => {
             // TODO: Gérer le déplacement de carte (update mindmap node status)
