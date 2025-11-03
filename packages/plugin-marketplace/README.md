@@ -1,127 +1,131 @@
 # @cartae/plugin-marketplace
 
-Plugin marketplace client for Cartae - browse, install and manage plugins from the remote registry.
+> 🧩 Complete plugin marketplace solution for Cartae - Discovery, ratings, admin dashboard, and performance-optimized components
+
+[![Version](https://img.shields.io/npm/v/@cartae/plugin-marketplace.svg)](https://www.npmjs.com/package/@cartae/plugin-marketplace)
+[![License](https://img.shields.io/npm/l/@cartae/plugin-marketplace.svg)](https://github.com/cartae/cartae/blob/main/LICENSE)
 
 ## Features
 
-- 🔍 Browse and search plugins
-- ⬇️ Download and install plugins from remote marketplace
-- 🔄 Check for plugin updates automatically
-- 📊 View plugin details, ratings, and screenshots
-- 🎨 React components for marketplace UI
+### 🔍 Discovery & Browse
+- **Plugin Discovery**: Search, filter by category/pricing, featured/trending sections
+- **Plugin Details**: Full details page with screenshots carousel, ratings, and metadata
+- **Responsive Design**: Mobile-first UI with Tailwind CSS
+
+### ⭐ Ratings & Reviews
+- **User Reviews**: 1-5 star rating system with comments
+- **Moderation Queue**: Admin approval workflow (GitHub OAuth)
+- **Spam Detection**: Client-side heuristics (caps ratio, links, keywords)
+- **Rating Statistics**: Distribution charts, average ratings, helpful votes
+
+### 🛡️ Admin Dashboard
+- **Overview**: Global marketplace stats (downloads, plugins, ratings)
+- **Moderation**: Bulk approve/reject ratings, pending queue
+- **Analytics**: Per-plugin metrics with download/rating trend charts
+- **Access Control**: GitHub OAuth authentication (admin roles)
+
+### ⚡ Performance
+- **Smart Caching**: React Query patterns with stale-while-revalidate
+- **Infinite Scroll**: Pagination infinie avec Intersection Observer
+- **Virtual Lists**: Window virtualization pour grandes listes (1000+ plugins)
+- **Lazy Loading**: Images chargées on-demand avec blur-up placeholders
+- **Memoization**: React.memo optimisations pour éviter re-renders
+
+### 🗄️ Backend Integration
+- **Supabase**: Complete infrastructure reuse (tables, auth, rate limiting)
+- **Registry API**: Compatible avec bigmind-registry.workers.dev
+- **Type-safe**: Full TypeScript avec zod schemas
 
 ## Installation
 
 ```bash
+npm install @cartae/plugin-marketplace
+# or
 pnpm add @cartae/plugin-marketplace
 ```
 
-## Usage
+### Peer Dependencies
 
-### Fetch plugins from marketplace
-
-```typescript
-import { PluginStore } from '@cartae/plugin-marketplace';
-
-const store = new PluginStore('https://cartae-registry.workers.dev');
-
-// List all plugins
-const plugins = await store.fetchPlugins();
-
-// Search plugins
-const results = await store.searchPlugins('collaboration');
-
-// Get plugin details
-const plugin = await store.getPlugin('com.cartae.teams');
-
-// Install a plugin
-await store.installPlugin('com.cartae.teams');
-
-// Check for updates
-const updates = await store.checkUpdates();
+```bash
+npm install react@^18.2.0 @cartae/plugin-system
 ```
 
-### React Components
+## Quick Start
+
+### Basic Plugin List
 
 ```tsx
-import { PluginList, PluginCard, InstallButton } from '@cartae/plugin-marketplace';
+import { PluginList, PluginStore } from '@cartae/plugin-marketplace';
 
 function MarketplacePage() {
+  const [plugins, setPlugins] = useState([]);
+  const pluginStore = new PluginStore('https://bigmind-registry.workers.dev');
+
+  useEffect(() => {
+    pluginStore.fetchPlugins({}).then(setPlugins);
+  }, []);
+
   return (
-    <div>
-      <h1>Plugin Marketplace</h1>
-      <PluginList registryUrl="https://cartae-registry.workers.dev" />
-    </div>
+    <PluginList
+      plugins={plugins}
+      onInstall={async (id) => {
+        await pluginStore.installPlugin(id);
+      }}
+      onViewDetails={(id) => {
+        router.push(\`/marketplace/\${id}\`);
+      }}
+    />
   );
 }
 ```
 
-## API
-
-### PluginStore
-
-Main class for interacting with the plugin marketplace.
-
-#### Methods
-
-- `fetchPlugins(filters?)` - Fetch all plugins with optional filters
-- `searchPlugins(query)` - Search plugins by name or description
-- `getPlugin(pluginId)` - Get details for a specific plugin
-- `installPlugin(pluginId, version?)` - Download and install a plugin
-- `uninstallPlugin(pluginId)` - Uninstall a plugin
-- `checkUpdates()` - Check for plugin updates
-
-## Components
-
-### PluginList
-
-Displays a list of plugins with filters and search.
+### With Caching (Recommended)
 
 ```tsx
-<PluginList registryUrl="..." onInstall={(id) => {}} />
+import { usePluginsQuery, OptimizedPluginGrid } from '@cartae/plugin-marketplace';
+
+function OptimizedMarketplace() {
+  const { data, isLoading, error } = usePluginsQuery(
+    'https://bigmind-registry.workers.dev',
+    { category: 'productivity' }
+  );
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+
+  return (
+    <OptimizedPluginGrid
+      plugins={data || []}
+      onInstall={handleInstall}
+      onViewDetails={handleViewDetails}
+    />
+  );
+}
 ```
 
-### PluginCard
+## API Reference
 
-Displays a single plugin card with details.
+See full documentation in [docs/api.md](./docs/api.md)
 
-```tsx
-<PluginCard plugin={plugin} onInstall={() => {}} />
-```
+## Testing
 
-### InstallButton
-
-Install/uninstall button with loading state.
-
-```tsx
-<InstallButton pluginId="..." installed={false} onInstall={() => {}} />
-```
-
-## Architecture
-
-```
-PluginStore (API Client)
-    ↓
-Registry API (Cloudflare Workers)
-    ↓
-Cloudflare R2 Storage
-    ↓
-Plugin .zip files
-```
-
-## Development
+### E2E Tests (Playwright)
 
 ```bash
-# Build
-pnpm build
+# Run all tests
+npm run test:e2e
 
-# Watch mode
-pnpm dev
+# Run specific browser
+npx playwright test --project=chromium
 
-# Type check
-pnpm typecheck
+# Debug mode
+npx playwright test --debug
 ```
 
 ## License
 
-MIT
+MIT © BigMind Team
+
+---
+
+**Need help?** Open an issue sur [GitHub](https://github.com/cartae/cartae/issues) 🚀

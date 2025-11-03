@@ -56,3 +56,42 @@ export interface InstalledPlugin {
   installedAt: string;
   enabled: boolean;
 }
+
+/**
+ * Rating types (rating system avec modération)
+ */
+export interface Rating {
+  id: string;
+  pluginId: string;
+  rating: number; // 1-5
+  title?: string;
+  comment?: string;
+  author: string;
+  helpful: number;
+  unhelpful: number;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  moderatedAt?: string;
+  moderationNotes?: string;
+}
+
+export interface RatingStatsData {
+  totalCount: number;
+  averageRating: number;
+  distribution: [number, number, number, number, number]; // [1★, 2★, 3★, 4★, 5★]
+  lastRatingDate?: string;
+}
+
+export interface SubmitRatingData {
+  pluginId: string;
+  rating: number; // 1-5
+  title?: string;
+  comment?: string;
+  author: string;
+}
+
+export interface RatingFilters {
+  sort?: 'recent' | 'helpful' | 'rating';
+  page?: number;
+  limit?: number;
+}
