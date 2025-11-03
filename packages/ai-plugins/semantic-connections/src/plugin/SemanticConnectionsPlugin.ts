@@ -46,8 +46,22 @@ const DEFAULT_CONFIG: Required<SemanticConnectionsConfig> = {
  * Semantic Connections Plugin
  */
 export class SemanticConnectionsPlugin implements AIPlugin {
+  // Manifest requis par interface Plugin
+  readonly manifest = {
+    id: '@cartae/semantic-connections',
+    name: 'Semantic Connections',
+    version: '1.0.0',
+    description: 'Détecte les connexions sémantiques entre CartaeItems avec TF-IDF et analyse contextuelle',
+    author: 'Cartae Team',
+    main: './dist/index.js',
+    category: 'productivity' as const,
+    tags: ['ai', 'semantic', 'connections', 'similarity', 'intelligence'],
+    source: 'core' as const,
+    pricing: 'free' as const,
+  };
+
   // Identité du plugin
-  id = 'semantic-connections';
+  id = '@cartae/semantic-connections';
   name = 'Semantic Connections';
   version = '1.0.0';
   type = 'analyzer' as const;
@@ -56,11 +70,11 @@ export class SemanticConnectionsPlugin implements AIPlugin {
   private config: Required<SemanticConnectionsConfig> = { ...DEFAULT_CONFIG };
 
   // Map des algorithmes disponibles
-  private algorithms: Map<SimilarityAlgorithm, SimilarityAlgorithmImplementation> = new Map([
-    ['cosine', cosineSimilarityAlgorithm],
-    ['keyword', keywordMatchingAlgorithm],
-    ['context', contextAnalysisAlgorithm],
-    ['combined', combinedAlgorithm],
+  private algorithms = new Map<SimilarityAlgorithm, SimilarityAlgorithmImplementation>([
+    ['cosine', cosineSimilarityAlgorithm as SimilarityAlgorithmImplementation],
+    ['keyword', keywordMatchingAlgorithm as SimilarityAlgorithmImplementation],
+    ['context', contextAnalysisAlgorithm as SimilarityAlgorithmImplementation],
+    ['combined', combinedAlgorithm as SimilarityAlgorithmImplementation],
   ]);
 
   // Graphe sémantique (cache global)
@@ -118,12 +132,15 @@ export class SemanticConnectionsPlugin implements AIPlugin {
     // Récupérer les connexions de cet item
     const connections = this.graph.connections.get(item.id) || [];
 
-    // Enrichir ai_metadata
+    // Enrichir metadata.aiInsights
     const enrichedItem: CartaeItem = {
       ...item,
-      ai_metadata: {
-        ...item.ai_metadata,
-        connections: connections.map((conn) => conn.toId),
+      metadata: {
+        ...item.metadata,
+        aiInsights: {
+          ...item.metadata.aiInsights,
+          connections: connections.map((conn) => conn.toId),
+        },
       },
     };
 
@@ -285,7 +302,7 @@ export class SemanticConnectionsPlugin implements AIPlugin {
   /**
    * Trouve les items "hubs" (très connectés)
    */
-  private findHubs(items: CartaeItem[]): Insight | null {
+  private findHubs(_items: CartaeItem[]): Insight | null {
     if (!this.graph) return null;
 
     // Compter connexions par item

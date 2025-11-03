@@ -51,8 +51,8 @@ function hierarchyDistance(path1: string[], path2: string[]): number {
  * Items créés/modifiés proches dans le temps sont potentiellement liés
  */
 function temporalSimilarity(item1: CartaeItem, item2: CartaeItem): number {
-  const date1 = new Date(item1.timestamp || item1.created_at).getTime();
-  const date2 = new Date(item2.timestamp || item2.created_at).getTime();
+  const date1 = new Date(item1.createdAt).getTime();
+  const date2 = new Date(item2.createdAt).getTime();
 
   const diffMs = Math.abs(date1 - date2);
   const diffDays = diffMs / (1000 * 60 * 60 * 24);
@@ -83,8 +83,8 @@ export class ContextAnalysisAlgorithm implements SimilarityAlgorithmImplementati
    * Calcule la similarité hiérarchique
    */
   private computeHierarchySimilarity(item1: CartaeItem, item2: CartaeItem): number {
-    const path1 = item1.hierarchy_path || [];
-    const path2 = item2.hierarchy_path || [];
+    const path1 = item1.categories || [];
+    const path2 = item2.categories || [];
 
     // Items sans hiérarchie ont similarité 0
     if (path1.length === 0 || path2.length === 0) {
@@ -102,21 +102,29 @@ export class ContextAnalysisAlgorithm implements SimilarityAlgorithmImplementati
   private computeRelationSimilarity(item1: CartaeItem, item2: CartaeItem): number {
     let score = 0;
 
-    // Items explicitement liés (related_items)
-    const related1 = new Set(item1.related_items || []);
-    const related2 = new Set(item2.related_items || []);
+    // Extraire les relations
+    const rels1 = item1.relationships || [];
+    const rels2 = item2.relationships || [];
 
-    if (related1.has(item2.id) || related2.has(item1.id)) {
+    // Items explicitement liés
+    const hasRelation1to2 = rels1.some((r) => r.targetId === item2.id);
+    const hasRelation2to1 = rels2.some((r) => r.targetId === item1.id);
+
+    if (hasRelation1to2 || hasRelation2to1) {
       score += 1.0; // Relation explicite = score max
     }
 
-    // Items avec même parent
-    if (item1.parent_item && item2.parent_item && item1.parent_item === item2.parent_item) {
+    // Trouver les parents
+    const parent1 = rels1.find((r) => r.type === 'parent')?.targetId;
+    const parent2 = rels2.find((r) => r.type === 'parent')?.targetId;
+
+    // Items avec même parent (siblings)
+    if (parent1 && parent2 && parent1 === parent2) {
       score += 0.7; // Siblings = score élevé
     }
 
-    // Parent-enfant
-    if (item1.parent_item === item2.id || item2.parent_item === item1.id) {
+    // Relation parent-enfant directe
+    if (parent1 === item2.id || parent2 === item1.id) {
       score += 0.8; // Relation directe parent-enfant
     }
 
@@ -131,46 +139,45 @@ export class ContextAnalysisAlgorithm implements SimilarityAlgorithmImplementati
     let factors = 0;
 
     // Status similaire
-    if (item1.status && item2.status) {
+    if (item1.metadata.status && item2.metadata.status) {
       factors++;
-      if (item1.status === item2.status) {
+      if (item1.metadata.status === item2.metadata.status) {
         score += 1.0;
       }
     }
 
     // Priority similaire
-    if (item1.priority && item2.priority) {
+    if (item1.metadata.priority && item2.metadata.priority) {
       factors++;
-      if (item1.priority === item2.priority) {
+      if (item1.metadata.priority === item2.metadata.priority) {
         score += 1.0;
       }
     }
 
-    // AI metadata
-    if (item1.ai_metadata && item2.ai_metadata) {
-      // Sentiment similaire
-      if (item1.ai_metadata.sentiment && item2.ai_metadata.sentiment) {
+    // AI insights
+    const ai1 = item1.metadata.aiInsights;
+    const ai2 = item2.metadata.aiInsights;
+
+    if (ai1 && ai2) {
+      // Sentiment similaire (comparaison numérique)
+      if (typeof ai1.sentiment === 'number' && typeof ai2.sentiment === 'number') {
         factors++;
-        if (item1.ai_metadata.sentiment === item2.ai_metadata.sentiment) {
-          score += 1.0;
-        }
+        const diff = Math.abs(ai1.sentiment - ai2.sentiment);
+        score += Math.max(0, 1 - diff / 2); // Normaliser sur échelle -1 à 1 (max diff = 2)
       }
 
       // Priority score proche
-      if (
-        typeof item1.ai_metadata.priority_score === 'number' &&
-        typeof item2.ai_metadata.priority_score === 'number'
-      ) {
+      if (typeof ai1.priorityScore === 'number' && typeof ai2.priorityScore === 'number') {
         factors++;
-        const diff = Math.abs(item1.ai_metadata.priority_score - item2.ai_metadata.priority_score);
-        score += Math.max(0, 1 - diff / 10); // Normaliser sur échelle 0-10
+        const diff = Math.abs(ai1.priorityScore - ai2.priorityScore);
+        score += Math.max(0, 1 - diff); // Normaliser sur échelle 0-1
       }
 
       // Connexions AI entre les items
-      if (item1.ai_metadata.connections && item2.ai_metadata.connections) {
+      if (ai1.connections && ai2.connections) {
         if (
-          item1.ai_metadata.connections.includes(item2.id) ||
-          item2.ai_metadata.connections.includes(item1.id)
+          ai1.connections.includes(item2.id) ||
+          ai2.connections.includes(item1.id)
         ) {
           score += 1.0;
           factors++;
@@ -185,15 +192,13 @@ export class ContextAnalysisAlgorithm implements SimilarityAlgorithmImplementati
    * Calcule la similarité d'auteur
    */
   private computeAuthorSimilarity(item1: CartaeItem, item2: CartaeItem): number {
-    if (!item1.author || !item2.author) return 0;
+    const author1 = item1.metadata.author;
+    const author2 = item2.metadata.author;
 
-    // Même auteur
-    if (item1.author.id === item2.author.id) {
-      return 1.0;
-    }
+    if (!author1 || !author2) return 0;
 
-    // Même email (cas où IDs différents mais même personne)
-    if (item1.author.email && item2.author.email && item1.author.email === item2.author.email) {
+    // Même auteur (comparaison string)
+    if (author1 === author2) {
       return 1.0;
     }
 
@@ -231,39 +236,48 @@ export class ContextAnalysisAlgorithm implements SimilarityAlgorithmImplementati
     // Hiérarchie
     const hierarchySim = this.computeHierarchySimilarity(item1, item2);
     if (hierarchySim > 0.5) {
-      const path1 = item1.hierarchy_path || [];
-      const path2 = item2.hierarchy_path || [];
+      const path1 = item1.categories || [];
+      const path2 = item2.categories || [];
       if (path1.length > 0 && path2.length > 0) {
         reasons.push(`Proches dans la hiérarchie (${Math.round(hierarchySim * 100)}%)`);
       }
     }
 
     // Relations explicites
-    const related1 = new Set(item1.related_items || []);
-    const related2 = new Set(item2.related_items || []);
+    const rels1 = item1.relationships || [];
+    const rels2 = item2.relationships || [];
 
-    if (related1.has(item2.id) || related2.has(item1.id)) {
+    const hasRelation = rels1.some((r) => r.targetId === item2.id) ||
+                        rels2.some((r) => r.targetId === item1.id);
+
+    if (hasRelation) {
       reasons.push('Items explicitement liés');
     }
 
-    if (item1.parent_item === item2.id || item2.parent_item === item1.id) {
+    // Parent-enfant
+    const parent1 = rels1.find((r) => r.type === 'parent')?.targetId;
+    const parent2 = rels2.find((r) => r.type === 'parent')?.targetId;
+
+    if (parent1 === item2.id || parent2 === item1.id) {
       reasons.push('Relation parent-enfant');
-    } else if (item1.parent_item && item2.parent_item && item1.parent_item === item2.parent_item) {
+    } else if (parent1 && parent2 && parent1 === parent2) {
       reasons.push('Items frères (même parent)');
     }
 
     // Status/Priority
-    if (item1.status && item2.status && item1.status === item2.status) {
-      reasons.push(`Même statut: ${item1.status}`);
+    if (item1.metadata.status && item2.metadata.status &&
+        item1.metadata.status === item2.metadata.status) {
+      reasons.push(`Même statut: ${item1.metadata.status}`);
     }
 
-    if (item1.priority && item2.priority && item1.priority === item2.priority) {
-      reasons.push(`Même priorité: ${item1.priority}`);
+    if (item1.metadata.priority && item2.metadata.priority &&
+        item1.metadata.priority === item2.metadata.priority) {
+      reasons.push(`Même priorité: ${item1.metadata.priority}`);
     }
 
     // Auteur
     if (this.computeAuthorSimilarity(item1, item2) > 0) {
-      reasons.push(`Même auteur: ${item1.author?.name || 'inconnu'}`);
+      reasons.push(`Même auteur: ${item1.metadata.author || 'inconnu'}`);
     }
 
     // Temporel
