@@ -78,3 +78,6 @@ playwright/.cache/
 # SpecStory history - contains local paths
 .specstory/
 supabase/.temp/
+
+# Serena memories (local only)
+.serena/
