@@ -64,6 +64,13 @@ const COLOR_PALETTES_COLLECTION: ColorPalette[] = [
       light: '#ffffff', // Fond blanc pour light
       dark: '#1e293b', // Fond sombre pour dark (cohérent avec le thème)
     },
+    metadata: {
+      tags: ['vibrant', 'colorful', 'energetic'],
+      category: 'colorful',
+      compatibility: 'both',
+      wcagLevel: 'AA',
+      contrast: 'high',
+    },
   },
 
   // 7 Palettes essentielles
@@ -83,6 +90,43 @@ const COLOR_PALETTES_COLLECTION: ColorPalette[] = [
       '#5eead4',
       '#67e8f9',
     ],
+    variants: {
+      light: [
+        '#93c5fd', // Blue-300
+        '#c4b5fd', // Violet-300
+        '#f9a8d4', // Pink-300
+        '#fca5a5', // Red-300
+        '#fdba74', // Orange-300
+        '#fde047', // Yellow-300
+        '#bef264', // Lime-300
+        '#86efac', // Green-300
+        '#5eead4', // Teal-300
+        '#67e8f9', // Cyan-300
+      ],
+      dark: [
+        '#60a5fa', // Blue-400 - plus saturé pour dark
+        '#a78bfa', // Violet-400
+        '#f472b6', // Pink-400
+        '#f87171', // Red-400
+        '#fb923c', // Orange-400
+        '#fbbf24', // Yellow-400
+        '#a3e635', // Lime-400
+        '#34d399', // Green-400
+        '#2dd4bf', // Teal-400
+        '#22d3ee', // Cyan-400
+      ],
+    },
+    canvasBackground: {
+      light: '#ffffff',
+      dark: '#1e293b',
+    },
+    metadata: {
+      tags: ['pastel', 'soft', 'calm'],
+      category: 'pastel',
+      compatibility: 'both',
+      wcagLevel: 'AA',
+      contrast: 'medium',
+    },
   },
 
   {
@@ -101,6 +145,43 @@ const COLOR_PALETTES_COLLECTION: ColorPalette[] = [
       '#1e3a8a',
       '#1e40af',
     ],
+    variants: {
+      light: [
+        '#92400e', // Brown-800
+        '#78350f',
+        '#854d0e',
+        '#713f12',
+        '#365314', // Green-800
+        '#14532d',
+        '#064e3b', // Teal-900
+        '#134e4a',
+        '#1e3a8a', // Blue-900
+        '#1e40af',
+      ],
+      dark: [
+        '#d97706', // Brown-600 - plus clair pour dark
+        '#b45309',
+        '#ca8a04',
+        '#a16207',
+        '#65a30d', // Green-600
+        '#16a34a',
+        '#14b8a6', // Teal-500
+        '#0d9488',
+        '#3b82f6', // Blue-600
+        '#2563eb',
+      ],
+    },
+    canvasBackground: {
+      light: '#fef3c7', // Amber-50 - fond chaud
+      dark: '#1e293b', // Slate-800
+    },
+    metadata: {
+      tags: ['earth', 'natural', 'warm'],
+      category: 'earth',
+      compatibility: 'both',
+      wcagLevel: 'AA',
+      contrast: 'high',
+    },
   },
 
   {
@@ -119,6 +200,43 @@ const COLOR_PALETTES_COLLECTION: ColorPalette[] = [
       '#c084fc',
       '#fb7185',
     ],
+    variants: {
+      light: [
+        '#06b6d4', // Cyan-500 - plus saturé
+        '#8b5cf6', // Violet-500
+        '#ec4899', // Pink-500
+        '#f97316', // Orange-500
+        '#eab308', // Yellow-500
+        '#22c55e', // Green-500
+        '#14b8a6', // Teal-500
+        '#3b82f6', // Blue-500
+        '#a855f7', // Purple-500
+        '#f43f5e', // Rose-500
+      ],
+      dark: [
+        '#22d3ee', // Cyan-400 - plus lumineux pour dark
+        '#a78bfa', // Violet-400
+        '#f472b6', // Pink-400
+        '#fb923c', // Orange-400
+        '#facc15', // Yellow-400
+        '#4ade80', // Green-400
+        '#2dd4bf', // Teal-400
+        '#60a5fa', // Blue-400
+        '#c084fc', // Purple-400
+        '#fb7185', // Rose-400
+      ],
+    },
+    canvasBackground: {
+      light: '#0f172a', // Slate-900 - fond sombre pour faire ressortir le neon
+      dark: '#020617', // Slate-950 - encore plus sombre
+    },
+    metadata: {
+      tags: ['neon', 'vibrant', 'electric'],
+      category: 'neon',
+      compatibility: 'both',
+      wcagLevel: 'AAA',
+      contrast: 'high',
+    },
   },
 
   {
@@ -137,6 +255,43 @@ const COLOR_PALETTES_COLLECTION: ColorPalette[] = [
       '#134e4a',
       '#164e63',
     ],
+    variants: {
+      light: [
+        '#0c4a6e', // Blue-900
+        '#075985',
+        '#0369a1', // Blue-700
+        '#0891b2', // Cyan-600
+        '#0d9488', // Teal-600
+        '#059669', // Green-600
+        '#047857',
+        '#065f46',
+        '#134e4a',
+        '#164e63',
+      ],
+      dark: [
+        '#0284c7', // Blue-500 - plus clair pour dark
+        '#0ea5e9',
+        '#3b82f6',
+        '#06b6d4', // Cyan-500
+        '#14b8a6', // Teal-500
+        '#10b981', // Green-500
+        '#059669',
+        '#047857',
+        '#0d9488',
+        '#155e75',
+      ],
+    },
+    canvasBackground: {
+      light: '#f0f9ff', // Blue-50 - fond bleu clair
+      dark: '#0c4a6e', // Blue-900 - fond bleu foncé
+    },
+    metadata: {
+      tags: ['ocean', 'blue', 'green', 'water'],
+      category: 'ocean',
+      compatibility: 'both',
+      wcagLevel: 'AA',
+      contrast: 'high',
+    },
   },
 
   {
@@ -155,6 +310,43 @@ const COLOR_PALETTES_COLLECTION: ColorPalette[] = [
       '#8b5cf6',
       '#ec4899',
     ],
+    variants: {
+      light: [
+        '#ef4444', // Red-500
+        '#f97316', // Orange-500
+        '#f59e0b', // Amber-500
+        '#eab308', // Yellow-500
+        '#84cc16', // Lime-500
+        '#10b981', // Green-500
+        '#06b6d4', // Cyan-500
+        '#3b82f6', // Blue-500
+        '#8b5cf6', // Violet-500
+        '#ec4899', // Pink-500
+      ],
+      dark: [
+        '#f87171', // Red-400 - plus clair pour dark
+        '#fb923c', // Orange-400
+        '#fbbf24', // Amber-400
+        '#facc15', // Yellow-400
+        '#a3e635', // Lime-400
+        '#34d399', // Green-400
+        '#22d3ee', // Cyan-400
+        '#60a5fa', // Blue-400
+        '#a78bfa', // Violet-400
+        '#f472b6', // Pink-400
+      ],
+    },
+    canvasBackground: {
+      light: '#ffffff',
+      dark: '#1e293b',
+    },
+    metadata: {
+      tags: ['rainbow', 'colorful', 'vibrant'],
+      category: 'colorful',
+      compatibility: 'both',
+      wcagLevel: 'AA',
+      contrast: 'high',
+    },
   },
 
   {
@@ -173,6 +365,43 @@ const COLOR_PALETTES_COLLECTION: ColorPalette[] = [
       '#f1f5f9',
       '#f8fafc',
     ],
+    variants: {
+      light: [
+        '#64748b', // Slate-500 - plus foncés pour light
+        '#475569',
+        '#334155',
+        '#1e293b',
+        '#0f172a',
+        '#94a3b8',
+        '#cbd5e1',
+        '#e2e8f0',
+        '#f1f5f9',
+        '#f8fafc',
+      ],
+      dark: [
+        '#94a3b8', // Slate-400 - plus clairs pour dark
+        '#cbd5e1',
+        '#e2e8f0',
+        '#f1f5f9',
+        '#f8fafc',
+        '#64748b',
+        '#475569',
+        '#334155',
+        '#1e293b',
+        '#0f172a',
+      ],
+    },
+    canvasBackground: {
+      light: '#ffffff',
+      dark: '#0f172a',
+    },
+    metadata: {
+      tags: ['monochrome', 'gray', 'neutral'],
+      category: 'monochrome',
+      compatibility: 'both',
+      wcagLevel: 'AAA',
+      contrast: 'high',
+    },
   },
 
   {
@@ -191,6 +420,43 @@ const COLOR_PALETTES_COLLECTION: ColorPalette[] = [
       '#ff9800',
       '#795548',
     ],
+    variants: {
+      light: [
+        '#f44336', // Red-500
+        '#e91e63', // Pink-500
+        '#9c27b0', // Purple-500
+        '#673ab7', // Deep Purple-500
+        '#3f51b5', // Indigo-500
+        '#2196f3', // Blue-500
+        '#00bcd4', // Cyan-500
+        '#4caf50', // Green-500
+        '#ff9800', // Orange-500
+        '#795548', // Brown-500
+      ],
+      dark: [
+        '#ef5350', // Red-400 - plus clair pour dark
+        '#f06292', // Pink-400
+        '#ba68c8', // Purple-400
+        '#9575cd', // Deep Purple-400
+        '#7986cb', // Indigo-400
+        '#64b5f6', // Blue-400
+        '#4dd0e1', // Cyan-400
+        '#66bb6a', // Green-400
+        '#ffb74d', // Orange-400
+        '#a1887f', // Brown-400
+      ],
+    },
+    canvasBackground: {
+      light: '#ffffff',
+      dark: '#212121',
+    },
+    metadata: {
+      tags: ['material', 'design', 'google'],
+      category: 'material',
+      compatibility: 'both',
+      wcagLevel: 'AA',
+      contrast: 'high',
+    },
   },
 
   // 33 Palettes étendues
