@@ -3,3 +3,4 @@ packages:
   - 'packages/*'
   - 'packages/ai-plugins/*'
   - 'packages/viz-plugins/*'
+  - 'packages/plugin-system/*'

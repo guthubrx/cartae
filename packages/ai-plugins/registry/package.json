@@ -1,7 +1,7 @@
 {
-  "name": "@cartae/semantic-connections-plugin",
+  "name": "@cartae/ai-plugin-registry",
   "version": "1.0.0",
-  "description": "AI plugin for detecting semantic connections between Cartae items",
+  "description": "AI Plugin Registry for managing and orchestrating Cartae AI plugins",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,6 +14,7 @@
   "dependencies": {
     "@cartae/ai-types": "workspace:*",
     "@cartae/core": "workspace:*",
+    "@cartae/llm-service": "workspace:*",
     "@cartae/plugin-system": "workspace:*"
   },
   "devDependencies": {

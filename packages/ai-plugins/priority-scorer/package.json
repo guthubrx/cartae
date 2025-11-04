@@ -1,7 +1,7 @@
 {
-  "name": "@cartae/semantic-connections-plugin",
+  "name": "@cartae/priority-scorer-plugin",
   "version": "1.0.0",
-  "description": "AI plugin for detecting semantic connections between Cartae items",
+  "description": "AI plugin for intelligent priority scoring using LLM",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -12,9 +12,9 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@cartae/ai-types": "workspace:*",
     "@cartae/core": "workspace:*",
-    "@cartae/plugin-system": "workspace:*"
+    "@cartae/plugin-system": "workspace:*",
+    "@cartae/llm-service": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.19.24",

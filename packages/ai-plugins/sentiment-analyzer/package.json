@@ -1,7 +1,7 @@
 {
-  "name": "@cartae/semantic-connections-plugin",
+  "name": "@cartae/sentiment-analyzer-plugin",
   "version": "1.0.0",
-  "description": "AI plugin for detecting semantic connections between Cartae items",
+  "description": "AI plugin for sentiment analysis using LLM",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,6 +14,7 @@
   "dependencies": {
     "@cartae/ai-types": "workspace:*",
     "@cartae/core": "workspace:*",
+    "@cartae/llm-service": "workspace:*",
     "@cartae/plugin-system": "workspace:*"
   },
   "devDependencies": {

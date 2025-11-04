@@ -1,20 +1,19 @@
 {
-  "name": "@cartae/semantic-connections-plugin",
+  "name": "@cartae/embeddings-generator",
   "version": "1.0.0",
-  "description": "AI plugin for detecting semantic connections between Cartae items",
+  "description": "Embeddings generator for CartaeItems using LLM",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc && tsup src/index.ts --format esm",
-    "dev": "tsc --watch & tsup src/index.ts --format esm --watch",
+    "build": "tsc && tsup src/index.ts --format esm --dts",
+    "dev": "tsc --watch & tsup src/index.ts --format esm --dts --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest"
   },
   "dependencies": {
     "@cartae/ai-types": "workspace:*",
-    "@cartae/core": "workspace:*",
-    "@cartae/plugin-system": "workspace:*"
+    "@cartae/llm-service": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.19.24",

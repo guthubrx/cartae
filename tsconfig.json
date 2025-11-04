@@ -8,6 +8,7 @@
   },
   "include": [
     "packages/*/src/**/*",
+    "packages/ai-plugins/*/src/**/*",
     "packages/viz-plugins/*/src/**/*",
     "apps/*/src/**/*",
     "apps/*/scripts/**/*",

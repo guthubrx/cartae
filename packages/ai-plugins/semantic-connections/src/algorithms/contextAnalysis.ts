@@ -107,16 +107,16 @@ export class ContextAnalysisAlgorithm implements SimilarityAlgorithmImplementati
     const rels2 = item2.relationships || [];
 
     // Items explicitement liés
-    const hasRelation1to2 = rels1.some((r) => r.targetId === item2.id);
-    const hasRelation2to1 = rels2.some((r) => r.targetId === item1.id);
+    const hasRelation1to2 = rels1.some((r: any) => r.targetId === item2.id);
+    const hasRelation2to1 = rels2.some((r: any) => r.targetId === item1.id);
 
     if (hasRelation1to2 || hasRelation2to1) {
       score += 1.0; // Relation explicite = score max
     }
 
     // Trouver les parents
-    const parent1 = rels1.find((r) => r.type === 'parent')?.targetId;
-    const parent2 = rels2.find((r) => r.type === 'parent')?.targetId;
+    const parent1 = rels1.find((r: any) => r.type === 'parent')?.targetId;
+    const parent2 = rels2.find((r: any) => r.type === 'parent')?.targetId;
 
     // Items avec même parent (siblings)
     if (parent1 && parent2 && parent1 === parent2) {
@@ -247,16 +247,16 @@ export class ContextAnalysisAlgorithm implements SimilarityAlgorithmImplementati
     const rels1 = item1.relationships || [];
     const rels2 = item2.relationships || [];
 
-    const hasRelation = rels1.some((r) => r.targetId === item2.id) ||
-                        rels2.some((r) => r.targetId === item1.id);
+    const hasRelation = rels1.some((r: any) => r.targetId === item2.id) ||
+                        rels2.some((r: any) => r.targetId === item1.id);
 
     if (hasRelation) {
       reasons.push('Items explicitement liés');
     }
 
     // Parent-enfant
-    const parent1 = rels1.find((r) => r.type === 'parent')?.targetId;
-    const parent2 = rels2.find((r) => r.type === 'parent')?.targetId;
+    const parent1 = rels1.find((r: any) => r.type === 'parent')?.targetId;
+    const parent2 = rels2.find((r: any) => r.type === 'parent')?.targetId;
 
     if (parent1 === item2.id || parent2 === item1.id) {
       reasons.push('Relation parent-enfant');

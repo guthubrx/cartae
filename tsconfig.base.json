@@ -21,9 +21,18 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "@cartae/core": ["./packages/core/dist/index.d.ts"],
+      "@cartae/core": ["./packages/core/src/index.ts"],
       "@cartae/ui": ["./packages/ui/dist/index.d.ts"],
-      "@cartae/design": ["./packages/design/dist/index.d.ts"]
+      "@cartae/design": ["./packages/design/dist/index.d.ts"],
+      "@cartae/llm-service": ["./packages/llm-service/src/index.ts"],
+      "@cartae/ai-types": ["./packages/ai-plugins/ai-types/src/index.ts"],
+      "@cartae/vector-store": ["./packages/ai-plugins/vector-store/src/index.ts"],
+      "@cartae/embeddings-generator": ["./packages/ai-plugins/embeddings-generator/src/index.ts"],
+      "@cartae/semantic-search": ["./packages/ai-plugins/semantic-search/src/index.ts"],
+      "@cartae/priority-scorer": ["./packages/ai-plugins/priority-scorer/src/index.ts"],
+      "@cartae/sentiment-analyzer": ["./packages/ai-plugins/sentiment-analyzer/src/index.ts"],
+      "@cartae/semantic-connections": ["./packages/ai-plugins/semantic-connections/src/index.ts"],
+      "@cartae/ai-registry": ["./packages/ai-plugins/registry/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "dist", "build"]
