@@ -1,235 +1,81 @@
 /**
- * Dockview Theming - Cartae Design System Integration
- * Session 54F-54H: Polish & Theming
- *
- * Maps Cartae design variables to Dockview CSS properties
- * Supports light/dark mode via [data-theme] attribute
+ * FR: Styles pour le layout principal avec MenuBar et StatusBar
+ * EN: Styles for main layout with MenuBar and StatusBar
+ * Session 69: DockableLayoutV2 styling
  */
 
-/* Root theme - Light mode (défaut) */
-:root {
-  /* Cartae color tokens */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f5f5;
-  --bg-tertiary: #e5e5e5;
-  --fg: #171717;
-  --fg-secondary: #525252;
-  --fg-tertiary: #737373;
-  --border-color: #e5e5e5;
-  --border-secondary: #d4d4d4;
-  --accent-color: #3b82f6;
-  --state-hover: #f5f5f5;
-
-  /* Dockview CSS Variables Mapping */
-  --dv-group-view-background-color: var(--bg-primary);
-  --dv-tabs-and-actions-container-background-color: var(--bg-secondary);
-  --dv-activegroup-visiblepanel-tab-background-color: var(--bg-primary);
-  --dv-activegroup-visiblepanel-tab-color: var(--accent-color);
-  --dv-activegroup-hiddenpanel-tab-background-color: var(--bg-tertiary);
-  --dv-activegroup-hiddenpanel-tab-color: var(--fg-tertiary);
-  --dv-inactivegroup-visiblepanel-tab-background-color: var(--bg-tertiary);
-  --dv-inactivegroup-visiblepanel-tab-color: var(--fg-secondary);
-  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--bg-tertiary);
-  --dv-inactivegroup-hiddenpanel-tab-color: var(--fg-tertiary);
-  --dv-separator-border: 1px solid var(--border-color);
-  --dv-paneview-header-border-color: var(--border-color);
-  --dv-drag-over-border-color: var(--accent-color);
-  --dv-drag-over-background-color: rgba(59, 130, 246, 0.05);
-  --dv-paneview-active-outline-color: var(--accent-color);
-  --dv-tab-divider-color: var(--border-secondary);
-  --dv-icon-hover-background-color: var(--state-hover);
-  --dv-sash-color: var(--border-color);
-  --dv-active-sash-color: var(--accent-color);
-  --dv-tabs-and-actions-container-height: 36px;
-  --dv-tabs-and-actions-container-font-size: 14px;
-  --dv-tab-font-size: 14px;
-  --dv-tab-margin: 4px;
-  --dv-border-radius: 6px;
-  --dv-floating-box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  --dv-overlay-z-index: 1300;
-}
-
-/* Dark mode */
-[data-theme='dark'] {
-  --bg-primary: #171717;
-  --bg-secondary: #262626;
-  --bg-tertiary: #404040;
-  --fg: #fafafa;
-  --fg-secondary: #a3a3a3;
-  --fg-tertiary: #737373;
-  --border-color: #404040;
-  --border-secondary: #525252;
-  --accent-color: #60a5fa;
-  --state-hover: #262626;
-  --dv-floating-box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.5);
-}
-
-/* Main container */
-.cartae-dockview-theme {
-  height: 100vh;
-  width: 100vw;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 14px;
-  background: var(--bg-primary);
-  color: var(--fg);
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-/* Dockview container */
-.dockview-theme-custom {
-  height: 100%;
-  width: 100%;
-}
-
-/* Panel content wrapper - consistent padding/sizing */
-.panel-content {
+.dockable-layout {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: var(--color-background-primary, #ffffff);
+}
+
+/* Dark mode support */
+[data-theme='dark'] .dockable-layout {
+  background-color: var(--color-background-primary, #1e1e1e);
+}
+
+/* MenuBar - Fixed en haut */
+.dockable-layout-menubar {
+  flex-shrink: 0;
   width: 100%;
-  overflow: hidden;
-  background: var(--bg-primary);
-  color: var(--fg);
 }
 
-/* Special styling for canvas panels */
-.panel-content.canvas-panel {
-  background: var(--bg-secondary);
-}
-
-/* Custom tab styling */
-.dockview-custom-tab {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  height: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dockview-custom-tab span:first-child {
+/* Contenu principal - Prend tout l'espace restant */
+.dockable-layout-content {
   flex: 1;
   overflow: hidden;
-  text-overflow: ellipsis;
+  position: relative;
 }
 
-/* Tab badge styling */
-.tab-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  background: var(--accent-color);
-  color: white;
-  border-radius: 9px;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
+/* StatusBar - Fixed en bas */
+.dockable-layout-statusbar {
   flex-shrink: 0;
-  animation: badge-pulse 0.3s ease-in-out;
+  width: 100%;
 }
 
-@keyframes badge-pulse {
-  0% {
-    transform: scale(0.9);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* Transitions for smooth interactions */
-.dockview-group-view,
-.dockview-tab,
-.dockview-tabs-container {
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-}
-
-/* Tab hover state */
-.dockview-tab:hover {
-  background-color: var(--state-hover) !important;
-}
-
-/* Resize handles (sash) styling */
-.dockview-sash {
-  transition: background-color 0.15s ease;
-}
-
-.dockview-sash:hover,
-.dockview-sash.active {
-  background-color: var(--dv-active-sash-color) !important;
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
-  transition: background-color 0.1s ease;
-}
-
-/* Drag over feedback */
-.dockview-panel-container.drag-over {
-  border-color: var(--dv-drag-over-border-color);
-  border-style: dashed;
-  background-color: var(--dv-drag-over-background-color);
-}
-
-/* Placeholder component styling */
-.panel-content-placeholder {
+/* Placeholder temporaire */
+.dockable-layout-placeholder {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
-  padding: 20px;
+  padding: 40px;
   text-align: center;
-  color: var(--fg-tertiary);
+  color: var(--color-text-normal, #333);
 }
 
-/* Focus ring for accessibility */
-.dockview-tab:focus-visible {
-  outline: 2px solid var(--dv-paneview-active-outline-color);
-  outline-offset: -2px;
+[data-theme='dark'] .dockable-layout-placeholder {
+  color: var(--color-text-normal, #e0e0e0);
 }
 
-/* Scrollbar styling (webkit browsers) */
-.panel-content::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+.dockable-layout-placeholder h2 {
+  font-size: 32px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--accent-color, #3b82f6);
 }
 
-.panel-content::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+.dockable-layout-placeholder p {
+  font-size: 16px;
+  margin: 8px 0;
+  line-height: 1.6;
 }
 
-.panel-content::-webkit-scrollbar-thumb {
-  background: var(--border-color);
+.placeholder-note {
+  margin-top: 24px;
+  padding: 16px 24px;
+  background-color: var(--color-background-secondary, #f5f5f5);
+  border-left: 3px solid var(--accent-color, #3b82f6);
   border-radius: 4px;
-  transition: background-color 0.2s ease;
+  font-size: 14px;
+  max-width: 600px;
 }
 
-.panel-content::-webkit-scrollbar-thumb:hover {
-  background: var(--border-secondary);
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: more) {
-  :root {
-    --border-color: #000000;
-    --border-secondary: #333333;
-  }
-
-  [data-theme='dark'] {
-    --border-color: #ffffff;
-    --border-secondary: #cccccc;
-  }
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+[data-theme='dark'] .placeholder-note {
+  background-color: var(--color-background-secondary, #252525);
 }

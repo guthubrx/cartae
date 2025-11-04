@@ -41,6 +41,7 @@ export interface CanvasBackgroundVariants {
  * FR: Mapping des couleurs sémantiques pour un thème (light/dark)
  * EN: Semantic color mapping for a theme (light/dark)
  * Permet de mapper les couleurs de palette vers des rôles sémantiques
+ * Inspiré de Material Design 3, Apple HIG, et Fluent Design
  */
 export interface SemanticColorMapping {
   /**
@@ -54,10 +55,21 @@ export interface SemanticColorMapping {
    */
   secondary?: { light?: string; dark?: string };
   /**
+   * FR: Couleur tertiaire (accent tertiaire, contraste)
+   * EN: Tertiary color (tertiary accent, contrast)
+   */
+  tertiary?: { light?: string; dark?: string };
+  /**
    * FR: Couleur d'accent (pour les highlights)
    * EN: Accent color (for highlights)
    */
   accent?: { light?: string; dark?: string };
+  /**
+   * FR: Couleur de surface (backgrounds, cards, panels)
+   * EN: Surface color (backgrounds, cards, panels)
+   * Inspiré de Material Design 3 - pour hiérarchie de surfaces
+   */
+  surface?: { light?: string; dark?: string };
   /**
    * FR: Couleur de succès
    * EN: Success color
