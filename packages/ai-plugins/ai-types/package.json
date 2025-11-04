@@ -1,0 +1,16 @@
+{
+  "name": "@cartae/ai-types",
+  "version": "1.0.0",
+  "description": "Shared types for Cartae AI plugins",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.24",
+    "typescript": "^5.3.3"
+  }
+}

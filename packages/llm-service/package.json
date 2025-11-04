@@ -1,0 +1,31 @@
+{
+  "name": "@cartae/llm-service",
+  "version": "1.0.0",
+  "description": "LLM service abstraction for Cartae AI plugins (OpenAI, Anthropic, local models)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && tsup src/index.ts --format esm",
+    "dev": "tsc --watch & tsup src/index.ts --format esm --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@cartae/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.24",
+    "tsup": "^8.5.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  },
+  "peerDependencies": {
+    "openai": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "openai": {
+      "optional": true
+    }
+  }
+}
