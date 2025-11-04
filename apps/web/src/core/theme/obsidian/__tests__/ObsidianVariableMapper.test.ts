@@ -125,9 +125,71 @@ describe('ObsidianVariableMapper', () => {
     it('doit retourner le nombre total de mappings', () => {
       const count = ObsidianVariableMapper.getMappingCount();
 
-      // Vérifier qu'on a bien nos mappings (colors, typography, spacing, radius, shadows)
-      expect(count).toBeGreaterThanOrEqual(40);
-      expect(count).toBeLessThanOrEqual(60);
+      // Vérifier qu'on a bien nos mappings (colors, typography, spacing, radius, shadows, premium)
+      // Session 58: Ajout de ~35 mappings premium → total ~80 mappings
+      expect(count).toBeGreaterThanOrEqual(70);
+      expect(count).toBeLessThanOrEqual(90);
+    });
+  });
+
+  describe('mappings premium - Session 58', () => {
+    it('ne doit PAS écraser les variables de base avec les fallbacks premium', () => {
+      // Test du bug corrigé en Session 58:
+      // Les mappings premium ne doivent pas écraser les mappings de base
+      // quand la variable Obsidian existe
+      const obsidianVars = {
+        '--background-primary': '#1e1e1e', // Variable de base (existe)
+        // --background-primary-alt est absente → son fallback '#fafafa'
+        // ne doit PAS écraser '#1e1e1e'
+      };
+
+      const result = mapper.mapToTheme(obsidianVars, darkTheme);
+
+      // colors.bg doit être '#1e1e1e' (depuis --background-primary)
+      // et PAS '#fafafa' (fallback de --background-primary-alt)
+      expect(result.colors?.bg).toBe('#1e1e1e');
+    });
+
+    it("doit utiliser le fallback premium si aucune variable de base n'existe", () => {
+      const obsidianVars = {
+        // Aucune variable --background-* présente
+      };
+
+      const result = mapper.mapToTheme(obsidianVars, lightTheme);
+
+      // colors.bg doit utiliser le premier fallback (de --background-primary)
+      expect(result.colors?.bg).toBe('#ffffff');
+    });
+
+    it('doit gérer les mappings multiples vers le même chemin Cartae', () => {
+      // Plusieurs variables Obsidian peuvent mapper vers colors.accent:
+      // --interactive-accent, --link-color, --tag-color, etc.
+      const obsidianVars = {
+        '--interactive-accent': '#7c3aed', // Mapping de base
+        '--link-color': '#9333ea', // Mapping premium (différent)
+      };
+
+      const result = mapper.mapToTheme(obsidianVars, lightTheme);
+
+      // Le premier mapping qui a une valeur réelle doit gagner
+      // (ordre: base avant premium dans allMappings)
+      expect(result.colors?.accent).toBe('#7c3aed');
+    });
+
+    it('doit mapper correctement les nouvelles variables premium', () => {
+      const obsidianVars = {
+        '--graph-line': '#8b5cf6',
+        '--graph-node': '#ede9fe',
+        '--table-border-color': '#e5e7eb',
+        '--scrollbar-thumb-bg': '#cbd5e1',
+      };
+
+      const result = mapper.mapToTheme(obsidianVars, lightTheme);
+
+      // Vérifier que les mappings premium fonctionnent
+      expect(result.colors?.nodeEdge).toBe('#8b5cf6');
+      expect(result.colors?.nodeDefault).toBe('#ede9fe');
+      expect(result.colors?.border).toBe('#e5e7eb');
     });
   });
 });
