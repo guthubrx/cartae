@@ -1,0 +1,673 @@
+/**
+ * FR: Catalogue des thèmes populaires Obsidian
+ * EN: Catalog of popular Obsidian themes
+ */
+
+import { Theme } from '@cartae/design';
+
+export interface MarketplaceTheme extends Theme {
+  cssUrl: string; // URL GitHub pour télécharger le CSS
+  thumbnailUrl?: string; // URL pour la preview image
+  downloads?: number; // Nombre de téléchargements
+  rating?: number; // Note de 0-5
+}
+
+/**
+ * FR: 15+ thèmes populaires d'Obsidian
+ * EN: 15+ popular Obsidian themes
+ */
+export const POPULAR_THEMES: MarketplaceTheme[] = [
+  {
+    id: 'obsidian-minimal',
+    name: 'Minimal',
+    author: 'kepano',
+    version: '1.0.0',
+    description: 'Thème minimaliste et élégant avec focus sur le contenu',
+    category: 'light',
+    colors: {
+      primary: '#3b82f6',
+      secondary: '#64748b',
+      accent: '#8b5cf6',
+      background: '#ffffff',
+      surface: '#f8fafc',
+      text: '#1e293b',
+      textMuted: '#64748b',
+      border: '#e2e8f0',
+      success: '#10b981',
+      warning: '#f59e0b',
+      error: '#ef4444',
+      info: '#3b82f6',
+    },
+    fonts: {
+      primary: 'Inter, system-ui, sans-serif',
+      secondary: 'Inter, system-ui, sans-serif',
+      mono: 'JetBrains Mono, monospace',
+    },
+    borderRadius: {
+      sm: '4px',
+      md: '6px',
+      lg: '8px',
+      xl: '12px',
+    },
+    shadows: {
+      sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+      md: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+      lg: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/kepano/obsidian-minimal/master/obsidian.css',
+    downloads: 125000,
+    rating: 4.8,
+  },
+  {
+    id: 'obsidian-things',
+    name: 'Things',
+    author: 'colineckert',
+    version: '2.0.0',
+    description: 'Thème inspiré par l\'app Things 3, moderne et professionnel',
+    category: 'light',
+    colors: {
+      primary: '#0084ff',
+      secondary: '#7f8fa3',
+      accent: '#ff2d55',
+      background: '#ffffff',
+      surface: '#f5f5f5',
+      text: '#1d1d1f',
+      textMuted: '#86868b',
+      border: '#e5e5ea',
+      success: '#34c759',
+      warning: '#ff9500',
+      error: '#ff3b30',
+      info: '#0084ff',
+    },
+    fonts: {
+      primary: '-apple-system, BlinkMacSystemFont, sans-serif',
+      secondary: '-apple-system, BlinkMacSystemFont, sans-serif',
+      mono: 'SF Mono, monospace',
+    },
+    borderRadius: {
+      sm: '6px',
+      md: '8px',
+      lg: '12px',
+      xl: '16px',
+    },
+    shadows: {
+      sm: '0 1px 3px 0 rgb(0 0 0 / 0.08)',
+      md: '0 2px 8px 0 rgb(0 0 0 / 0.1)',
+      lg: '0 4px 16px 0 rgb(0 0 0 / 0.12)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/colineckert/obsidian-things/main/obsidian.css',
+    downloads: 95000,
+    rating: 4.7,
+  },
+  {
+    id: 'obsidian-blue-topaz',
+    name: 'Blue Topaz',
+    author: 'Zcissors',
+    version: '1.5.0',
+    description: 'Thème coloré et vibrant avec palette bleue et émeraude',
+    category: 'dark',
+    colors: {
+      primary: '#529fe8',
+      secondary: '#7c9ac5',
+      accent: '#35c38b',
+      background: '#0a0a0a',
+      surface: '#1a1a1a',
+      text: '#e0e0e0',
+      textMuted: '#888888',
+      border: '#2a2a2a',
+      success: '#35c38b',
+      warning: '#f8b500',
+      error: '#ff5c5c',
+      info: '#529fe8',
+    },
+    fonts: {
+      primary: 'Segoe UI, sans-serif',
+      secondary: 'Segoe UI, sans-serif',
+      mono: 'Consolas, monospace',
+    },
+    borderRadius: {
+      sm: '4px',
+      md: '6px',
+      lg: '8px',
+      xl: '10px',
+    },
+    shadows: {
+      sm: '0 1px 2px rgba(0, 0, 0, 0.3)',
+      md: '0 2px 6px rgba(0, 0, 0, 0.4)',
+      lg: '0 4px 12px rgba(0, 0, 0, 0.5)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/Zcissors/obsidian-blue-topaz/main/theme.css',
+    downloads: 85000,
+    rating: 4.6,
+  },
+  {
+    id: 'obsidian-nord',
+    name: 'Nord',
+    author: 'insectman',
+    version: '1.2.0',
+    description: 'Palette arctique Nord froide et apaisante',
+    category: 'dark',
+    colors: {
+      primary: '#88c0d0',
+      secondary: '#81a1c1',
+      accent: '#bf616a',
+      background: '#2e3440',
+      surface: '#3b4252',
+      text: '#eceff4',
+      textMuted: '#d08770',
+      border: '#4c566a',
+      success: '#a3be8c',
+      warning: '#ebcb8b',
+      error: '#bf616a',
+      info: '#88c0d0',
+    },
+    fonts: {
+      primary: 'Noto Sans, sans-serif',
+      secondary: 'Noto Sans, sans-serif',
+      mono: 'Source Code Pro, monospace',
+    },
+    borderRadius: {
+      sm: '4px',
+      md: '6px',
+      lg: '8px',
+      xl: '12px',
+    },
+    shadows: {
+      sm: '0 1px 2px rgba(0, 0, 0, 0.2)',
+      md: '0 2px 4px rgba(0, 0, 0, 0.3)',
+      lg: '0 4px 8px rgba(0, 0, 0, 0.4)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/insectman/obsidian-nord/main/theme.css',
+    downloads: 72000,
+    rating: 4.5,
+  },
+  {
+    id: 'obsidian-dracula',
+    name: 'Dracula',
+    author: 'aengusmcmillan',
+    version: '1.3.0',
+    description: 'Palette Dracula populaire avec teintes violettes',
+    category: 'dark',
+    colors: {
+      primary: '#8be9fd',
+      secondary: '#6272a4',
+      accent: '#ff79c6',
+      background: '#282a36',
+      surface: '#44475a',
+      text: '#f8f8f2',
+      textMuted: '#6272a4',
+      border: '#6272a4',
+      success: '#50fa7b',
+      warning: '#f1fa8c',
+      error: '#ff5555',
+      info: '#8be9fd',
+    },
+    fonts: {
+      primary: 'Fira Sans, sans-serif',
+      secondary: 'Fira Sans, sans-serif',
+      mono: 'Fira Code, monospace',
+    },
+    borderRadius: {
+      sm: '4px',
+      md: '6px',
+      lg: '8px',
+      xl: '12px',
+    },
+    shadows: {
+      sm: '0 1px 3px rgba(0, 0, 0, 0.3)',
+      md: '0 2px 8px rgba(0, 0, 0, 0.4)',
+      lg: '0 4px 16px rgba(0, 0, 0, 0.5)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/aengusmcmillan/obsidian-dracula/main/obsidian.css',
+    downloads: 68000,
+    rating: 4.6,
+  },
+  {
+    id: 'obsidian-everforest',
+    name: 'Everforest',
+    author: 'sainnhe',
+    version: '1.1.0',
+    description: 'Thème inspiré par la nature avec tons verts apaisants',
+    category: 'dark',
+    colors: {
+      primary: '#7fbbb3',
+      secondary: '#a7c957',
+      accent: '#d4d4aa',
+      background: '#2b3339',
+      surface: '#323d43',
+      text: '#d8d8d8',
+      textMuted: '#859289',
+      border: '#404a52',
+      success: '#7fbbb3',
+      warning: '#dbc074',
+      error: '#e68183',
+      info: '#7fbbb3',
+    },
+    fonts: {
+      primary: 'Noto Sans, sans-serif',
+      secondary: 'Noto Sans, sans-serif',
+      mono: 'Noto Sans Mono, monospace',
+    },
+    borderRadius: {
+      sm: '3px',
+      md: '5px',
+      lg: '7px',
+      xl: '10px',
+    },
+    shadows: {
+      sm: '0 1px 2px rgba(0, 0, 0, 0.25)',
+      md: '0 2px 4px rgba(0, 0, 0, 0.3)',
+      lg: '0 4px 8px rgba(0, 0, 0, 0.35)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/sainnhe/obsidian-everforest/main/obsidian.css',
+    downloads: 61000,
+    rating: 4.5,
+  },
+  {
+    id: 'obsidian-gruvbox',
+    name: 'Gruvbox',
+    author: 'Piotr-Sierant',
+    version: '1.0.0',
+    description: 'Palette Gruvbox rétro avec couleurs chaudes',
+    category: 'dark',
+    colors: {
+      primary: '#8ec07c',
+      secondary: '#d3869b',
+      accent: '#fabd2f',
+      background: '#282828',
+      surface: '#3c3836',
+      text: '#ebdbb2',
+      textMuted: '#928374',
+      border: '#504945',
+      success: '#8ec07c',
+      warning: '#fabd2f',
+      error: '#fb4934',
+      info: '#83a598',
+    },
+    fonts: {
+      primary: 'Monospace, sans-serif',
+      secondary: 'Monospace, sans-serif',
+      mono: 'Monospace, monospace',
+    },
+    borderRadius: {
+      sm: '2px',
+      md: '4px',
+      lg: '6px',
+      xl: '8px',
+    },
+    shadows: {
+      sm: '0 1px 2px rgba(0, 0, 0, 0.2)',
+      md: '0 2px 4px rgba(0, 0, 0, 0.25)',
+      lg: '0 4px 8px rgba(0, 0, 0, 0.3)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/Piotr-Sierant/obsidian-gruvbox/main/obsidian.css',
+    downloads: 54000,
+    rating: 4.4,
+  },
+  {
+    id: 'obsidian-solarized',
+    name: 'Solarized Dark',
+    author: 'jmontoya00',
+    version: '1.0.0',
+    description: 'Palette Solarized avec balance parfaite entre clarté et confort',
+    category: 'dark',
+    colors: {
+      primary: '#268bd2',
+      secondary: '#2aa198',
+      accent: '#d33682',
+      background: '#002b36',
+      surface: '#073642',
+      text: '#839496',
+      textMuted: '#586e75',
+      border: '#073642',
+      success: '#859900',
+      warning: '#b58900',
+      error: '#dc322f',
+      info: '#268bd2',
+    },
+    fonts: {
+      primary: 'Ubuntu, sans-serif',
+      secondary: 'Ubuntu, sans-serif',
+      mono: 'Ubuntu Mono, monospace',
+    },
+    borderRadius: {
+      sm: '3px',
+      md: '5px',
+      lg: '7px',
+      xl: '10px',
+    },
+    shadows: {
+      sm: '0 1px 2px rgba(0, 0, 0, 0.3)',
+      md: '0 2px 4px rgba(0, 0, 0, 0.4)',
+      lg: '0 4px 8px rgba(0, 0, 0, 0.5)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/jmontoya00/obsidian-solarized/main/obsidian.css',
+    downloads: 48000,
+    rating: 4.4,
+  },
+  {
+    id: 'obsidian-catppuccin',
+    name: 'Catppuccin',
+    author: 'catppuccin',
+    version: '1.2.0',
+    description: 'Palette Catppuccin douce et pastel avec 4 variants',
+    category: 'dark',
+    colors: {
+      primary: '#89b4fa',
+      secondary: '#a6e3a1',
+      accent: '#f38ba8',
+      background: '#1e1e2e',
+      surface: '#313244',
+      text: '#cdd6f4',
+      textMuted: '#6c7086',
+      border: '#45475a',
+      success: '#a6e3a1',
+      warning: '#f9e2af',
+      error: '#f38ba8',
+      info: '#89b4fa',
+    },
+    fonts: {
+      primary: 'Cantarell, sans-serif',
+      secondary: 'Cantarell, sans-serif',
+      mono: 'Monospace, monospace',
+    },
+    borderRadius: {
+      sm: '4px',
+      md: '6px',
+      lg: '8px',
+      xl: '12px',
+    },
+    shadows: {
+      sm: '0 1px 3px rgba(0, 0, 0, 0.12)',
+      md: '0 2px 6px rgba(0, 0, 0, 0.16)',
+      lg: '0 4px 12px rgba(0, 0, 0, 0.2)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/catppuccin/obsidian/main/theme.css',
+    downloads: 92000,
+    rating: 4.7,
+  },
+  {
+    id: 'obsidian-tokyo-night',
+    name: 'Tokyo Night',
+    author: 'enkia',
+    version: '1.0.0',
+    description: 'Thème inspiré par la nuit à Tokyo avec teintes violettes et bleues',
+    category: 'dark',
+    colors: {
+      primary: '#7aa2f7',
+      secondary: '#9ece6a',
+      accent: '#bb9af7',
+      background: '#1a1b26',
+      surface: '#192330',
+      text: '#c0caf5',
+      textMuted: '#565f89',
+      border: '#3b4261',
+      success: '#9ece6a',
+      warning: '#e0af68',
+      error: '#f7768e',
+      info: '#7aa2f7',
+    },
+    fonts: {
+      primary: 'Segoe UI, sans-serif',
+      secondary: 'Segoe UI, sans-serif',
+      mono: 'Courier New, monospace',
+    },
+    borderRadius: {
+      sm: '4px',
+      md: '6px',
+      lg: '8px',
+      xl: '12px',
+    },
+    shadows: {
+      sm: '0 1px 2px rgba(0, 0, 0, 0.2)',
+      md: '0 2px 6px rgba(0, 0, 0, 0.25)',
+      lg: '0 4px 12px rgba(0, 0, 0, 0.3)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/enkia/tokyo-night/main/obsidian.css',
+    downloads: 78000,
+    rating: 4.6,
+  },
+  {
+    id: 'obsidian-california-coast',
+    name: 'California Coast',
+    author: 'jarodise',
+    version: '1.0.0',
+    description: 'Thème léger et coloré inspiré par la côte californienne',
+    category: 'light',
+    colors: {
+      primary: '#007aff',
+      secondary: '#5856d6',
+      accent: '#ff2d55',
+      background: '#fafafa',
+      surface: '#ffffff',
+      text: '#000000',
+      textMuted: '#666666',
+      border: '#e5e5ea',
+      success: '#34c759',
+      warning: '#ff9500',
+      error: '#ff3b30',
+      info: '#007aff',
+    },
+    fonts: {
+      primary: 'SF Pro Display, sans-serif',
+      secondary: 'SF Pro Display, sans-serif',
+      mono: 'SF Mono, monospace',
+    },
+    borderRadius: {
+      sm: '6px',
+      md: '8px',
+      lg: '12px',
+      xl: '16px',
+    },
+    shadows: {
+      sm: '0 1px 3px rgba(0, 0, 0, 0.08)',
+      md: '0 2px 8px rgba(0, 0, 0, 0.12)',
+      lg: '0 4px 16px rgba(0, 0, 0, 0.16)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/jarodise/obsidian-california-coast/main/theme.css',
+    downloads: 45000,
+    rating: 4.3,
+  },
+  {
+    id: 'obsidian-one-dark',
+    name: 'One Dark',
+    author: 'ahmadawais',
+    version: '1.1.0',
+    description: 'Palette One Dark inspirée d\'Atom avec teintes bleues',
+    category: 'dark',
+    colors: {
+      primary: '#61afef',
+      secondary: '#56b6c2',
+      accent: '#e06c75',
+      background: '#282c34',
+      surface: '#3e4451',
+      text: '#abb2bf',
+      textMuted: '#5c6370',
+      border: '#3e4451',
+      success: '#98c379',
+      warning: '#e5c07b',
+      error: '#e06c75',
+      info: '#61afef',
+    },
+    fonts: {
+      primary: 'Hack, monospace',
+      secondary: 'Hack, monospace',
+      mono: 'Hack, monospace',
+    },
+    borderRadius: {
+      sm: '3px',
+      md: '5px',
+      lg: '7px',
+      xl: '10px',
+    },
+    shadows: {
+      sm: '0 1px 2px rgba(0, 0, 0, 0.25)',
+      md: '0 2px 6px rgba(0, 0, 0, 0.3)',
+      lg: '0 4px 12px rgba(0, 0, 0, 0.35)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/ahmadawais/obsidian-one-dark/main/obsidian.css',
+    downloads: 52000,
+    rating: 4.4,
+  },
+  {
+    id: 'obsidian-atom',
+    name: 'Atom',
+    author: 'Jopp-gh',
+    version: '1.0.0',
+    description: 'Thème avec couleurs inspirées d\'Atom avec design épuré',
+    category: 'dark',
+    colors: {
+      primary: '#6f42c1',
+      secondary: '#5a6c7d',
+      accent: '#e74c3c',
+      background: '#282c34',
+      surface: '#383e47',
+      text: '#abb2bf',
+      textMuted: '#646a70',
+      border: '#3e4451',
+      success: '#50c878',
+      warning: '#f39c12',
+      error: '#e74c3c',
+      info: '#6f42c1',
+    },
+    fonts: {
+      primary: 'Consolas, monospace',
+      secondary: 'Consolas, monospace',
+      mono: 'Consolas, monospace',
+    },
+    borderRadius: {
+      sm: '3px',
+      md: '5px',
+      lg: '7px',
+      xl: '10px',
+    },
+    shadows: {
+      sm: '0 1px 2px rgba(0, 0, 0, 0.2)',
+      md: '0 2px 4px rgba(0, 0, 0, 0.25)',
+      lg: '0 4px 8px rgba(0, 0, 0, 0.3)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/Jopp-gh/obsidian-atom/main/theme.css',
+    downloads: 38000,
+    rating: 4.2,
+  },
+  {
+    id: 'obsidian-primary',
+    name: 'Primary',
+    author: 'ceciliamay',
+    version: '1.3.0',
+    description: 'Thème minimaliste avec palette de couleurs primaires simples',
+    category: 'light',
+    colors: {
+      primary: '#e74c3c',
+      secondary: '#95a5a6',
+      accent: '#3498db',
+      background: '#ffffff',
+      surface: '#ecf0f1',
+      text: '#2c3e50',
+      textMuted: '#7f8c8d',
+      border: '#bdc3c7',
+      success: '#27ae60',
+      warning: '#f39c12',
+      error: '#e74c3c',
+      info: '#3498db',
+    },
+    fonts: {
+      primary: 'Open Sans, sans-serif',
+      secondary: 'Open Sans, sans-serif',
+      mono: 'Source Code Pro, monospace',
+    },
+    borderRadius: {
+      sm: '4px',
+      md: '6px',
+      lg: '8px',
+      xl: '12px',
+    },
+    shadows: {
+      sm: '0 1px 2px rgba(0, 0, 0, 0.1)',
+      md: '0 2px 4px rgba(0, 0, 0, 0.12)',
+      lg: '0 4px 8px rgba(0, 0, 0, 0.15)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/ceciliamay/obsidian-primary/main/obsidian.css',
+    downloads: 42000,
+    rating: 4.3,
+  },
+  {
+    id: 'obsidian-anu-ppuccin',
+    name: 'AnuPpuccin',
+    author: 'AnubisNot',
+    version: '1.2.0',
+    description: 'Fusion d\'Anu et Catppuccin avec palette douce et pastel premium',
+    category: 'dark',
+    colors: {
+      primary: '#a6d189',
+      secondary: '#94e2d5',
+      accent: '#f5c2e7',
+      background: '#0b0e19',
+      surface: '#191d2c',
+      text: '#d9e0ee',
+      textMuted: '#6c7086',
+      border: '#313244',
+      success: '#a6d189',
+      warning: '#f8bd96',
+      error: '#f28482',
+      info: '#89b4fa',
+    },
+    fonts: {
+      primary: 'Ubuntu, sans-serif',
+      secondary: 'Ubuntu, sans-serif',
+      mono: 'Fira Code, monospace',
+    },
+    borderRadius: {
+      sm: '4px',
+      md: '6px',
+      lg: '8px',
+      xl: '12px',
+    },
+    shadows: {
+      sm: '0 1px 3px rgba(0, 0, 0, 0.15)',
+      md: '0 2px 8px rgba(0, 0, 0, 0.2)',
+      lg: '0 4px 16px rgba(0, 0, 0, 0.25)',
+    },
+    cssUrl: 'https://raw.githubusercontent.com/AnubisNot/obsidian-anu-ppuccin/main/theme.css',
+    downloads: 67000,
+    rating: 4.7,
+  },
+];
+
+/**
+ * FR: Récupère un thème par son ID
+ * EN: Get theme by ID
+ */
+export function getThemeById(id: string): MarketplaceTheme | undefined {
+  return POPULAR_THEMES.find((theme) => theme.id === id);
+}
+
+/**
+ * FR: Filtre les thèmes par catégorie
+ * EN: Filter themes by category
+ */
+export function filterThemesByCategory(
+  category: 'light' | 'dark' | 'high-contrast' | 'custom'
+): MarketplaceTheme[] {
+  return POPULAR_THEMES.filter((theme) => theme.category === category);
+}
+
+/**
+ * FR: Récupère les thèmes les plus populaires (triés par téléchargements)
+ * EN: Get most popular themes (sorted by downloads)
+ */
+export function getMostPopularThemes(limit: number = 5): MarketplaceTheme[] {
+  return [...POPULAR_THEMES]
+    .sort((a, b) => (b.downloads || 0) - (a.downloads || 0))
+    .slice(0, limit);
+}
+
+/**
+ * FR: Récupère les thèmes les mieux notés
+ * EN: Get highest rated themes
+ */
+export function getHighestRatedThemes(limit: number = 5): MarketplaceTheme[] {
+  return [...POPULAR_THEMES]
+    .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+    .slice(0, limit);
+}
