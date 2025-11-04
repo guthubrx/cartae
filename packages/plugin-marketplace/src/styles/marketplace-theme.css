@@ -1,0 +1,349 @@
+/**
+ * Marketplace Theme Variables
+ *
+ * Session 61 - Marketplace UI Theme Customization
+ *
+ * FR: Variables CSS pour le système de thèmes marketplace
+ * EN: CSS variables for marketplace theme system
+ *
+ * Architecture:
+ * 1. Obsidian Base Variables (inherited)
+ * 2. Marketplace Foundation Variables
+ * 3. Marketplace Component Variables
+ * 4. Theme-specific Overrides
+ */
+
+/* ==========================================================================
+   1. Obsidian Base Variables Integration
+   ========================================================================== */
+
+/**
+ * FR: Ces variables sont héritées du système Obsidian Theme (Sessions 55-59)
+ * EN: These variables are inherited from Obsidian Theme system (Sessions 55-59)
+ *
+ * Available Obsidian variables:
+ * - --accent, --accent-hover, --accent-subtle
+ * - --background-primary, --background-secondary, --background-tertiary
+ * - --text-normal, --text-muted, --text-faint
+ * - --border-normal, --border-subtle, --border-strong
+ * - --interactive-normal, --interactive-hover, --interactive-accent
+ */
+
+/* ==========================================================================
+   2. Marketplace Foundation Variables (Default Light Theme)
+   ========================================================================== */
+
+:root {
+  /* Base Colors - Default to Obsidian or fallback */
+  --marketplace-primary: var(--accent, #3b82f6);
+  --marketplace-secondary: var(--accent-hover, #6366f1);
+  --marketplace-accent: var(--interactive-accent, #06b6d4);
+  --marketplace-background: var(--background-primary, #ffffff);
+  --marketplace-surface: var(--background-secondary, #f9fafb);
+  --marketplace-text: var(--text-normal, #111827);
+  --marketplace-text-muted: var(--text-muted, #6b7280);
+  --marketplace-border: var(--border-normal, #e5e7eb);
+
+  /* Status Colors */
+  --marketplace-success: #10b981;
+  --marketplace-warning: #f59e0b;
+  --marketplace-error: #ef4444;
+  --marketplace-info: #3b82f6;
+
+  /* Spacing & Sizing */
+  --marketplace-spacing-xs: 0.25rem;  /* 4px */
+  --marketplace-spacing-sm: 0.5rem;   /* 8px */
+  --marketplace-spacing-md: 1rem;     /* 16px */
+  --marketplace-spacing-lg: 1.5rem;   /* 24px */
+  --marketplace-spacing-xl: 2rem;     /* 32px */
+
+  /* Border Radius */
+  --marketplace-radius-sm: 0.25rem;   /* 4px */
+  --marketplace-radius-md: 0.5rem;    /* 8px */
+  --marketplace-radius-lg: 0.75rem;   /* 12px */
+  --marketplace-radius-xl: 1rem;      /* 16px */
+
+  /* Shadows */
+  --marketplace-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --marketplace-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --marketplace-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  /* Fonts */
+  --marketplace-font-primary: var(--font-text, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  --marketplace-font-secondary: var(--font-text-theme, Georgia, Cambria, "Times New Roman", Times, serif);
+  --marketplace-font-mono: var(--font-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, monospace);
+
+  /* Font Sizes */
+  --marketplace-font-size-xs: 0.75rem;    /* 12px */
+  --marketplace-font-size-sm: 0.875rem;   /* 14px */
+  --marketplace-font-size-base: 1rem;     /* 16px */
+  --marketplace-font-size-lg: 1.125rem;   /* 18px */
+  --marketplace-font-size-xl: 1.25rem;    /* 20px */
+  --marketplace-font-size-2xl: 1.5rem;    /* 24px */
+
+  /* Font Scale (user preference) */
+  --marketplace-font-scale: 1;
+
+  /* Grid Layout */
+  --marketplace-grid-columns: 3;
+  --marketplace-grid-gap: var(--marketplace-spacing-md);
+}
+
+/* ==========================================================================
+   3. Marketplace Component Variables
+   ========================================================================== */
+
+:root {
+  /* Cards */
+  --marketplace-card-background: #ffffff;
+  --marketplace-card-background-hover: #f9fafb;
+  --marketplace-card-border: #e5e7eb;
+  --marketplace-card-border-radius: var(--marketplace-radius-lg);
+  --marketplace-card-shadow: var(--marketplace-shadow-sm);
+  --marketplace-card-shadow-hover: var(--marketplace-shadow-lg);
+  --marketplace-card-padding: var(--marketplace-spacing-md);
+
+  /* Featured/Trending Badges */
+  --marketplace-featured-badge-background: #fef3c7;
+  --marketplace-featured-badge-text: #92400e;
+  --marketplace-trending-badge-background: #dbeafe;
+  --marketplace-trending-badge-text: #1e40af;
+
+  /* Filters */
+  --marketplace-filter-background: #ffffff;
+  --marketplace-filter-background-hover: #f3f4f6;
+  --marketplace-filter-border: #d1d5db;
+  --marketplace-filter-padding: var(--marketplace-spacing-sm);
+
+  /* Search Bar */
+  --marketplace-search-background: #ffffff;
+  --marketplace-search-border: #d1d5db;
+  --marketplace-search-border-focus: var(--marketplace-primary);
+  --marketplace-search-padding: var(--marketplace-spacing-sm);
+
+  /* Stats/Metrics */
+  --marketplace-stats-background: #f3f4f6;
+  --marketplace-stats-text: #374151;
+  --marketplace-download-color: #10b981;
+  --marketplace-rating-color: #f59e0b;
+
+  /* Categories */
+  --marketplace-category-background: #ede9fe;
+  --marketplace-category-background-hover: #ddd6fe;
+  --marketplace-category-border: #c4b5fd;
+  --marketplace-category-text: #5b21b6;
+
+  /* Buttons */
+  --marketplace-button-primary-bg: var(--marketplace-primary);
+  --marketplace-button-primary-text: #ffffff;
+  --marketplace-button-secondary-bg: var(--marketplace-surface);
+  --marketplace-button-secondary-text: var(--marketplace-text);
+  --marketplace-button-padding: var(--marketplace-spacing-sm) var(--marketplace-spacing-md);
+  --marketplace-button-border-radius: var(--marketplace-radius-md);
+
+  /* Transitions */
+  --marketplace-transition-fast: 0.15s ease;
+  --marketplace-transition-normal: 0.2s ease;
+  --marketplace-transition-slow: 0.3s ease;
+}
+
+/* ==========================================================================
+   4. Dark Theme Overrides
+   ========================================================================== */
+
+.marketplace-theme-dark,
+[data-theme="dark"] .marketplace-theme,
+.theme-dark .marketplace-theme {
+  /* Base Colors */
+  --marketplace-background: #0f0f0f;
+  --marketplace-surface: #1a1a1a;
+  --marketplace-text: #f9fafb;
+  --marketplace-text-muted: #9ca3af;
+  --marketplace-border: #374151;
+
+  /* Cards */
+  --marketplace-card-background: #1a1a1a;
+  --marketplace-card-background-hover: #262626;
+  --marketplace-card-border: #404040;
+  --marketplace-card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.5);
+  --marketplace-card-shadow-hover: 0 10px 15px -3px rgb(0 0 0 / 0.7);
+
+  /* Featured/Trending (darker) */
+  --marketplace-featured-badge-background: #451a03;
+  --marketplace-featured-badge-text: #fef3c7;
+  --marketplace-trending-badge-background: #1e3a8a;
+  --marketplace-trending-badge-text: #dbeafe;
+
+  /* Filters/Search */
+  --marketplace-filter-background: #262626;
+  --marketplace-filter-background-hover: #404040;
+  --marketplace-filter-border: #525252;
+  --marketplace-search-background: #262626;
+  --marketplace-search-border: #525252;
+
+  /* Stats */
+  --marketplace-stats-background: #262626;
+  --marketplace-stats-text: #d1d5db;
+
+  /* Categories */
+  --marketplace-category-background: #312e81;
+  --marketplace-category-background-hover: #3730a3;
+  --marketplace-category-border: #4f46e5;
+  --marketplace-category-text: #c7d2fe;
+}
+
+/* ==========================================================================
+   5. Layout-specific Styles
+   ========================================================================== */
+
+/* Grid Layout Modes */
+[data-marketplace-layout="grid-compact"] {
+  --marketplace-card-padding: var(--marketplace-spacing-sm);
+  --marketplace-grid-gap: var(--marketplace-spacing-sm);
+}
+
+[data-marketplace-layout="grid-normal"] {
+  /* Uses default values */
+}
+
+[data-marketplace-layout="grid-large"] {
+  --marketplace-card-padding: var(--marketplace-spacing-lg);
+  --marketplace-grid-gap: var(--marketplace-spacing-lg);
+}
+
+[data-marketplace-layout="list"] {
+  --marketplace-card-border-radius: var(--marketplace-radius-sm);
+  --marketplace-card-padding: var(--marketplace-spacing-sm);
+}
+
+[data-marketplace-layout="minimal"] {
+  --marketplace-card-shadow: none;
+  --marketplace-card-shadow-hover: var(--marketplace-shadow-sm);
+  --marketplace-card-border-radius: var(--marketplace-radius-sm);
+}
+
+/* Card Size Variants */
+[data-marketplace-card-size="compact"] {
+  --marketplace-card-padding: var(--marketplace-spacing-sm);
+  --marketplace-font-size-base: 0.875rem;
+}
+
+[data-marketplace-card-size="normal"] {
+  /* Uses default values */
+}
+
+[data-marketplace-card-size="large"] {
+  --marketplace-card-padding: var(--marketplace-spacing-lg);
+  --marketplace-font-size-base: 1.125rem;
+}
+
+/* Sidebar Positions */
+[data-marketplace-sidebar="left"] {
+  /* Default */
+}
+
+[data-marketplace-sidebar="right"] {
+  /* Handled by component layout */
+}
+
+[data-marketplace-sidebar="hidden"] {
+  /* Handled by component layout */
+}
+
+/* ==========================================================================
+   6. Accessibility & User Preferences
+   ========================================================================== */
+
+/* Reduced Motion */
+[data-reduce-motion="true"] {
+  --marketplace-transition-fast: 0s;
+  --marketplace-transition-normal: 0s;
+  --marketplace-transition-slow: 0s;
+}
+
+/* High Contrast */
+[data-high-contrast="true"] {
+  --marketplace-card-border: var(--marketplace-text);
+  --marketplace-filter-border: var(--marketplace-text);
+  --marketplace-search-border: var(--marketplace-text);
+}
+
+/* Font Size Scaling */
+:root {
+  font-size: calc(16px * var(--marketplace-font-scale));
+}
+
+/* ==========================================================================
+   7. Utility Classes
+   ========================================================================== */
+
+.marketplace-theme {
+  font-family: var(--marketplace-font-primary);
+  color: var(--marketplace-text);
+  background-color: var(--marketplace-background);
+  transition: background-color var(--marketplace-transition-normal),
+              color var(--marketplace-transition-normal);
+}
+
+.marketplace-card {
+  background-color: var(--marketplace-card-background);
+  border: 1px solid var(--marketplace-card-border);
+  border-radius: var(--marketplace-card-border-radius);
+  padding: var(--marketplace-card-padding);
+  box-shadow: var(--marketplace-card-shadow);
+  transition: all var(--marketplace-transition-normal);
+}
+
+.marketplace-card:hover {
+  background-color: var(--marketplace-card-background-hover);
+  box-shadow: var(--marketplace-card-shadow-hover);
+  transform: translateY(-2px);
+}
+
+.marketplace-button {
+  padding: var(--marketplace-button-padding);
+  border-radius: var(--marketplace-button-border-radius);
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all var(--marketplace-transition-fast);
+}
+
+.marketplace-button-primary {
+  background-color: var(--marketplace-button-primary-bg);
+  color: var(--marketplace-button-primary-text);
+}
+
+.marketplace-button-primary:hover {
+  filter: brightness(1.1);
+}
+
+.marketplace-button-secondary {
+  background-color: var(--marketplace-button-secondary-bg);
+  color: var(--marketplace-button-secondary-text);
+  border: 1px solid var(--marketplace-border);
+}
+
+.marketplace-button-secondary:hover {
+  background-color: var(--marketplace-filter-background-hover);
+}
+
+/* Grid Layout */
+.marketplace-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--marketplace-grid-columns), 1fr);
+  gap: var(--marketplace-grid-gap);
+}
+
+/* Responsive Grid */
+@media (max-width: 1024px) {
+  .marketplace-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .marketplace-grid {
+    grid-template-columns: 1fr;
+  }
+}
