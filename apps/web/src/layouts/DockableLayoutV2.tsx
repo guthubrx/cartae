@@ -30,6 +30,9 @@ import MapSettings from '../components/MapSettings';
 // Import panel registry utilities (utilitaires pour le registre de panneaux)
 import { getAllPanels, onPanelRegistryChange, getPanel } from '../utils/panelRegistry';
 
+// Import Obsidian theme loader (chargeur de thème Obsidian)
+import { useObsidianThemeLoader, type ObsidianThemeConfig } from '@cartae/ui';
+
 /**
  * Configuration initiale du layout (initial layout configuration)
  * Définit la structure des 3 colonnes et leurs panneaux
@@ -206,6 +209,12 @@ export const DockableLayoutV2: React.FC = () => {
 
   // Dynamic panels state (état des panneaux dynamiques)
   const [dynamicPanels, setDynamicPanels] = useState<Record<string, React.ComponentType<any>>>({});
+
+  // Obsidian theme config state (état de configuration du thème Obsidian)
+  const [obsidianTheme, setObsidianTheme] = useState<ObsidianThemeConfig | null>(null);
+
+  // Load Obsidian theme (charger le thème Obsidian)
+  useObsidianThemeLoader(obsidianTheme);
 
   /**
    * Listen to panel registry changes (écouter les changements du registre)
