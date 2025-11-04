@@ -38,10 +38,7 @@ export function MarketplacePage() {
   const pluginStore = new PluginStore(REGISTRY_URL);
 
   // Use optimized query with caching
-  const { data: plugins, isLoading, error, refetch } = usePluginsQuery(
-    REGISTRY_URL,
-    filters
-  );
+  const { data: plugins, isLoading, error, refetch } = usePluginsQuery(REGISTRY_URL, filters);
 
   const handleInstall = async (pluginId: string) => {
     try {
@@ -79,12 +76,8 @@ export function MarketplacePage() {
   const renderHome = () => (
     <div className="space-y-8 p-6">
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">
-          🧩 Plugin Marketplace
-        </h1>
-        <p className="text-gray-600">
-          Discover, install, and rate plugins for Cartae
-        </p>
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">🧩 Plugin Marketplace</h1>
+        <p className="text-gray-600">Discover, install, and rate plugins for Cartae</p>
       </div>
 
       {/* Featured Plugins */}
@@ -96,11 +89,7 @@ export function MarketplacePage() {
       />
 
       {/* Trending Plugins */}
-      <TrendingPlugins
-        registryUrl={REGISTRY_URL}
-        onViewDetails={handleViewDetails}
-        limit={10}
-      />
+      <TrendingPlugins registryUrl={REGISTRY_URL} onViewDetails={handleViewDetails} limit={10} />
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
@@ -143,9 +132,7 @@ export function MarketplacePage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Browse Plugins</h1>
-          <p className="text-gray-600">
-            {plugins?.length || 0} plugins available
-          </p>
+          <p className="text-gray-600">{plugins?.length || 0} plugins available</p>
         </div>
         <button
           type="button"
@@ -157,10 +144,7 @@ export function MarketplacePage() {
       </div>
 
       {/* Filters */}
-      <PluginFilters
-        filters={filters}
-        onFiltersChange={setFilters}
-      />
+      <PluginFilters filters={filters} onFiltersChange={setFilters} />
 
       {/* Plugin Grid with Optimization */}
       {isLoading && (
@@ -224,7 +208,7 @@ export function MarketplacePage() {
 
       <AdminDashboard
         registryUrl={REGISTRY_URL}
-        isAdmin={true} // TODO: Replace with real auth check
+        isAdmin // TODO: Replace with real auth check
         adminUsername="demo-admin"
         onLogout={() => {
           alert('Logout clicked');

@@ -81,6 +81,7 @@
   },
   "dependencies": {
     "dotenv": "^17.2.3",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "vitest": "^1.6.1"
   }
 }

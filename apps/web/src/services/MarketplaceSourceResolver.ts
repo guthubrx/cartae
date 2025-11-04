@@ -65,9 +65,13 @@ export interface ResolverStats {
  */
 export class MarketplaceSourceResolver {
   private config: SourceConfig | null = null;
+
   private configLoadedAt: Date | null = null;
+
   private configCacheTTL = 5 * 60 * 1000; // 5 minutes
+
   private healthStatus: Map<string, SourceHealthStatus> = new Map();
+
   private stats: ResolverStats = {
     totalRequests: 0,
     gitRequests: 0,
@@ -76,6 +80,7 @@ export class MarketplaceSourceResolver {
     errors: 0,
     avgResponseTime: 0,
   };
+
   private responseTimes: number[] = [];
 
   /**

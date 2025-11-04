@@ -66,7 +66,12 @@ const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
       weight: 30,
       panels: [
         { id: 'properties-panel', component: 'properties', title: 'Properties' },
-        { id: 'mapsettings-panel', component: 'mapsettings', title: 'Map Settings', position: 'below' },
+        {
+          id: 'mapsettings-panel',
+          component: 'mapsettings',
+          title: 'Map Settings',
+          position: 'below',
+        },
       ],
     },
   ],
@@ -271,7 +276,7 @@ export const DockableLayoutV2: React.FC = () => {
   const initializeDefaultLayout = (api: DockviewApi): void => {
     const groups: Array<any> = [];
 
-    DEFAULT_LAYOUT_CONFIG.columns.forEach((column) => {
+    DEFAULT_LAYOUT_CONFIG.columns.forEach(column => {
       // Créer le premier panneau du groupe pour définir la colonne
       const firstPanel = column.panels[0];
       const group = api.addGroup();

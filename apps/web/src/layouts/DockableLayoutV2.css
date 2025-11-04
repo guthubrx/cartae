@@ -1,67 +1,279 @@
 /**
  * Dockview Theming - Cartae Design System Integration
- * Session 54F-54H: Polish & Theming
+ * Session 55A-D: Obsidian Theme Foundations - 3-Level Variable System
  *
- * Maps Cartae design variables to Dockview CSS properties
- * Supports light/dark mode via [data-theme] attribute
+ * Niveau 1: Variables de base (couleurs, espacements, typographie)
+ * Niveau 2: Variables sémantiques (usage spécifique)
+ * Niveau 3: Variables composant (Dockview spécifique)
+ *
+ * Compatible Obsidian via extraction CSS automatique
  */
+
+/* ========== NIVEAU 1: VARIABLES DE BASE ========== */
 
 /* Root theme - Light mode (défaut) */
 :root {
-  /* Cartae color tokens */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f5f5;
-  --bg-tertiary: #e5e5e5;
-  --fg: #171717;
-  --fg-secondary: #525252;
-  --fg-tertiary: #737373;
-  --border-color: #e5e5e5;
-  --border-secondary: #d4d4d4;
-  --accent-color: #3b82f6;
-  --state-hover: #f5f5f5;
+  /* === Couleurs primaires === */
+  --color-white: #ffffff;
+  --color-black: #171717;
+  --color-gray-50: #fafafa;
+  --color-gray-100: #f5f5f5;
+  --color-gray-200: #e5e5e5;
+  --color-gray-300: #d4d4d4;
+  --color-gray-400: #a3a3a3;
+  --color-gray-500: #737373;
+  --color-gray-600: #525252;
+  --color-gray-700: #404040;
+  --color-gray-800: #262626;
+  --color-gray-900: #171717;
 
-  /* Dockview CSS Variables Mapping */
+  /* === Couleurs d'accent === */
+  --color-blue-500: #3b82f6;
+  --color-blue-400: #60a5fa;
+  --color-blue-300: #93c5fd;
+  --color-blue-200: #bfdbfe;
+  --color-blue-100: #dbeafe;
+  --color-blue-50: #eff6ff;
+
+  /* === Espacements === */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* === Typographie === */
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* === Bordures === */
+  --border-width: 1px;
+  --border-width-2: 2px;
+  --border-radius-sm: 4px;
+  --border-radius: 6px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+  --border-radius-2xl: 24px;
+  --border-radius-full: 9999px;
+
+  /* === Ombres === */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  /* === Transitions === */
+  --transition-fast: 0.1s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+  --transition-bounce: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* === Z-index === */
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-modal-backdrop: 1040;
+  --z-index-modal: 1050;
+  --z-index-popover: 1060;
+  --z-index-tooltip: 1070;
+  --z-index-toast: 1080;
+  --z-index-overlay: 1300;
+
+  /* ========== NIVEAU 2: VARIABLES SÉMANTIQUES ========== */
+
+  /* === Arrière-plans === */
+  --bg-primary: var(--color-white);
+  --bg-secondary: var(--color-gray-100);
+  --bg-tertiary: var(--color-gray-200);
+  --bg-quaternary: var(--color-gray-50);
+  --bg-accent: var(--color-blue-500);
+  --bg-accent-subtle: var(--color-blue-50);
+  --bg-overlay: rgba(0, 0, 0, 0.1);
+  --bg-overlay-dark: rgba(0, 0, 0, 0.5);
+
+  /* === Textes === */
+  --fg-primary: var(--color-gray-900);
+  --fg-secondary: var(--color-gray-600);
+  --fg-tertiary: var(--color-gray-500);
+  --fg-muted: var(--color-gray-400);
+  --fg-accent: var(--color-blue-500);
+  --fg-on-accent: var(--color-white);
+  --fg-on-dark: var(--color-white);
+  --fg-on-light: var(--color-gray-900);
+
+  /* === Bordures === */
+  --border-primary: var(--color-gray-200);
+  --border-secondary: var(--color-gray-300);
+  --border-accent: var(--color-blue-500);
+  --border-muted: var(--color-gray-100);
+  --border-focus: var(--color-blue-500);
+  --border-error: #ef4444;
+  --border-warning: #f59e0b;
+  --border-success: #10b981;
+
+  /* === États interactifs === */
+  --state-hover: var(--color-gray-100);
+  --state-active: var(--color-gray-200);
+  --state-selected: var(--color-blue-100);
+  --state-disabled: var(--color-gray-100);
+  --state-focus: var(--color-blue-100);
+  --state-error: #fef2f2;
+  --state-warning: #fffbeb;
+  --state-success: #f0fdf4;
+
+  /* === Ombres sémantiques === */
+  --shadow-card: var(--shadow-sm);
+  --shadow-modal: var(--shadow-xl);
+  --shadow-tooltip: var(--shadow-md);
+  --shadow-floating: var(--shadow-lg);
+  --shadow-overlay: var(--shadow-2xl);
+
+  /* ========== NIVEAU 3: VARIABLES COMPOSANT DOCKVIEW ========== */
+
+  /* === Arrière-plans Dockview === */
   --dv-group-view-background-color: var(--bg-primary);
   --dv-tabs-and-actions-container-background-color: var(--bg-secondary);
   --dv-activegroup-visiblepanel-tab-background-color: var(--bg-primary);
-  --dv-activegroup-visiblepanel-tab-color: var(--accent-color);
   --dv-activegroup-hiddenpanel-tab-background-color: var(--bg-tertiary);
-  --dv-activegroup-hiddenpanel-tab-color: var(--fg-tertiary);
   --dv-inactivegroup-visiblepanel-tab-background-color: var(--bg-tertiary);
-  --dv-inactivegroup-visiblepanel-tab-color: var(--fg-secondary);
   --dv-inactivegroup-hiddenpanel-tab-background-color: var(--bg-tertiary);
-  --dv-inactivegroup-hiddenpanel-tab-color: var(--fg-tertiary);
-  --dv-separator-border: 1px solid var(--border-color);
-  --dv-paneview-header-border-color: var(--border-color);
-  --dv-drag-over-border-color: var(--accent-color);
   --dv-drag-over-background-color: rgba(59, 130, 246, 0.05);
-  --dv-paneview-active-outline-color: var(--accent-color);
-  --dv-tab-divider-color: var(--border-secondary);
   --dv-icon-hover-background-color: var(--state-hover);
-  --dv-sash-color: var(--border-color);
-  --dv-active-sash-color: var(--accent-color);
+
+  /* === Couleurs de texte Dockview === */
+  --dv-activegroup-visiblepanel-tab-color: var(--fg-accent);
+  --dv-activegroup-hiddenpanel-tab-color: var(--fg-tertiary);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--fg-secondary);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--fg-tertiary);
+
+  /* === Bordures Dockview === */
+  --dv-separator-border: var(--border-width) solid var(--border-primary);
+  --dv-paneview-header-border-color: var(--border-primary);
+  --dv-drag-over-border-color: var(--border-accent);
+  --dv-paneview-active-outline-color: var(--border-focus);
+  --dv-tab-divider-color: var(--border-secondary);
+  --dv-sash-color: var(--border-primary);
+  --dv-active-sash-color: var(--border-accent);
+
+  /* === Dimensions Dockview === */
   --dv-tabs-and-actions-container-height: 36px;
-  --dv-tabs-and-actions-container-font-size: 14px;
-  --dv-tab-font-size: 14px;
-  --dv-tab-margin: 4px;
-  --dv-border-radius: 6px;
-  --dv-floating-box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  --dv-overlay-z-index: 1300;
+  --dv-tabs-and-actions-container-font-size: var(--font-size-base);
+  --dv-tab-font-size: var(--font-size-base);
+  --dv-tab-margin: var(--space-1);
+  --dv-border-radius: var(--border-radius);
+  --dv-floating-box-shadow: var(--shadow-floating);
+  --dv-overlay-z-index: var(--z-index-overlay);
 }
 
 /* Dark mode */
 [data-theme='dark'] {
-  --bg-primary: #171717;
-  --bg-secondary: #262626;
-  --bg-tertiary: #404040;
-  --fg: #fafafa;
-  --fg-secondary: #a3a3a3;
-  --fg-tertiary: #737373;
-  --border-color: #404040;
-  --border-secondary: #525252;
-  --accent-color: #60a5fa;
-  --state-hover: #262626;
-  --dv-floating-box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.5);
+  /* ========== NIVEAU 1: VARIABLES DE BASE ========== */
+
+  /* === Couleurs primaires === */
+  --color-white: #171717;
+  --color-black: #fafafa;
+  --color-gray-50: #171717;
+  --color-gray-100: #262626;
+  --color-gray-200: #404040;
+  --color-gray-300: #525252;
+  --color-gray-400: #737373;
+  --color-gray-500: #a3a3a3;
+  --color-gray-600: #d4d4d4;
+  --color-gray-700: #e5e5e5;
+  --color-gray-800: #f5f5f5;
+  --color-gray-900: #fafafa;
+
+  /* === Couleurs d'accent === */
+  --color-blue-500: #60a5fa;
+  --color-blue-400: #3b82f6;
+  --color-blue-300: #2563eb;
+  --color-blue-200: #1d4ed8;
+  --color-blue-100: #1e40af;
+  --color-blue-50: #1e3a8a;
+
+  /* === Ombres === */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -4px rgb(0 0 0 / 0.6);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.7), 0 8px 10px -6px rgb(0 0 0 / 0.7);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.8);
+
+  /* ========== NIVEAU 2: VARIABLES SÉMANTIQUES ========== */
+
+  /* === Arrière-plans === */
+  --bg-primary: var(--color-gray-900);
+  --bg-secondary: var(--color-gray-800);
+  --bg-tertiary: var(--color-gray-700);
+  --bg-quaternary: var(--color-gray-600);
+  --bg-accent: var(--color-blue-500);
+  --bg-accent-subtle: var(--color-blue-900);
+  --bg-overlay: rgba(255, 255, 255, 0.1);
+  --bg-overlay-dark: rgba(255, 255, 255, 0.2);
+
+  /* === Textes === */
+  --fg-primary: var(--color-white);
+  --fg-secondary: var(--color-gray-400);
+  --fg-tertiary: var(--color-gray-500);
+  --fg-muted: var(--color-gray-600);
+  --fg-accent: var(--color-blue-400);
+  --fg-on-accent: var(--color-white);
+  --fg-on-dark: var(--color-white);
+  --fg-on-light: var(--color-gray-900);
+
+  /* === Bordures === */
+  --border-primary: var(--color-gray-700);
+  --border-secondary: var(--color-gray-600);
+  --border-accent: var(--color-blue-500);
+  --border-muted: var(--color-gray-800);
+  --border-focus: var(--color-blue-400);
+  --border-error: #f87171;
+  --border-warning: #fbbf24;
+  --border-success: #34d399;
+
+  /* === États interactifs === */
+  --state-hover: var(--color-gray-800);
+  --state-active: var(--color-gray-700);
+  --state-selected: var(--color-blue-900);
+  --state-disabled: var(--color-gray-800);
+  --state-focus: var(--color-blue-900);
+  --state-error: #7f1d1d;
+  --state-warning: #78350f;
+  --state-success: #064e3b;
+
+  /* === Ombres sémantiques === */
+  --shadow-card: var(--shadow-sm);
+  --shadow-modal: var(--shadow-xl);
+  --shadow-tooltip: var(--shadow-md);
+  --shadow-floating: var(--shadow-lg);
+  --shadow-overlay: var(--shadow-2xl);
+
+  /* ========== NIVEAU 3: VARIABLES COMPOSANT DOCKVIEW ========== */
+
+  /* Les variables Dockview niveau 3 restent les mêmes car elles utilisent
+     les variables sémantiques niveau 2 qui sont maintenant mises à jour */
 }
 
 /* Main container */
@@ -69,10 +281,10 @@
   height: 100vh;
   width: 100vw;
   font-family: system-ui, -apple-system, sans-serif;
-  font-size: 14px;
+  font-size: var(--font-size-base);
   background: var(--bg-primary);
-  color: var(--fg);
-  transition: background-color 0.2s ease, color 0.2s ease;
+  color: var(--fg-primary);
+  transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
 /* Dockview container */
@@ -89,7 +301,7 @@
   width: 100%;
   overflow: hidden;
   background: var(--bg-primary);
-  color: var(--fg);
+  color: var(--fg-primary);
 }
 
 /* Special styling for canvas panels */
@@ -101,8 +313,8 @@
 .dockview-custom-tab {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 12px;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
   height: 100%;
   white-space: nowrap;
   overflow: hidden;
@@ -122,15 +334,15 @@
   justify-content: center;
   min-width: 18px;
   height: 18px;
-  padding: 0 5px;
-  background: var(--accent-color);
-  color: white;
-  border-radius: 9px;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
+  padding: 0 var(--space-1);
+  background: var(--bg-accent);
+  color: var(--fg-on-accent);
+  border-radius: var(--border-radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
   flex-shrink: 0;
-  animation: badge-pulse 0.3s ease-in-out;
+  animation: badge-pulse var(--transition-slow) ease-in-out;
 }
 
 @keyframes badge-pulse {
@@ -148,7 +360,7 @@
 .dockview-group-view,
 .dockview-tab,
 .dockview-tabs-container {
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  transition: background-color var(--transition-normal), color var(--transition-normal), border-color var(--transition-normal);
 }
 
 /* Tab hover state */
@@ -158,14 +370,14 @@
 
 /* Resize handles (sash) styling */
 .dockview-sash {
-  transition: background-color 0.15s ease;
+  transition: background-color var(--transition-fast);
 }
 
 .dockview-sash:hover,
 .dockview-sash.active {
   background-color: var(--dv-active-sash-color) !important;
   box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
-  transition: background-color 0.1s ease;
+  transition: background-color var(--transition-fast);
 }
 
 /* Drag over feedback */
@@ -181,7 +393,7 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  padding: 20px;
+  padding: var(--space-5);
   text-align: center;
   color: var(--fg-tertiary);
 }
@@ -194,8 +406,8 @@
 
 /* Scrollbar styling (webkit browsers) */
 .panel-content::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: var(--space-2);
+  height: var(--space-2);
 }
 
 .panel-content::-webkit-scrollbar-track {
@@ -203,9 +415,9 @@
 }
 
 .panel-content::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
+  background: var(--border-primary);
+  border-radius: var(--border-radius-sm);
+  transition: background-color var(--transition-normal);
 }
 
 .panel-content::-webkit-scrollbar-thumb:hover {
@@ -215,13 +427,15 @@
 /* High contrast mode support */
 @media (prefers-contrast: more) {
   :root {
-    --border-color: #000000;
+    --border-primary: #000000;
     --border-secondary: #333333;
+    --border-accent: #0000ff;
   }
 
   [data-theme='dark'] {
-    --border-color: #ffffff;
+    --border-primary: #ffffff;
     --border-secondary: #cccccc;
+    --border-accent: #00ffff;
   }
 }
 

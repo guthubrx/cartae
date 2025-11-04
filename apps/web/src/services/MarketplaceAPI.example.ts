@@ -137,7 +137,9 @@ export async function searchPlugins(query: string): Promise<{
     throw new Error('Query must be at least 2 characters');
   }
 
-  const url = await marketplaceSourceResolver.resolveUrl(`api/search?q=${encodeURIComponent(query)}`);
+  const url = await marketplaceSourceResolver.resolveUrl(
+    `api/search?q=${encodeURIComponent(query)}`
+  );
 
   return fetchWithCache(
     url,

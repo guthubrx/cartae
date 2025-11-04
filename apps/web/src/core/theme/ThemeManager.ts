@@ -94,17 +94,18 @@ export class ThemeManager {
   private applyTheme(theme: Theme): void {
     const root = document.documentElement;
 
-    // Apply colors
-    for (const [key, value] of Object.entries(theme.colors)) {
-      root.style.setProperty(`--color-${this.kebabCase(key)}`, value);
+    // Apply colors (Niveau 1: Variables de base)
+    const colorMapping = this.getColorMapping(theme);
+    for (const [key, value] of Object.entries(colorMapping)) {
+      root.style.setProperty(`--${key}`, value);
     }
 
-    // Apply spacing
+    // Apply spacing (Niveau 1)
     for (const [key, value] of Object.entries(theme.spacing)) {
-      root.style.setProperty(`--spacing-${key}`, value);
+      root.style.setProperty(`--space-${key}`, value);
     }
 
-    // Apply typography
+    // Apply typography (Niveau 1)
     root.style.setProperty('--font-family', theme.typography.fontFamily);
     root.style.setProperty('--font-family-mono', theme.typography.fontFamilyMono);
 
@@ -120,28 +121,84 @@ export class ThemeManager {
       root.style.setProperty(`--line-height-${key}`, String(value));
     }
 
-    // Apply radius
+    // Apply radius (Niveau 1)
     for (const [key, value] of Object.entries(theme.radius)) {
-      root.style.setProperty(`--radius-${key}`, value);
+      root.style.setProperty(`--border-radius-${key}`, value);
     }
 
-    // Apply shadows
+    // Apply shadows (Niveau 1)
     for (const [key, value] of Object.entries(theme.shadows)) {
       root.style.setProperty(`--shadow-${key}`, value);
     }
 
-    // Apply animation
+    // Apply animation (Niveau 1)
     for (const [key, value] of Object.entries(theme.animation)) {
-      root.style.setProperty(`--animation-${key}`, value);
+      root.style.setProperty(`--transition-${key}`, value);
     }
 
-    // Apply z-index
+    // Apply z-index (Niveau 1)
     for (const [key, value] of Object.entries(theme.zIndex)) {
       root.style.setProperty(`--z-index-${this.kebabCase(key)}`, String(value));
     }
 
     // Set data attribute for theme mode
     root.setAttribute('data-theme', theme.mode);
+  }
+
+  /**
+   * Map theme colors to CSS variables (Niveau 1)
+   */
+  private getColorMapping(theme: Theme): Record<string, string> {
+    // Map des couleurs du thème vers les variables CSS de niveau 1
+    const colorMap: Record<string, string> = {};
+
+    // Couleurs primaires
+    colorMap['color-white'] = theme.mode === 'light' ? '#ffffff' : '#171717';
+    colorMap['color-black'] = theme.mode === 'light' ? '#171717' : '#fafafa';
+
+    // Gray scale mapping
+    if (theme.mode === 'light') {
+      colorMap['color-gray-50'] = '#fafafa';
+      colorMap['color-gray-100'] = '#f5f5f5';
+      colorMap['color-gray-200'] = '#e5e5e5';
+      colorMap['color-gray-300'] = '#d4d4d4';
+      colorMap['color-gray-400'] = '#a3a3a3';
+      colorMap['color-gray-500'] = '#737373';
+      colorMap['color-gray-600'] = '#525252';
+      colorMap['color-gray-700'] = '#404040';
+      colorMap['color-gray-800'] = '#262626';
+      colorMap['color-gray-900'] = '#171717';
+    } else {
+      colorMap['color-gray-50'] = '#171717';
+      colorMap['color-gray-100'] = '#262626';
+      colorMap['color-gray-200'] = '#404040';
+      colorMap['color-gray-300'] = '#525252';
+      colorMap['color-gray-400'] = '#737373';
+      colorMap['color-gray-500'] = '#a3a3a3';
+      colorMap['color-gray-600'] = '#d4d4d4';
+      colorMap['color-gray-700'] = '#e5e5e5';
+      colorMap['color-gray-800'] = '#f5f5f5';
+      colorMap['color-gray-900'] = '#fafafa';
+    }
+
+    // Couleurs d'accent
+    if (theme.mode === 'light') {
+      colorMap['color-blue-500'] = '#3b82f6';
+      colorMap['color-blue-400'] = '#60a5fa';
+      colorMap['color-blue-300'] = '#93c5fd';
+      colorMap['color-blue-200'] = '#bfdbfe';
+      colorMap['color-blue-100'] = '#dbeafe';
+      colorMap['color-blue-50'] = '#eff6ff';
+    } else {
+      colorMap['color-blue-500'] = '#60a5fa';
+      colorMap['color-blue-400'] = '#3b82f6';
+      colorMap['color-blue-300'] = '#2563eb';
+      colorMap['color-blue-200'] = '#1d4ed8';
+      colorMap['color-blue-100'] = '#1e40af';
+      colorMap['color-blue-50'] = '#1e3a8a';
+    }
+
+    return colorMap;
   }
 
   /**
