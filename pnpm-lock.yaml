@@ -134,6 +134,25 @@ importers:
         specifier: ^1.6.0
         version: 1.6.3
 
+  apps/office-connector-mvp:
+    dependencies:
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@vitejs/plugin-react':
+        specifier: ^4.3.3
+        version: 4.7.0(vite@6.4.1(@types/node@20.19.24)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1))
+      typescript:
+        specifier: ^5.6.2
+        version: 5.9.3
+      vite:
+        specifier: ^6.0.3
+        version: 6.4.1(@types/node@20.19.24)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)
+
   apps/web:
     dependencies:
       '@blocknote/core':
@@ -190,9 +209,9 @@ importers:
       dexie:
         specifier: ^4.0.1
         version: 4.2.1
-      flexlayout-react:
-        specifier: ^0.8.17
-        version: 0.8.17(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      dockview:
+        specifier: ^4.10.0
+        version: 4.10.0(react@18.3.1)
       highlight.js:
         specifier: ^11.11.1
         version: 11.11.1
@@ -563,6 +582,31 @@ importers:
         specifier: ^1.0.0
         version: 1.6.1(@types/node@20.19.24)(@vitest/ui@4.0.5)(jsdom@27.0.1)
 
+  packages/office365-plugin:
+    dependencies:
+      '@cartae/core':
+        specifier: workspace:*
+        version: link:../core
+      '@cartae/plugin-system':
+        specifier: workspace:*
+        version: link:../plugin-system
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.24
+      '@types/uuid':
+        specifier: ^9.0.7
+        version: 9.0.8
+      typescript:
+        specifier: ^5.2.2
+        version: 5.9.3
+      vitest:
+        specifier: ^1.0.4
+        version: 1.6.1(@types/node@20.19.24)(@vitest/ui@4.0.5)(jsdom@27.0.1)
+
   packages/parsers:
     dependencies:
       '@kenjiuno/msgreader':
@@ -639,6 +683,9 @@ importers:
       '@cartae/plugin-system':
         specifier: workspace:*
         version: link:../plugin-system
+      '@supabase/supabase-js':
+        specifier: ^2.39.0
+        version: 2.78.0
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
@@ -711,6 +758,9 @@ importers:
       '@cartae/design':
         specifier: workspace:*
         version: link:../design
+      '@cartae/mindmap-core':
+        specifier: workspace:*
+        version: link:../mindmap-core
       '@xyflow/react':
         specifier: ^12.0.0
         version: 12.9.2(@types/react@18.3.26)(immer@10.2.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -3341,6 +3391,14 @@ packages:
   dnd-core@14.0.1:
     resolution: {integrity: sha512-+PVS2VPTgKFPYWo3vAFEA8WPbTf7/xo43TifH9G8S1KqnrQu0o77A3unrF5yOugy4mIz7K5wAVFHUcha7wsz6A==}
 
+  dockview-core@4.10.0:
+    resolution: {integrity: sha512-ihbjQlB2OwoT2M2FVr2z8C+8IbYJmRlR6wz5BRE0NpdeK/Raou8P7NloST2uZfBg9rZ9j3ab3WT20UOhgpL4ZA==}
+
+  dockview@4.10.0:
+    resolution: {integrity: sha512-uj6NIPo/QjKRw6zkCL7xXxUWljme2HIzRKSs0JohXJtnDBAuBoq91f1RinJ/yvCZPzJAmOLoAyf+cCqHZdSRVg==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   doctrine@2.1.0:
     resolution: {integrity: sha512-35mSku4ZXK0vfCuHEDAwt55dg2jNajHZ1odvF+8SSr82EsZY4QmXfuWso8oEd8zRhVObSN18aM0CjSdoBX7zIw==}
     engines: {node: '>=0.10.0'}
@@ -3729,12 +3787,6 @@ packages:
 
   flatted@3.3.3:
     resolution: {integrity: sha512-GX+ysw4PBCz0PzosHDepZGANEuFCMLrnRTiEy9McGjmkCQYwRq4A/X786G/fjM/+OjsWSU1ZrY5qyARZmO/uwg==}
-
-  flexlayout-react@0.8.17:
-    resolution: {integrity: sha512-F0utJcrIGBpF4btqRYLFOoITQcyFxUp19X4dvFvEceD/CJkRoefV96iN1lDU63t9ystgltmWw7AscgNbKJMlcA==}
-    peerDependencies:
-      react: ^18.0.0 || ^19.0.0
-      react-dom: ^18.0.0 || ^19.0.0
 
   foldline@1.1.0:
     resolution: {integrity: sha512-9SheyADS50hjvFYjFJ3OB/GlDz2mD1T2CHd7auIk4Uto5YYWPBcw8iYo3F+gENJ+/SOeH9tT0loHZSqlUlumTA==}
@@ -6752,6 +6804,46 @@ packages:
       terser:
         optional: true
 
+  vite@6.4.1:
+    resolution: {integrity: sha512-+Oxm7q9hDoLMyJOYfUYBuHQo+dkAloi33apOPP56pzj+vsdJDzr+j1NISE5pyaAuKL4A3UD34qd0lx5+kfKp2g==}
+    engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
+    hasBin: true
+    peerDependencies:
+      '@types/node': ^18.0.0 || ^20.0.0 || >=22.0.0
+      jiti: '>=1.21.0'
+      less: '*'
+      lightningcss: ^1.21.0
+      sass: '*'
+      sass-embedded: '*'
+      stylus: '*'
+      sugarss: '*'
+      terser: ^5.16.0
+      tsx: ^4.8.1
+      yaml: ^2.4.2
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+      jiti:
+        optional: true
+      less:
+        optional: true
+      lightningcss:
+        optional: true
+      sass:
+        optional: true
+      sass-embedded:
+        optional: true
+      stylus:
+        optional: true
+      sugarss:
+        optional: true
+      terser:
+        optional: true
+      tsx:
+        optional: true
+      yaml:
+        optional: true
+
   vitest@1.6.1:
     resolution: {integrity: sha512-Ljb1cnSJSivGN0LqXd/zmDbWEM0RNNg2t1QW/XUhYl/qPqyu7CsqeWtqQXHVaJsecLPuDoak2oJcZN2QoRIOag==}
     engines: {node: ^18.0.0 || >=20.0.0}
@@ -8737,6 +8829,18 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@vitejs/plugin-react@4.7.0(vite@6.4.1(@types/node@20.19.24)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1))':
+    dependencies:
+      '@babel/core': 7.28.5
+      '@babel/plugin-transform-react-jsx-self': 7.27.1(@babel/core@7.28.5)
+      '@babel/plugin-transform-react-jsx-source': 7.27.1(@babel/core@7.28.5)
+      '@rolldown/pluginutils': 1.0.0-beta.27
+      '@types/babel__core': 7.20.5
+      react-refresh: 0.17.0
+      vite: 6.4.1(@types/node@20.19.24)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)
+    transitivePeerDependencies:
+      - supports-color
+
   '@vitest/coverage-v8@1.6.1(vitest@1.6.1(@types/node@20.19.24)(jsdom@27.0.1))':
     dependencies:
       '@ampproject/remapping': 2.3.0
@@ -9525,6 +9629,13 @@ snapshots:
       '@react-dnd/invariant': 2.0.0
       redux: 4.2.1
 
+  dockview-core@4.10.0: {}
+
+  dockview@4.10.0(react@18.3.1):
+    dependencies:
+      dockview-core: 4.10.0
+      react: 18.3.1
+
   doctrine@2.1.0:
     dependencies:
       esutils: 2.0.3
@@ -10101,11 +10212,6 @@ snapshots:
       rimraf: 3.0.2
 
   flatted@3.3.3: {}
-
-  flexlayout-react@0.8.17(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
 
   foldline@1.1.0: {}
 
@@ -13752,6 +13858,21 @@ snapshots:
     optionalDependencies:
       '@types/node': 20.19.24
       fsevents: 2.3.3
+
+  vite@6.4.1(@types/node@20.19.24)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1):
+    dependencies:
+      esbuild: 0.25.11
+      fdir: 6.5.0(picomatch@4.0.3)
+      picomatch: 4.0.3
+      postcss: 8.5.6
+      rollup: 4.52.5
+      tinyglobby: 0.2.15
+    optionalDependencies:
+      '@types/node': 20.19.24
+      fsevents: 2.3.3
+      jiti: 1.21.7
+      tsx: 4.20.6
+      yaml: 2.8.1
 
   vitest@1.6.1(@types/node@20.19.24)(@vitest/ui@4.0.5)(jsdom@27.0.1):
     dependencies:
