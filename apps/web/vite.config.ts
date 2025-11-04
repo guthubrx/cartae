@@ -7,12 +7,23 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import path from 'path';
 
 export default defineConfig({
   plugins: [
     react(),
     tsconfigPaths(), // FR: Support des paths TypeScript / EN: TypeScript paths support
   ],
+  resolve: {
+    alias: {
+      '@cartae/mindmap-core': path.resolve(__dirname, '../../packages/mindmap-core/src'),
+      '@cartae/design': path.resolve(__dirname, '../../packages/design/src'),
+      '@cartae/ui': path.resolve(__dirname, '../../packages/ui/src'),
+      '@cartae/plugin-system': path.resolve(__dirname, '../../packages/plugin-system/src'),
+      '@cartae/plugin-marketplace': path.resolve(__dirname, '../../packages/plugin-marketplace/src'),
+      '@cartae/core': path.resolve(__dirname, '../../packages/core/src'),
+    },
+  },
   server: {
     port: 5173,
     open: false, // FR: Ouvrir automatiquement le navigateur / EN: Auto-open browser

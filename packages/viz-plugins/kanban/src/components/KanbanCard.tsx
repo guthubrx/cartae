@@ -53,8 +53,6 @@ export const KanbanCardComponent: React.FC<KanbanCardProps> = ({ card, onCardCli
           onCardClick?.(card);
         }
       }}
-      role="button"
-      tabIndex={0}
       // eslint-disable-next-line react/jsx-props-no-spreading
       {...attributes}
       // eslint-disable-next-line react/jsx-props-no-spreading
