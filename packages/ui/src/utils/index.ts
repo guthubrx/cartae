@@ -4,3 +4,5 @@
  */
 
 export * from './theme-validator';
+export * from './obsidian-theme-parser';
+export * from './obsidian-theme-mapper';
