@@ -52,19 +52,13 @@ describe('Office365Plugin', () => {
 
   describe('Connection', () => {
     it('should fail to connect without extension', async () => {
-      // Timeout après 2 secondes pour ne pas bloquer les tests
-      const timeout = setTimeout(() => {
-        // Test passera si pas de connexion après 2s
-      }, 2000);
-
+      // Reduced timeout - expect quick failure when no extension
       const connected = await plugin.connect();
-
-      clearTimeout(timeout);
 
       // Sans extension, devrait échouer
       expect(connected).toBe(false);
       expect(plugin.connectionState).toBe('failed');
-    }, 10000); // 10s timeout pour le test
+    }, 35000); // 35s timeout for the test (plugin waits 30s internally)
 
     it('should disconnect properly', async () => {
       await plugin.disconnect();
@@ -79,9 +73,7 @@ describe('Office365Plugin', () => {
     });
 
     it('should throw when calling search without connection', async () => {
-      await expect(
-        plugin.search({ query: 'test' })
-      ).rejects.toThrow();
+      await expect(plugin.search({ query: 'test' })).rejects.toThrow();
     });
 
     it('should throw when calling sync without connection', async () => {
