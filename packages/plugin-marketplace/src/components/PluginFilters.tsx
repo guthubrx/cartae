@@ -4,27 +4,30 @@
 
 import React, { useState } from 'react';
 import type { PluginSearchFilters } from '../types';
+import { AdvancedFilters } from './AdvancedFilters';
 
 export interface PluginFiltersProps {
-  onFilterChange: (filters: PluginSearchFilters) => void;
+  filters: PluginSearchFilters;
+  onFiltersChange: (filters: PluginSearchFilters) => void;
 }
 
-export function PluginFilters({ onFilterChange }: PluginFiltersProps) {
+export function PluginFilters({ filters, onFiltersChange }: PluginFiltersProps) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string>('');
   const [pricing, setPricing] = useState<string>('');
   const [verified, setVerified] = useState(false);
 
   const applyFilters = (updates: Partial<PluginSearchFilters>) => {
-    const filters: PluginSearchFilters = {
+    const newFilters: PluginSearchFilters = {
+      ...filters,
       search: search || undefined,
       category: category || undefined,
-      pricing: pricing as any || undefined,
+      pricing: (pricing as any) || undefined,
       verified: verified || undefined,
-      ...updates
+      ...updates,
     };
 
-    onFilterChange(filters);
+    onFiltersChange(newFilters);
   };
 
   const handleSearchChange = (value: string) => {
@@ -39,7 +42,7 @@ export function PluginFilters({ onFilterChange }: PluginFiltersProps) {
 
   const handlePricingChange = (value: string) => {
     setPricing(value);
-    applyFilters({ pricing: value as any || undefined });
+    applyFilters({ pricing: (value as any) || undefined });
   };
 
   const handleVerifiedChange = (checked: boolean) => {
@@ -52,7 +55,7 @@ export function PluginFilters({ onFilterChange }: PluginFiltersProps) {
     setCategory('');
     setPricing('');
     setVerified(false);
-    onFilterChange({});
+    onFiltersChange({});
   };
 
   return (
@@ -68,7 +71,7 @@ export function PluginFilters({ onFilterChange }: PluginFiltersProps) {
           type="text"
           placeholder="Search plugins..."
           value={search}
-          onChange={(e) => handleSearchChange(e.target.value)}
+          onChange={e => handleSearchChange(e.target.value)}
           className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none
             focus:ring-2 focus:ring-blue-500`}
         />
@@ -84,7 +87,7 @@ export function PluginFilters({ onFilterChange }: PluginFiltersProps) {
           <select
             id="category"
             value={category}
-            onChange={(e) => handleCategoryChange(e.target.value)}
+            onChange={e => handleCategoryChange(e.target.value)}
             className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none
               focus:ring-2 focus:ring-blue-500`}
           >
@@ -107,7 +110,7 @@ export function PluginFilters({ onFilterChange }: PluginFiltersProps) {
           <select
             id="pricing"
             value={pricing}
-            onChange={(e) => handlePricingChange(e.target.value)}
+            onChange={e => handlePricingChange(e.target.value)}
             className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none
               focus:ring-2 focus:ring-blue-500`}
           >
@@ -125,7 +128,7 @@ export function PluginFilters({ onFilterChange }: PluginFiltersProps) {
               id="verified-only"
               type="checkbox"
               checked={verified}
-              onChange={(e) => handleVerifiedChange(e.target.checked)}
+              onChange={e => handleVerifiedChange(e.target.checked)}
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-700">Verified only</span>
@@ -145,6 +148,9 @@ export function PluginFilters({ onFilterChange }: PluginFiltersProps) {
           </button>
         </div>
       )}
+
+      {/* Advanced Filters */}
+      <AdvancedFilters filters={filters} onFiltersChange={onFiltersChange} />
     </div>
   );
 }
