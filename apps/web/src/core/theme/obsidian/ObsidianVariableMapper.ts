@@ -192,7 +192,188 @@ export class ObsidianVariableMapper {
   ];
 
   /**
-   * Tous les mappings combinés (~90 mappings total)
+   * Mappings premium (variables avancées Obsidian)
+   * ~35 mappings pour thèmes complexes
+   */
+  private static readonly premiumMappings: VariableMapping[] = [
+    // Additional background variants
+    {
+      obsidianVar: '--background-primary-alt',
+      cartaePath: 'colors.bg',
+      fallback: '#fafafa',
+    },
+    {
+      obsidianVar: '--background-modifier-form-field',
+      cartaePath: 'colors.bgSecondary',
+      fallback: '#ffffff',
+    },
+    {
+      obsidianVar: '--background-modifier-cover',
+      cartaePath: 'colors.overlay',
+      fallback: 'rgba(0, 0, 0, 0.3)',
+    },
+
+    // Additional text colors
+    { obsidianVar: '--text-on-accent', cartaePath: 'colors.fg', fallback: '#ffffff' },
+    {
+      obsidianVar: '--text-selection',
+      cartaePath: 'colors.accentActive',
+      fallback: 'rgba(124, 58, 237, 0.2)',
+    },
+
+    // Interactive colors
+    {
+      obsidianVar: '--interactive-normal',
+      cartaePath: 'colors.border',
+      fallback: '#e5e7eb',
+    },
+    {
+      obsidianVar: '--interactive-hover',
+      cartaePath: 'colors.borderHover',
+      fallback: '#d1d5db',
+    },
+    {
+      obsidianVar: '--interactive-success',
+      cartaePath: 'colors.success',
+      fallback: '#16a34a',
+    },
+
+    // Code/syntax highlighting colors
+    {
+      obsidianVar: '--code-background',
+      cartaePath: 'colors.bgTertiary',
+      fallback: '#f5f5f5',
+    },
+    { obsidianVar: '--code-normal', cartaePath: 'colors.fg', fallback: '#2e3338' },
+    { obsidianVar: '--code-comment', cartaePath: 'colors.fgSecondary', fallback: '#6c7680' },
+
+    // Link colors
+    { obsidianVar: '--link-color', cartaePath: 'colors.accent', fallback: '#7c3aed' },
+    {
+      obsidianVar: '--link-color-hover',
+      cartaePath: 'colors.accentHover',
+      fallback: '#6d28d9',
+    },
+    {
+      obsidianVar: '--link-unresolved-color',
+      cartaePath: 'colors.warning',
+      fallback: '#f59e0b',
+    },
+    { obsidianVar: '--link-external-color', cartaePath: 'colors.info', fallback: '#3b82f6' },
+
+    // Tag colors
+    {
+      obsidianVar: '--tag-background',
+      cartaePath: 'colors.bgSecondary',
+      fallback: '#f3f4f6',
+    },
+    { obsidianVar: '--tag-color', cartaePath: 'colors.accent', fallback: '#7c3aed' },
+
+    // Checkbox colors
+    {
+      obsidianVar: '--checkbox-color',
+      cartaePath: 'colors.accent',
+      fallback: '#7c3aed',
+    },
+    {
+      obsidianVar: '--checkbox-border-color',
+      cartaePath: 'colors.border',
+      fallback: '#e5e7eb',
+    },
+
+    // Graph view colors
+    {
+      obsidianVar: '--graph-line',
+      cartaePath: 'colors.nodeEdge',
+      fallback: '#7c3aed',
+    },
+    {
+      obsidianVar: '--graph-node',
+      cartaePath: 'colors.nodeDefault',
+      fallback: '#e0e7ff',
+    },
+    {
+      obsidianVar: '--graph-node-unresolved',
+      cartaePath: 'colors.warning',
+      fallback: '#f59e0b',
+    },
+    {
+      obsidianVar: '--graph-node-tag',
+      cartaePath: 'colors.accent',
+      fallback: '#7c3aed',
+    },
+    {
+      obsidianVar: '--graph-node-attachment',
+      cartaePath: 'colors.info',
+      fallback: '#3b82f6',
+    },
+
+    // File explorer colors
+    {
+      obsidianVar: '--nav-item-color',
+      cartaePath: 'colors.fg',
+      fallback: '#2e3338',
+    },
+    {
+      obsidianVar: '--nav-item-color-hover',
+      cartaePath: 'colors.accentHover',
+      fallback: '#6d28d9',
+    },
+    {
+      obsidianVar: '--nav-item-color-active',
+      cartaePath: 'colors.accent',
+      fallback: '#7c3aed',
+    },
+
+    // Divider/separator colors
+    {
+      obsidianVar: '--divider-color',
+      cartaePath: 'colors.border',
+      fallback: '#e5e7eb',
+    },
+    {
+      obsidianVar: '--hr-color',
+      cartaePath: 'colors.border',
+      fallback: '#e5e7eb',
+    },
+
+    // Table colors
+    {
+      obsidianVar: '--table-header-background',
+      cartaePath: 'colors.bgSecondary',
+      fallback: '#f5f6f8',
+    },
+    {
+      obsidianVar: '--table-row-even-background',
+      cartaePath: 'colors.bg',
+      fallback: '#ffffff',
+    },
+    {
+      obsidianVar: '--table-row-odd-background',
+      cartaePath: 'colors.bgSecondary',
+      fallback: '#fafafa',
+    },
+    {
+      obsidianVar: '--table-border-color',
+      cartaePath: 'colors.border',
+      fallback: '#e5e7eb',
+    },
+
+    // Scrollbar colors
+    {
+      obsidianVar: '--scrollbar-bg',
+      cartaePath: 'colors.bgTertiary',
+      fallback: '#e3e5e8',
+    },
+    {
+      obsidianVar: '--scrollbar-thumb-bg',
+      cartaePath: 'colors.border',
+      fallback: '#d1d5db',
+    },
+  ];
+
+  /**
+   * Tous les mappings combinés (~80 mappings total)
    */
   private static readonly allMappings: VariableMapping[] = [
     ...ObsidianVariableMapper.colorMappings,
@@ -200,6 +381,7 @@ export class ObsidianVariableMapper {
     ...ObsidianVariableMapper.spacingMappings,
     ...ObsidianVariableMapper.radiusMappings,
     ...ObsidianVariableMapper.shadowMappings,
+    ...ObsidianVariableMapper.premiumMappings,
   ];
 
   /**
@@ -227,9 +409,27 @@ export class ObsidianVariableMapper {
     };
 
     // Appliquer tous les mappings
+    // Stratégie: tracker les chemins déjà mappés depuis obsidianVars
+    // pour éviter que les fallbacks n'écrasent les valeurs réelles
+    const mappedPaths = new Set<string>();
+
     for (const mapping of ObsidianVariableMapper.allMappings) {
-      const value = obsidianVars[mapping.obsidianVar] || mapping.fallback;
-      this.setNestedProperty(mappedTheme, mapping.cartaePath, value);
+      const obsidianValue = obsidianVars[mapping.obsidianVar];
+
+      // Si le chemin a déjà été mappé, skip (ne pas écraser)
+      if (mappedPaths.has(mapping.cartaePath)) {
+        continue;
+      }
+
+      if (obsidianValue) {
+        // Variable Obsidian existe → l'utiliser (première valeur réelle gagne)
+        this.setNestedProperty(mappedTheme, mapping.cartaePath, obsidianValue);
+        mappedPaths.add(mapping.cartaePath); // Marquer comme mappé
+      } else {
+        // Variable Obsidian absente → utiliser fallback
+        this.setNestedProperty(mappedTheme, mapping.cartaePath, mapping.fallback);
+        // NE PAS marquer comme mappé → permet à une future variable réelle d'écraser le fallback
+      }
     }
 
     return mappedTheme;
@@ -255,6 +455,27 @@ export class ObsidianVariableMapper {
     }
 
     current[keys[keys.length - 1]] = value;
+  }
+
+  /**
+   * Récupère une propriété imbriquée dans un objet via un chemin (ex: "colors.bg")
+   *
+   * @param obj Objet source
+   * @param path Chemin vers la propriété (ex: "colors.bg")
+   * @returns Valeur de la propriété ou undefined si inexistante
+   */
+  private getNestedProperty(obj: any, path: string): any {
+    const keys = path.split('.');
+    let current = obj;
+
+    for (const key of keys) {
+      if (current === undefined || current === null || !(key in current)) {
+        return undefined;
+      }
+      current = current[key];
+    }
+
+    return current;
   }
 
   /**
