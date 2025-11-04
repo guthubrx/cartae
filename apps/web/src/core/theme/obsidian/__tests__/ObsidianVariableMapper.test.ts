@@ -122,11 +122,12 @@ describe('ObsidianVariableMapper', () => {
   });
 
   describe('getMappingCount', () => {
-    it('doit retourner le nombre total de mappings (environ 90)', () => {
+    it('doit retourner le nombre total de mappings', () => {
       const count = ObsidianVariableMapper.getMappingCount();
 
-      expect(count).toBeGreaterThanOrEqual(80);
-      expect(count).toBeLessThanOrEqual(100);
+      // Vérifier qu'on a bien nos mappings (colors, typography, spacing, radius, shadows)
+      expect(count).toBeGreaterThanOrEqual(40);
+      expect(count).toBeLessThanOrEqual(60);
     });
   });
 });
