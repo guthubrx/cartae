@@ -31,7 +31,8 @@ import MapSettings from '../components/MapSettings';
 import { getAllPanels, onPanelRegistryChange, getPanel } from '../utils/panelRegistry';
 
 // Import Obsidian theme loader (chargeur de thème Obsidian)
-import { useObsidianThemeLoader, type ObsidianThemeConfig } from '@cartae/ui';
+// TEMPORARILY DISABLED - @cartae/ui package not available yet
+// import { useObsidianThemeLoader, type ObsidianThemeConfig } from '@cartae/ui';
 
 // Import MenuBar and StatusBar for Session 69 (barre de menu et statut)
 import { MenuBar } from '../components/MenuBar/MenuBar';
@@ -220,10 +221,12 @@ export const DockableLayoutV2: React.FC = () => {
   const [dynamicPanels, setDynamicPanels] = useState<Record<string, React.ComponentType<any>>>({});
 
   // Obsidian theme config state (état de configuration du thème Obsidian)
-  const [obsidianTheme, setObsidianTheme] = useState<ObsidianThemeConfig | null>(null);
+  // TEMPORARILY DISABLED - @cartae/ui package not available yet
+  // const [obsidianTheme, setObsidianTheme] = useState<ObsidianThemeConfig | null>(null);
 
   // Load Obsidian theme (charger le thème Obsidian)
-  useObsidianThemeLoader(obsidianTheme);
+  // TEMPORARILY DISABLED - @cartae/ui package not available yet
+  // useObsidianThemeLoader(obsidianTheme);
 
   /**
    * Listen to panel registry changes (écouter les changements du registre)
