@@ -19,7 +19,7 @@ export function PluginList({
   registryUrl = 'https://bigmind-registry.workers.dev',
   onInstall,
   onUninstall,
-  onViewDetails
+  onViewDetails,
 }: PluginListProps) {
   const [plugins, setPlugins] = useState<PluginListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,7 +107,7 @@ export function PluginList({
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <PluginFilters onFilterChange={handleFilterChange} />
+      <PluginFilters filters={filters} onFiltersChange={handleFilterChange} />
 
       {/* Stats */}
       <div className="flex items-center justify-between">

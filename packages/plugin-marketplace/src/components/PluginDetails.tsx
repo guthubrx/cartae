@@ -8,7 +8,10 @@ import { InstallButton } from './InstallButton';
 import { RatingStats } from './RatingStats';
 import { RatingList } from './RatingList';
 import { RatingForm } from './RatingForm';
+import { PluginRecommendations } from './PluginRecommendations';
 import { RatingService } from '../RatingService';
+import { HistoryService } from '../services/HistoryService';
+import { AnalyticsService } from '../services/AnalyticsService';
 
 export interface PluginDetailsProps {
   plugin: PluginListing;
@@ -16,6 +19,10 @@ export interface PluginDetailsProps {
   onInstall?: (pluginId: string) => Promise<void>;
   onUninstall?: (pluginId: string) => Promise<void>;
   onBack?: () => void;
+  // Session 60B - Recommendations props
+  allPlugins?: PluginListing[];
+  installedPlugins?: string[];
+  onViewDetails?: (pluginId: string) => void;
 }
 
 export function PluginDetails({
@@ -23,7 +30,11 @@ export function PluginDetails({
   installed = false,
   onInstall,
   onUninstall,
-  onBack
+  onBack,
+  // Session 60B - Recommendations props
+  allPlugins = [],
+  installedPlugins = [],
+  onViewDetails,
 }: PluginDetailsProps) {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'changelog'>('overview');
@@ -31,10 +42,16 @@ export function PluginDetails({
 
   const ratingService = new RatingService();
 
-  // Scroll to top on mount
+  // Scroll to top on mount and record view history
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
+
+    // Record plugin view in history
+    HistoryService.addToHistory(plugin.id, plugin.name, plugin.category);
+
+    // Track analytics
+    AnalyticsService.trackView(plugin.id, plugin.name);
+  }, [plugin.id, plugin.name, plugin.category]);
 
   const formatDownloads = (count?: number) => {
     if (!count) return '0';
@@ -49,13 +66,12 @@ export function PluginDetails({
     return `${bytes} B`;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Intl.DateTimeFormat('en-US', {
+  const formatDate = (dateString: string) =>
+    new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     }).format(new Date(dateString));
-  };
 
   const handleSubmitReview = async (data: any) => {
     await ratingService.submitRating(data);
@@ -64,16 +80,12 @@ export function PluginDetails({
 
   const handleScreenshotPrev = () => {
     if (!plugin.screenshots) return;
-    setActiveScreenshot(prev =>
-      prev === 0 ? plugin.screenshots!.length - 1 : prev - 1
-    );
+    setActiveScreenshot(prev => (prev === 0 ? plugin.screenshots!.length - 1 : prev - 1));
   };
 
   const handleScreenshotNext = () => {
     if (!plugin.screenshots) return;
-    setActiveScreenshot(prev =>
-      prev === plugin.screenshots!.length - 1 ? 0 : prev + 1
-    );
+    setActiveScreenshot(prev => (prev === plugin.screenshots!.length - 1 ? 0 : prev + 1));
   };
 
   return (
@@ -329,18 +341,35 @@ export function PluginDetails({
               )}
             </dl>
           </div>
+
+          {/* Session 60B - Plugin Recommendations */}
+          {allPlugins.length > 0 && onInstall && onViewDetails && (
+            <PluginRecommendations
+              targetPlugin={plugin}
+              allPlugins={allPlugins}
+              installedPlugins={installedPlugins}
+              onInstall={onInstall}
+              onViewDetails={onViewDetails}
+              type="similar"
+              title="Similar Plugins"
+              maxResults={4}
+            />
+          )}
         </div>
       )}
 
       {activeTab === 'reviews' && (
         <div className="space-y-6">
           {/* Rating stats */}
-          <RatingStats stats={{
-            totalCount: 0,
-            averageRating: plugin.rating || 0,
-            distribution: [0, 0, 0, 0, 0],
-            lastRatingDate: undefined
-          }} pluginId={plugin.id} />
+          <RatingStats
+            stats={{
+              totalCount: 0,
+              averageRating: plugin.rating || 0,
+              distribution: [0, 0, 0, 0, 0],
+              lastRatingDate: undefined,
+            }}
+            pluginId={plugin.id}
+          />
 
           {/* Write review button */}
           {!showReviewForm && (

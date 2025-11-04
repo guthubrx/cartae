@@ -2,25 +2,55 @@
  * PluginCard - Display a single plugin with details
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { PluginListing } from '../types';
 import { InstallButton } from './InstallButton';
+import { FavoritesService } from '../services/FavoritesService';
+import { AnalyticsService } from '../services/AnalyticsService';
 
 export interface PluginCardProps {
   plugin: PluginListing;
   installed?: boolean;
+  isFavorite?: boolean;
   onInstall?: (pluginId: string) => void;
   onUninstall?: (pluginId: string) => void;
   onViewDetails?: (pluginId: string) => void;
+  onToggleFavorite?: (pluginId: string) => void;
 }
 
 export function PluginCard({
   plugin,
   installed = false,
+  isFavorite,
   onInstall,
   onUninstall,
-  onViewDetails
+  onViewDetails,
+  onToggleFavorite,
 }: PluginCardProps) {
+  const [favorite, setFavorite] = useState(isFavorite ?? FavoritesService.isFavorite(plugin.id));
+
+  useEffect(() => {
+    if (isFavorite !== undefined) {
+      setFavorite(isFavorite);
+    } else {
+      setFavorite(FavoritesService.isFavorite(plugin.id));
+    }
+  }, [plugin.id, isFavorite]);
+
+  const handleToggleFavorite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newFavorite = !favorite;
+    setFavorite(newFavorite);
+
+    if (newFavorite) {
+      FavoritesService.addFavorite(plugin.id);
+      AnalyticsService.trackFavorite(plugin.id, plugin.name);
+    } else {
+      FavoritesService.removeFavorite(plugin.id);
+    }
+
+    onToggleFavorite?.(plugin.id);
+  };
   const formatDownloads = (count?: number) => {
     if (!count) return '0';
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
@@ -37,11 +67,23 @@ export function PluginCard({
   const getPricingBadge = (pricing: string) => {
     switch (pricing) {
       case 'free':
-        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">Free</span>;
+        return (
+          <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+            Free
+          </span>
+        );
       case 'paid':
-        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">Paid</span>;
+        return (
+          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+            Paid
+          </span>
+        );
       case 'freemium':
-        return <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded">Freemium</span>;
+        return (
+          <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded">
+            Freemium
+          </span>
+        );
       default:
         return null;
     }
@@ -70,9 +112,7 @@ export function PluginCard({
         {/* Title and metadata */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-lg font-semibold text-gray-900 truncate">
-              {plugin.name}
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 truncate">{plugin.name}</h3>
             {plugin.verified && (
               <span className="text-blue-500" title="Verified plugin">
                 ✓
@@ -99,9 +139,7 @@ export function PluginCard({
       </div>
 
       {/* Description */}
-      <p className="text-sm text-gray-700 mb-3 line-clamp-2">
-        {plugin.description}
-      </p>
+      <p className="text-sm text-gray-700 mb-3 line-clamp-2">{plugin.description}</p>
 
       {/* Stats */}
       <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
@@ -131,6 +169,20 @@ export function PluginCard({
           onInstall={onInstall}
           onUninstall={onUninstall}
         />
+
+        {/* Favorite button */}
+        <button
+          type="button"
+          onClick={handleToggleFavorite}
+          className={`p-1.5 rounded transition-colors ${
+            favorite
+              ? 'text-yellow-500 hover:text-yellow-600 bg-yellow-50'
+              : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+          }`}
+          title={favorite ? 'Remove from favorites' : 'Add to favorites'}
+        >
+          {favorite ? '⭐' : '☆'}
+        </button>
 
         {onViewDetails && (
           <button
