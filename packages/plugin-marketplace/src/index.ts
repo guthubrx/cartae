@@ -125,3 +125,13 @@ export type {
   OptimizedPluginGridProps,
 } from './components/OptimizedPluginList';
 export type { ImageLoaderProps, IconLoaderProps } from './components/ImageLoader';
+
+// Theme Customization Components (Session 61)
+export { MarketplaceThemePanel } from './components/MarketplaceThemePanel';
+export { MarketplaceLayoutSettings } from './components/MarketplaceLayoutSettings';
+export { AdminThemeTemplates } from './components/AdminThemeTemplates';
+
+// Theme Component Props Types (Session 61)
+export type { MarketplaceThemePanelProps } from './components/MarketplaceThemePanel';
+export type { MarketplaceLayoutSettingsProps } from './components/MarketplaceLayoutSettings';
+export type { AdminThemeTemplatesProps } from './components/AdminThemeTemplates';

@@ -6,3 +6,4 @@
 export * from './tokens';
 export * from './tailwind-preset';
 export * from './theme-types';
+export * from './marketplace-theme-types';

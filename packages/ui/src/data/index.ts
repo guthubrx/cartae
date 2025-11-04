@@ -4,3 +4,4 @@
  */
 
 export * from './theme-marketplace';
+export * from './marketplace-themes';
