@@ -13,6 +13,8 @@ import MindMapCanvas from '../components/MindMapCanvas';
 import NodeProperties from '../components/NodeProperties';
 import MapSettings from '../components/MapSettings';
 import StatusBar from '../components/StatusBar';
+import ViewSwitcher from '../components/ViewSwitcher';
+import ViewContainer from '../components/ViewContainer';
 import { getAllPanels, onPanelRegistryChange } from '../utils/panelRegistry';
 import './DockableLayout.css';
 
@@ -295,7 +297,18 @@ function DockableLayout() {
         case 'canvas':
           return (
             <div className="panel-content canvas-panel">
-              <MindMapCanvas />
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {/* ViewSwitcher : boutons MindMap / Kanban / Table */}
+                <div
+                  style={{ padding: '8px', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}
+                >
+                  <ViewSwitcher />
+                </div>
+                {/* ViewContainer : affiche la vue active */}
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <ViewContainer />
+                </div>
+              </div>
             </div>
           );
 

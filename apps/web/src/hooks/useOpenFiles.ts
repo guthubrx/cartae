@@ -305,7 +305,7 @@ export const useOpenFiles = create<OpenFilesState>((set, get) => ({
       nodes: { ...active.content.nodes, [nodeId]: updatedNode },
     };
 
-    // Persister overlay minimal (titre, notes, style)
+    // Persister overlay minimal (titre, notes, style, metadata)
     try {
       const key = `bigmind_overlay_${active.name}`;
       const overlay = loadOverlayFromStorage(key);
@@ -314,6 +314,7 @@ export const useOpenFiles = create<OpenFilesState>((set, get) => ({
         title: updatedNode.title,
         notes: updatedNode.notes,
         style: updatedNode.style,
+        metadata: updatedNode.metadata,
       };
       saveOverlayToStorage(key, overlay);
     } catch (e) {

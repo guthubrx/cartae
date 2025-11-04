@@ -23,7 +23,15 @@ export function applyOverlayToContent(content: AdaptedContent, overlay: OverlayD
   // Apply node patches
   Object.entries(overlay.nodes).forEach(([nodeId, patch]: [string, any]) => {
     if (content.nodes?.[nodeId]) {
-      content.nodes[nodeId] = { ...content.nodes[nodeId], ...patch };
+      // Deep merge metadata to preserve existing properties
+      const mergedNode = { ...content.nodes[nodeId], ...patch };
+      if (patch.metadata && content.nodes[nodeId].metadata) {
+        mergedNode.metadata = {
+          ...content.nodes[nodeId].metadata,
+          ...patch.metadata,
+        };
+      }
+      content.nodes[nodeId] = mergedNode;
     }
   });
 

@@ -42,9 +42,12 @@ export function mindNodeToCartaeItem(node: MindNode, options: ConversionOptions 
     content: node.notes || '',
     tags,
     metadata: {
-      author: 'user',
-      createdDate: now,
-      modifiedDate: now,
+      // Préserver les métadonnées du node (comme kanbanStatus)
+      ...(node.metadata || {}),
+      // Ajouter les métadonnées par défaut si manquantes
+      author: (node.metadata?.author as string) || 'user',
+      createdDate: (node.metadata?.createdDate as Date) || now,
+      modifiedDate: (node.metadata?.modifiedDate as Date) || now,
       custom: {
         collapsed: node.collapsed || false,
         hasChildren: node.children.length > 0,
