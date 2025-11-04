@@ -16,6 +16,7 @@
  */
 
 import React, { useRef, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DockviewReact, DockviewApi, DockviewReadyEvent, IDockviewPanelProps } from 'dockview';
 import 'dockview/dist/styles/dockview.css';
 import './DockableLayoutV2.css';
@@ -23,7 +24,7 @@ import './DockableLayoutV2.css';
 // Import core components (composants principaux)
 import FileTabs from '../components/FileTabs';
 import NodeExplorer from '../components/NodeExplorer';
-import MindMapCanvas from '../components/MindMapCanvas';
+import CanvasPanel from '../components/CanvasPanel';
 import NodeProperties from '../components/NodeProperties';
 import MapSettings from '../components/MapSettings';
 
@@ -105,7 +106,7 @@ const wrapPanelContent = (Component: React.ComponentType<any>, className?: strin
 const CORE_PANELS: Record<string, React.ComponentType<any>> = {
   files: wrapPanelContent(FileTabs),
   explorer: wrapPanelContent(NodeExplorer),
-  canvas: wrapPanelContent(MindMapCanvas, 'canvas-panel'),
+  canvas: wrapPanelContent(CanvasPanel, 'canvas-panel'),
   properties: wrapPanelContent(NodeProperties),
   mapsettings: wrapPanelContent(MapSettings),
 };
@@ -206,11 +207,21 @@ const PlaceholderPanel: React.FC<{ componentId: string }> = ({ componentId }) =>
  * - ✅ Real-time plugin addition/removal (onPanelRegistryChange)
  */
 export const DockableLayoutV2: React.FC = () => {
+  const navigate = useNavigate();
+
   // API ref for programmatic layout control (ref API pour contrôle programmatique)
   const dockviewApiRef = useRef<DockviewApi | null>(null);
 
   // Dynamic panels state (état des panneaux dynamiques)
   const [dynamicPanels, setDynamicPanels] = useState<Record<string, React.ComponentType<any>>>({});
+
+  // Theme state (état du thème)
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof document !== 'undefined') {
+      return document.documentElement.getAttribute('data-theme') === 'dark';
+    }
+    return false;
+  });
 
   /**
    * Listen to panel registry changes (écouter les changements du registre)
@@ -373,8 +384,98 @@ export const DockableLayoutV2: React.FC = () => {
     };
   }, []);
 
+  /**
+   * Toggle dark/light mode (basculer mode sombre/clair)
+   */
+  const toggleTheme = () => {
+    const newIsDarkMode = !isDarkMode;
+    setIsDarkMode(newIsDarkMode);
+    if (newIsDarkMode) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  };
+
+  /**
+   * Navigate to settings page (aller à la page des paramètres)
+   */
+  const handleSettingsClick = () => {
+    navigate('/settings');
+  };
+
   return (
-    <div style={{ height: '100vh', width: '100vw' }}>
+    <div style={{ height: '100vh', width: '100vw', position: 'relative' }}>
+      {/* Top bar with settings and theme toggle (barre supérieure avec paramètres et toggle thème) */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          zIndex: 1400,
+          display: 'flex',
+          gap: '8px',
+          padding: '8px 12px',
+          background: 'var(--bg-secondary)',
+          borderBottom: '1px solid var(--border-color)',
+          borderLeft: '1px solid var(--border-color)',
+        }}
+      >
+        {/* Theme toggle button (bouton toggle thème) */}
+        <button
+          onClick={toggleTheme}
+          title={isDarkMode ? 'Light mode' : 'Dark mode'}
+          style={{
+            padding: '6px 12px',
+            background: 'var(--bg-tertiary)',
+            color: 'var(--fg)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: 500,
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'var(--state-hover)';
+            e.currentTarget.style.borderColor = 'var(--accent-color)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'var(--bg-tertiary)';
+            e.currentTarget.style.borderColor = 'var(--border-color)';
+          }}
+        >
+          {isDarkMode ? '☀️ Light' : '🌙 Dark'}
+        </button>
+
+        {/* Settings button (bouton paramètres) */}
+        <button
+          onClick={handleSettingsClick}
+          title="Settings"
+          style={{
+            padding: '6px 12px',
+            background: 'var(--bg-tertiary)',
+            color: 'var(--fg)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: 500,
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'var(--state-hover)';
+            e.currentTarget.style.borderColor = 'var(--accent-color)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'var(--bg-tertiary)';
+            e.currentTarget.style.borderColor = 'var(--border-color)';
+          }}
+        >
+          ⚙️ Settings
+        </button>
+      </div>
+
       <DockviewReact
         components={components}
         tabComponents={tabComponents}

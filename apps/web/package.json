@@ -32,6 +32,7 @@
     "@xyflow/react": "^12.8.6",
     "bytemd": "^1.22.0",
     "dexie": "^4.0.1",
+    "dockview": "4.10.0",
     "flexlayout-react": "^0.8.17",
     "highlight.js": "^11.11.1",
     "html-to-image": "^1.11.11",
