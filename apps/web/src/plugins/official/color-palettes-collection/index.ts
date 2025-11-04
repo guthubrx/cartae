@@ -30,6 +30,40 @@ const COLOR_PALETTES_COLLECTION: ColorPalette[] = [
       '#14b8a6', // Teal
       '#06b6d4', // Cyan
     ],
+    // FR: Variantes pour light/dark (comme Obsidian)
+    // EN: Variants for light/dark (like Obsidian)
+    variants: {
+      light: [
+        '#3b82f6', // Blue - plus vif pour light
+        '#8b5cf6', // Purple
+        '#ec4899', // Pink
+        '#ef4444', // Red
+        '#f59e0b', // Orange
+        '#eab308', // Yellow
+        '#84cc16', // Lime
+        '#10b981', // Green
+        '#14b8a6', // Teal
+        '#06b6d4', // Cyan
+      ],
+      dark: [
+        '#60a5fa', // Blue - plus clair pour dark
+        '#a78bfa', // Purple - plus clair
+        '#f472b6', // Pink - plus clair
+        '#f87171', // Red - plus clair
+        '#fb923c', // Orange - plus clair
+        '#fbbf24', // Yellow - plus clair
+        '#a3e635', // Lime - plus clair
+        '#34d399', // Green - plus clair
+        '#2dd4bf', // Teal - plus clair
+        '#22d3ee', // Cyan - plus clair
+      ],
+    },
+    // FR: Fond de carte adaptatif selon le thème
+    // EN: Adaptive canvas background based on theme
+    canvasBackground: {
+      light: '#ffffff', // Fond blanc pour light
+      dark: '#1e293b', // Fond sombre pour dark (cohérent avec le thème)
+    },
   },
 
   // 7 Palettes essentielles

@@ -7,8 +7,9 @@ import { create } from 'zustand';
 import { XMindParser } from '../parsers/XMindParser';
 import { v4 as uuidv4 } from 'uuid';
 import { getNodeColor } from '../utils/nodeColors';
-import { getPalette } from '../themes/colorPalettes';
+import { getPalette, getPaletteColorsForTheme } from '../themes/colorPalettes';
 import { loadOverlayFromStorage, saveOverlayToStorage } from '../utils/overlayValidation';
+import { useAppSettings } from './useAppSettings';
 import {
   emitNodeCreated,
   emitNodeUpdated,
@@ -548,6 +549,11 @@ export const useOpenFiles = create<OpenFilesState>((set, get) => ({
     // FR: Obtenir la palette et créer un thème temporaire
     // EN: Get palette and create temporary theme
     const palette = getPalette(paletteId);
+    // FR: Obtenir le thème actif pour utiliser les bonnes variantes
+    // EN: Get active theme to use the right variants
+    const themeId = useAppSettings.getState().themeId as 'light' | 'dark';
+    const paletteColors = getPaletteColorsForTheme(palette, themeId);
+    
     const tempTheme = {
       id: 'temp',
       name: 'Temporary Theme',
@@ -567,7 +573,7 @@ export const useOpenFiles = create<OpenFilesState>((set, get) => ({
         error: '#ef4444',
         info: '#3b82f6',
       },
-      palette: palette.colors,
+      palette: paletteColors,
     };
 
     // FR: Recalculer les couleurs de tous les nœuds avec la nouvelle palette

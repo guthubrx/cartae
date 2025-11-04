@@ -3,11 +3,62 @@
  * EN: Color palette definitions for nodes and tags (CORE - minimal)
  */
 
+/**
+ * FR: Variantes de couleurs pour un thème (light/dark)
+ * EN: Color variants for a theme (light/dark)
+ */
+export interface ColorPaletteVariants {
+  /**
+   * FR: Couleurs pour le thème clair
+   * EN: Colors for light theme
+   */
+  light?: string[];
+  /**
+   * FR: Couleurs pour le thème sombre
+   * EN: Colors for dark theme
+   */
+  dark?: string[];
+}
+
+/**
+ * FR: Variantes de fond de carte pour un thème (light/dark)
+ * EN: Canvas background variants for a theme (light/dark)
+ */
+export interface CanvasBackgroundVariants {
+  /**
+   * FR: Fond de carte pour le thème clair
+   * EN: Canvas background for light theme
+   */
+  light?: string;
+  /**
+   * FR: Fond de carte pour le thème sombre
+   * EN: Canvas background for dark theme
+   */
+  dark?: string;
+}
+
 export interface ColorPalette {
   id: string;
   name: string;
   description: string;
+  /**
+   * FR: Couleurs par défaut (rétrocompatibilité)
+   * EN: Default colors (backward compatibility)
+   * Si colors.light ou colors.dark ne sont pas définis, on utilise colors
+   */
   colors: string[]; // 10 couleurs
+  /**
+   * FR: Variantes de couleurs pour light/dark (optionnel)
+   * EN: Color variants for light/dark (optional)
+   * Si défini, remplace colors selon le thème actif
+   */
+  variants?: ColorPaletteVariants;
+  /**
+   * FR: Fond de carte adaptatif selon le thème (optionnel)
+   * EN: Adaptive canvas background based on theme (optional)
+   * Si défini, le fond de carte change selon le thème actif
+   */
+  canvasBackground?: CanvasBackgroundVariants;
 }
 
 /**
@@ -96,6 +147,49 @@ export function getPalette(paletteId: string): ColorPalette {
 }
 
 /**
+ * FR: Obtenir les couleurs d'une palette selon le thème actif
+ * EN: Get palette colors based on active theme
+ * @param palette - La palette à utiliser
+ * @param themeId - ID du thème actif ('light' ou 'dark')
+ * @returns Tableau de couleurs adapté au thème
+ */
+export function getPaletteColorsForTheme(
+  palette: ColorPalette,
+  themeId: 'light' | 'dark'
+): string[] {
+  // Si la palette a des variantes, utiliser celle correspondant au thème
+  if (palette.variants) {
+    const variantColors = themeId === 'dark' ? palette.variants.dark : palette.variants.light;
+    if (variantColors && variantColors.length > 0) {
+      return variantColors;
+    }
+  }
+
+  // Sinon, utiliser les couleurs par défaut
+  return palette.colors;
+}
+
+/**
+ * FR: Obtenir le fond de carte d'une palette selon le thème actif
+ * EN: Get canvas background from palette based on active theme
+ * @param palette - La palette à utiliser
+ * @param themeId - ID du thème actif ('light' ou 'dark')
+ * @returns Couleur de fond de carte ou undefined si non défini
+ */
+export function getCanvasBackgroundForTheme(
+  palette: ColorPalette,
+  themeId: 'light' | 'dark'
+): string | undefined {
+  if (!palette.canvasBackground) {
+    return undefined;
+  }
+
+  return themeId === 'dark'
+    ? palette.canvasBackground.dark
+    : palette.canvasBackground.light;
+}
+
+/**
  * FR: Obtenir la liste de toutes les palettes
  * EN: Get list of all palettes
  */
@@ -117,14 +211,23 @@ export function hasPalette(paletteId: string): boolean {
  *
  * @param paletteId - ID de la palette
  * @param usedColors - Couleurs déjà utilisées
+ * @param themeId - ID du thème actif ('light' ou 'dark') pour utiliser la bonne variante
  * @returns La couleur la moins utilisée dans la palette
  */
-export function getNextColorFromPalette(paletteId: string, usedColors: string[]): string {
+export function getNextColorFromPalette(
+  paletteId: string,
+  usedColors: string[],
+  themeId?: 'light' | 'dark'
+): string {
   const palette = getPalette(paletteId);
+  
+  // FR: Utiliser les couleurs adaptées au thème si disponible
+  // EN: Use theme-adapted colors if available
+  const colors = themeId ? getPaletteColorsForTheme(palette, themeId) : palette.colors;
 
   // Compter l'utilisation de chaque couleur
   const colorUsage = new Map<string, number>();
-  palette.colors.forEach(color => colorUsage.set(color, 0));
+  colors.forEach(color => colorUsage.set(color, 0));
 
   usedColors.forEach(color => {
     if (colorUsage.has(color)) {
@@ -134,9 +237,9 @@ export function getNextColorFromPalette(paletteId: string, usedColors: string[])
 
   // Trouver la couleur la moins utilisée
   let minUsage = Infinity;
-  let selectedColor = palette.colors[0];
+  let selectedColor = colors[0];
 
-  palette.colors.forEach(color => {
+  colors.forEach(color => {
     const usage = colorUsage.get(color) || 0;
     if (usage < minUsage) {
       minUsage = usage;

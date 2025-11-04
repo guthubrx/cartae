@@ -32,6 +32,7 @@ import { useDragAndDrop } from '../hooks/useDragAndDrop';
 import { useTagStore } from '../hooks/useTagStore';
 import { useAppSettings } from '../hooks/useAppSettings';
 import { nodeStyleRegistry } from '../utils/nodeStyleRegistry';
+import { getPalette, getCanvasBackgroundForTheme } from '../themes/colorPalettes';
 
 // FR: Types de nœuds personnalisés
 // EN: Custom node types
@@ -77,6 +78,31 @@ function MindMapCanvas() {
   const themeId = useAppSettings(s => s.themeId);
   const getCurrentTheme = useAppSettings(s => s.getCurrentTheme);
   const showMinimap = useAppSettings(s => s.showMinimap);
+  const defaultNodePaletteId = useAppSettings(s => s.defaultNodePaletteId);
+
+  // FR: Calculer le fond de carte selon la palette et le thème
+  // EN: Calculate canvas background based on palette and theme
+  const canvasBackgroundColor = useMemo(() => {
+    if (!activeFile) {
+      // Si aucun fichier, utiliser le fond par défaut du thème
+      return getCurrentTheme().colors.backgroundSecondary;
+    }
+
+    // Obtenir la palette active (celle de la carte ou la palette par défaut)
+    const activePaletteId = activeFile.content?.nodePaletteId || defaultNodePaletteId;
+    const palette = getPalette(activePaletteId);
+    
+    // Obtenir le fond de carte adaptatif si disponible
+    const canvasBg = getCanvasBackgroundForTheme(palette, themeId as 'light' | 'dark');
+    
+    // Si la palette a un fond de carte défini, l'utiliser
+    if (canvasBg) {
+      return canvasBg;
+    }
+
+    // Sinon, utiliser le fond par défaut du thème
+    return getCurrentTheme().colors.backgroundSecondary;
+  }, [activeFile, defaultNodePaletteId, themeId, getCurrentTheme]);
 
   // FR: Récupérer les paramètres par défaut des nœuds
   // EN: Get default node settings
@@ -1081,7 +1107,12 @@ function MindMapCanvas() {
     <div
       className="mindmap-canvas"
       ref={reactFlowWrapper}
-      style={{ width: '100%', height: '100%', minHeight: '400px' }}
+      style={{
+        width: '100%',
+        height: '100%',
+        minHeight: '400px',
+        backgroundColor: canvasBackgroundColor,
+      }}
     >
       <ReactFlow
         nodes={nodes}
