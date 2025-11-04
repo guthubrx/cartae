@@ -1,0 +1,29 @@
+{
+  "name": "@cartae/office365-outlook",
+  "version": "1.0.0",
+  "description": "Office 365 Outlook Data Plugin - Emails via OWA REST API",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "lint": "eslint src --ext ts"
+  },
+  "dependencies": {
+    "@cartae/core": "workspace:*",
+    "@cartae/office365-connector-core": "workspace:*",
+    "@cartae/office365-plugin": "workspace:*",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "vitest": "^1.0.4",
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^9.0.7"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
+
