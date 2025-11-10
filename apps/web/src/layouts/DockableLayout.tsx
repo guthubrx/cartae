@@ -6,13 +6,13 @@
 import React, { useRef, useCallback, useState, useEffect } from 'react';
 import { Layout, Model, TabNode, IJsonModel, Actions, DockLocation } from 'flexlayout-react';
 import 'flexlayout-react/style/light.css';
-import MenuBar from '../components/MenuBar';
+import { MenuBar } from '../components/MenuBar/MenuBar';
 import FileTabs from '../components/FileTabs';
 import NodeExplorer from '../components/NodeExplorer';
 import MindMapCanvas from '../components/MindMapCanvas';
 import NodeProperties from '../components/NodeProperties';
 import MapSettings from '../components/MapSettings';
-import StatusBar from '../components/StatusBar';
+import { StatusBar } from '../components/StatusBar/StatusBar';
 import ViewSwitcher from '../components/ViewSwitcher';
 import ViewContainer from '../components/ViewContainer';
 import { getAllPanels, onPanelRegistryChange } from '../utils/panelRegistry';

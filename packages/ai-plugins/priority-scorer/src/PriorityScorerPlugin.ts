@@ -145,17 +145,17 @@ export class PriorityScorerPlugin implements AIPlugin {
     const priorityScore = await this.scorePriority(item);
 
     // Enrichir metadata
+    // Note: Normaliser score 0-10 → 0-1 pour AIInsights.priorityScore
     const enrichedItem: CartaeItem = {
       ...item,
       metadata: {
         ...item.metadata,
         aiInsights: {
           ...item.metadata.aiInsights,
-          priorityScore: priorityScore.score,
-          priorityLevel: priorityScore.level,
-          priorityReasoning: priorityScore.reasoning,
-          priorityFactors: priorityScore.factors,
-          suggestedActions: priorityScore.suggestedActions,
+          priorityScore: priorityScore.score / 10, // Normaliser 0-10 → 0-1
+          // priorityLevel retiré de AIInsights (utiliser priorityScore à la place)
+          // priorityReasoning stocké dans summary si besoin
+          summary: priorityScore.reasoning,
         },
       },
     };
@@ -243,11 +243,8 @@ Retourne le JSON avec score, level, reasoning, suggestedActions, et factors.`;
       lines.push(`**Tags:** ${item.tags.join(', ')}`);
     }
 
-    if (item.author) {
-      lines.push(`**Auteur:** ${item.author.name || 'Inconnu'}`);
-      if (item.author.email) {
-        lines.push(`**Email auteur:** ${item.author.email}`);
-      }
+    if (item.metadata.author) {
+      lines.push(`**Auteur:** ${item.metadata.author}`);
     }
 
     if (item.createdAt) {
@@ -298,15 +295,20 @@ Retourne le JSON avec score, level, reasoning, suggestedActions, et factors.`;
     }
 
     // Règle 3: Domaines VIP
-    if (item.author?.email && this.config.vipDomains) {
-      const domain = item.author.email.split('@')[1];
-      if (this.config.vipDomains.includes(domain)) {
-        score += 2;
-        factors.push({
-          factor: 'Auteur VIP',
-          impact: 2,
-          description: `Email VIP (@${domain})`,
-        });
+    // Note: item.metadata.author est un string (email ou nom)
+    if (item.metadata.author && this.config.vipDomains) {
+      const author = item.metadata.author;
+      // Vérifier si c'est un email
+      if (author.includes('@')) {
+        const domain = author.split('@')[1];
+        if (this.config.vipDomains.includes(domain)) {
+          score += 2;
+          factors.push({
+            factor: 'Auteur VIP',
+            impact: 2,
+            description: `Email VIP (@${domain})`,
+          });
+        }
       }
     }
 
@@ -349,6 +351,19 @@ Retourne le JSON avec score, level, reasoning, suggestedActions, et factors.`;
   }
 
   /**
+   * Convertit priorityScore (0-1) en niveau ('critical' | 'high' | 'medium' | 'low')
+   */
+  private scoreToPriorityLevel(score: number | undefined): 'critical' | 'high' | 'medium' | 'low' | 'unknown' {
+    if (score === undefined) return 'unknown';
+    // Convertir score 0-1 → niveau
+    // 0.9-1.0 = critical, 0.6-0.89 = high, 0.3-0.59 = medium, 0-0.29 = low
+    if (score >= 0.9) return 'critical';
+    if (score >= 0.6) return 'high';
+    if (score >= 0.3) return 'medium';
+    return 'low';
+  }
+
+  /**
    * Génère des insights sur les priorités
    */
   async generateInsights(items: CartaeItem[]): Promise<Insight[]> {
@@ -364,18 +379,15 @@ Retourne le JSON avec score, level, reasoning, suggestedActions, et factors.`;
     };
 
     for (const item of items) {
-      const level = item.metadata.aiInsights?.priorityLevel as 'critical' | 'high' | 'medium' | 'low' | undefined;
-      if (level && level in priorityCounts) {
-        priorityCounts[level]++;
-      } else {
-        priorityCounts.unknown++;
-      }
+      const score = item.metadata.aiInsights?.priorityScore;
+      const level = this.scoreToPriorityLevel(score);
+      priorityCounts[level]++;
     }
 
     // Insight 1: Items critiques
     if (priorityCounts.critical > 0) {
       const criticalItems = items.filter(
-        (i) => i.metadata.aiInsights?.priorityLevel === 'critical',
+        (i) => this.scoreToPriorityLevel(i.metadata.aiInsights?.priorityScore) === 'critical',
       );
 
       insights.push({

@@ -1,10 +1,19 @@
 /**
  * Theme Manager
  * Manages theme state and CSS variable generation
+ * Enhanced with adaptive color palette support (Session 69)
  */
 
 import type { Theme } from './types';
 import { lightTheme, darkTheme } from './defaultThemes';
+import type { ColorPalette } from '../../themes/colorPalettes';
+import { getPalette } from '../../themes/colorPalettes';
+import {
+  generatePaletteCSSVariables,
+  injectPaletteCSS,
+  removePaletteCSS,
+  type PaletteCSSMapping,
+} from '../../themes/paletteThemeMapper';
 
 export class ThemeManager {
   private static instance: ThemeManager;
@@ -14,6 +23,12 @@ export class ThemeManager {
   private listeners = new Set<(theme: Theme) => void>();
 
   private systemThemeMediaQuery: MediaQueryList;
+
+  // Session 69: Adaptive palette support
+  private currentPaletteId: string = 'vibrant'; // Default palette
+  private currentPalette: ColorPalette | null = null;
+  private currentPaletteMapping: PaletteCSSMapping | null = null;
+  private paletteListeners = new Set<(paletteId: string, palette: ColorPalette) => void>();
 
   private constructor() {
     // Start with light theme
@@ -25,6 +40,9 @@ export class ThemeManager {
 
     // Load saved theme or use system preference
     this.loadSavedTheme();
+
+    // Session 69: Load saved palette or use default
+    this.loadSavedPalette();
   }
 
   static getInstance(): ThemeManager {
@@ -67,6 +85,9 @@ export class ThemeManager {
     this.applyTheme(theme);
     this.saveTheme(themeId);
     this.notifyListeners();
+
+    // Session 69: Update palette CSS variables for new theme mode
+    this.updatePaletteAfterThemeChange();
   }
 
   /**
@@ -211,6 +232,143 @@ export class ThemeManager {
    */
   setCSSVariable(name: string, value: string): void {
     document.documentElement.style.setProperty(`--${name}`, value);
+  }
+
+  // ============================================================
+  // Session 69: Adaptive Palette Methods
+  // ============================================================
+
+  /**
+   * Get current palette ID
+   */
+  getPaletteId(): string {
+    return this.currentPaletteId;
+  }
+
+  /**
+   * Get current palette
+   */
+  getPalette(): ColorPalette | null {
+    return this.currentPalette;
+  }
+
+  /**
+   * Get current palette mapping
+   */
+  getPaletteMapping(): PaletteCSSMapping | null {
+    return this.currentPaletteMapping;
+  }
+
+  /**
+   * Set color palette
+   */
+  setPalette(paletteId: string): void {
+    if (paletteId === this.currentPaletteId) {
+      return; // No change
+    }
+
+    // Load palette
+    const palette = getPalette(paletteId);
+
+    this.currentPaletteId = paletteId;
+    this.currentPalette = palette;
+
+    // Apply palette CSS variables
+    this.applyPaletteCSSVariables();
+
+    // Save to localStorage
+    this.savePalette(paletteId);
+
+    // Notify listeners
+    this.notifyPaletteListeners();
+  }
+
+  /**
+   * Apply palette CSS variables to DOM
+   * @private
+   */
+  private applyPaletteCSSVariables(): void {
+    if (!this.currentPalette) {
+      return;
+    }
+
+    // Determine current theme mode (light/dark)
+    const themeMode = this.currentTheme.mode === 'dark' ? 'dark' : 'light';
+
+    // Generate CSS mapping
+    this.currentPaletteMapping = generatePaletteCSSVariables(
+      this.currentPalette,
+      themeMode
+    );
+
+    // Inject into DOM
+    injectPaletteCSS(this.currentPaletteMapping, 'cartae-palette-variables');
+  }
+
+  /**
+   * Load saved palette from localStorage
+   * @private
+   */
+  private loadSavedPalette(): void {
+    const savedPaletteId = localStorage.getItem('cartae-palette');
+
+    if (savedPaletteId) {
+      this.setPalette(savedPaletteId);
+    } else {
+      // Use default palette
+      this.setPalette(this.currentPaletteId);
+    }
+  }
+
+  /**
+   * Save palette preference to localStorage
+   * @private
+   */
+  private savePalette(paletteId: string): void {
+    localStorage.setItem('cartae-palette', paletteId);
+  }
+
+  /**
+   * Subscribe to palette changes
+   */
+  subscribeToPalette(listener: (paletteId: string, palette: ColorPalette) => void): () => void {
+    this.paletteListeners.add(listener);
+
+    // Return unsubscribe function
+    return () => {
+      this.paletteListeners.delete(listener);
+    };
+  }
+
+  /**
+   * Notify palette listeners
+   * @private
+   */
+  private notifyPaletteListeners(): void {
+    if (!this.currentPalette) return;
+
+    const paletteId = this.currentPaletteId;
+    const palette = this.currentPalette;
+
+    this.paletteListeners.forEach(listener => {
+      try {
+        listener(paletteId, palette);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Error in palette listener:', error);
+      }
+    });
+  }
+
+  /**
+   * Update palette CSS variables when theme changes
+   * Should be called after theme change to regenerate palette CSS with new theme mode
+   * @private
+   */
+  private updatePaletteAfterThemeChange(): void {
+    if (this.currentPalette) {
+      this.applyPaletteCSSVariables();
+    }
   }
 }
 

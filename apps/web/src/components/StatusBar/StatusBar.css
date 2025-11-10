@@ -1,0 +1,127 @@
+/**
+ * FR: Styles pour la barre de statut
+ * EN: Styles for status bar
+ * Session 69: StatusBar restoration
+ */
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 24px;
+  background-color: var(--color-background-secondary, #f5f5f5);
+  border-top: 1px solid var(--color-border, #e0e0e0);
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--color-text-normal, #333);
+  user-select: none;
+  z-index: 1000;
+}
+
+/* Dark mode support */
+[data-theme='dark'] .status-bar {
+  background-color: var(--color-background-secondary, #252525);
+  border-top-color: var(--color-border, #3a3a3a);
+  color: var(--color-text-normal, #e0e0e0);
+}
+
+/* Sections */
+.status-bar-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-bar-left {
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.status-bar-center {
+  flex: 1;
+  justify-content: center;
+}
+
+.status-bar-right {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+/* Items */
+.status-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+  cursor: default;
+}
+
+.status-bar-item:hover {
+  background-color: var(--color-background-modifier-hover, rgba(0, 0, 0, 0.05));
+}
+
+[data-theme='dark'] .status-bar-item:hover {
+  background-color: var(--color-background-modifier-hover, rgba(255, 255, 255, 0.05));
+}
+
+/* Icon */
+.status-bar-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Text */
+.status-bar-text {
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.status-bar-text strong {
+  font-weight: 600;
+}
+
+/* Muted text */
+.status-bar-muted {
+  color: var(--color-text-muted, #666);
+}
+
+[data-theme='dark'] .status-bar-muted {
+  color: var(--color-text-muted, #999);
+}
+
+/* Separator */
+.status-bar-separator {
+  width: 1px;
+  height: 14px;
+  background-color: var(--color-border, #e0e0e0);
+}
+
+[data-theme='dark'] .status-bar-separator {
+  background-color: var(--color-border, #3a3a3a);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .status-bar-center {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .status-bar {
+    font-size: 11px;
+    padding: 0 8px;
+  }
+
+  .status-bar-item {
+    padding: 2px 4px;
+    gap: 2px;
+  }
+
+  .status-bar-text {
+    font-size: 10px;
+  }
+}

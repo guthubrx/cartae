@@ -23,7 +23,8 @@ import './DockableLayoutV2.css';
 // Import core components (composants principaux)
 import FileTabs from '../components/FileTabs';
 import NodeExplorer from '../components/NodeExplorer';
-import MindMapCanvas from '../components/MindMapCanvas';
+import ViewContainer from '../components/ViewContainer';
+import ViewSwitcher from '../components/ViewSwitcher';
 import NodeProperties from '../components/NodeProperties';
 import MapSettings from '../components/MapSettings';
 
@@ -31,7 +32,12 @@ import MapSettings from '../components/MapSettings';
 import { getAllPanels, onPanelRegistryChange, getPanel } from '../utils/panelRegistry';
 
 // Import Obsidian theme loader (chargeur de thème Obsidian)
-import { useObsidianThemeLoader, type ObsidianThemeConfig } from '@cartae/ui';
+// TEMPORARILY DISABLED - @cartae/ui package not available yet
+// import { useObsidianThemeLoader, type ObsidianThemeConfig } from '@cartae/ui';
+
+// Import MenuBar and StatusBar for Session 69 (barre de menu et statut)
+import { MenuBar } from '../components/MenuBar/MenuBar';
+import { StatusBar } from '../components/StatusBar/StatusBar';
 
 /**
  * Configuration initiale du layout (initial layout configuration)
@@ -69,7 +75,12 @@ const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
       weight: 30,
       panels: [
         { id: 'properties-panel', component: 'properties', title: 'Properties' },
-        { id: 'mapsettings-panel', component: 'mapsettings', title: 'Map Settings', position: 'below' },
+        {
+          id: 'mapsettings-panel',
+          component: 'mapsettings',
+          title: 'Map Settings',
+          position: 'below',
+        },
       ],
     },
   ],
@@ -82,6 +93,21 @@ const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
 interface PanelComponentProps extends IDockviewPanelProps {
   params?: Record<string, unknown>;
 }
+
+/**
+ * Canvas wrapper component with ViewSwitcher and ViewContainer
+ * Inclut les boutons de switch entre MindMap/Kanban/Table
+ */
+const CanvasWithSwitcher = () => (
+  <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ padding: '8px', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>
+      <ViewSwitcher />
+    </div>
+    <div style={{ flex: 1, overflow: 'hidden' }}>
+      <ViewContainer />
+    </div>
+  </div>
+);
 
 /**
  * Composant factory wrapper (enveloppe factory de composant)
@@ -103,7 +129,7 @@ const wrapPanelContent = (Component: React.ComponentType<any>, className?: strin
 const CORE_PANELS: Record<string, React.ComponentType<any>> = {
   files: wrapPanelContent(FileTabs),
   explorer: wrapPanelContent(NodeExplorer),
-  canvas: wrapPanelContent(MindMapCanvas, 'canvas-panel'),
+  canvas: wrapPanelContent(CanvasWithSwitcher, 'canvas-panel'),
   properties: wrapPanelContent(NodeProperties),
   mapsettings: wrapPanelContent(MapSettings),
 };
@@ -211,10 +237,12 @@ export const DockableLayoutV2: React.FC = () => {
   const [dynamicPanels, setDynamicPanels] = useState<Record<string, React.ComponentType<any>>>({});
 
   // Obsidian theme config state (état de configuration du thème Obsidian)
-  const [obsidianTheme, setObsidianTheme] = useState<ObsidianThemeConfig | null>(null);
+  // TEMPORARILY DISABLED - @cartae/ui package not available yet
+  // const [obsidianTheme, setObsidianTheme] = useState<ObsidianThemeConfig | null>(null);
 
   // Load Obsidian theme (charger le thème Obsidian)
-  useObsidianThemeLoader(obsidianTheme);
+  // TEMPORARILY DISABLED - @cartae/ui package not available yet
+  // useObsidianThemeLoader(obsidianTheme);
 
   /**
    * Listen to panel registry changes (écouter les changements du registre)
@@ -265,6 +293,12 @@ export const DockableLayoutV2: React.FC = () => {
     placeholder: PlaceholderPanel, // Fallback pour composants inconnus
   };
 
+  // Log available components on mount
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('[DockableLayoutV2] Available components:', Object.keys(components));
+  }, [components]);
+
   /**
    * Tab components map (carte des composants d'onglets)
    * Support pour custom rendering avec badges
@@ -275,39 +309,79 @@ export const DockableLayoutV2: React.FC = () => {
 
   /**
    * Initialize default layout (initialiser le layout par défaut)
-   * Crée la structure 3 colonnes depuis la configuration
+   * Crée 3 colonnes: Left (Files+Explorer), Center (Canvas), Right (Properties+MapSettings)
+   * All groups expand to full height by default
    */
   const initializeDefaultLayout = (api: DockviewApi): void => {
-    const groups: Array<any> = [];
+    // Create groups with explicit sizing
+    // First group: root (no direction/reference needed)
+    const leftGroup = api.addGroup();
 
-    DEFAULT_LAYOUT_CONFIG.columns.forEach((column) => {
-      // Créer le premier panneau du groupe pour définir la colonne
-      const firstPanel = column.panels[0];
-      const group = api.addGroup();
-      groups.push(group);
-
-      api.addPanel({
-        id: firstPanel.id,
-        component: firstPanel.component,
-        title: firstPanel.title,
-        position: { referenceGroup: group },
-        params: { component: firstPanel.component }, // Pour le badge lookup
-      });
-
-      // Ajouter les panneaux supplémentaires de la colonne
-      column.panels.slice(1).forEach(panel => {
-        api.addPanel({
-          id: panel.id,
-          component: panel.component,
-          title: panel.title,
-          position: {
-            referenceGroup: group,
-            direction: panel.position === 'below' ? 'below' : undefined,
-          },
-          params: { component: panel.component }, // Pour le badge lookup
-        });
-      });
+    // Add panels to left group
+    api.addPanel({
+      id: 'files-panel',
+      component: 'files',
+      title: 'Files',
+      position: { referenceGroup: leftGroup },
+      params: { component: 'files' },
     });
+
+    api.addPanel({
+      id: 'explorer-panel',
+      component: 'explorer',
+      title: 'Explorer',
+      position: { referenceGroup: leftGroup },
+      params: { component: 'explorer' },
+    });
+
+    // Center group: 55% width (positioned right of left group)
+    const centerGroup = api.addGroup({
+      referenceGroup: leftGroup,
+      direction: 'right',
+      ratio: 55 / 15, // Ratio pour avoir 55% vs 15%
+    });
+
+    api.addPanel({
+      id: 'canvas-panel',
+      component: 'canvas',
+      title: 'Canvas',
+      position: { referenceGroup: centerGroup },
+      params: { component: 'canvas' },
+    });
+
+    // Right column: Split vertical (30% width)
+    // Top group (Properties) - 50% height
+    const rightTopGroup = api.addGroup({
+      referenceGroup: centerGroup,
+      direction: 'right',
+      ratio: 30 / 55, // 30% vs 55% (horizontal)
+    });
+
+    api.addPanel({
+      id: 'properties-panel',
+      component: 'properties',
+      title: 'Properties',
+      position: { referenceGroup: rightTopGroup },
+      params: { component: 'properties' },
+    });
+
+    // Bottom group (MapSettings) - 50% height (below top group)
+    const rightBottomGroup = api.addGroup({
+      referenceGroup: rightTopGroup,
+      direction: 'below',
+      ratio: 1, // 50/50 split vertical
+    });
+
+    api.addPanel({
+      id: 'mapsettings-panel',
+      component: 'mapsettings',
+      title: 'Map Settings',
+      position: { referenceGroup: rightBottomGroup },
+      params: { component: 'mapsettings' },
+    });
+
+    // eslint-disable-next-line no-console
+    console.log('[DockableLayoutV2] Initialized layout with 3 columns');
   };
 
   /**
@@ -322,8 +396,12 @@ export const DockableLayoutV2: React.FC = () => {
   const handleReady = (event: DockviewReadyEvent) => {
     dockviewApiRef.current = event.api;
 
+    // FORCE clear old v1 layout to prevent cached layout issues
+    localStorage.removeItem('cartae_dockview_layout_v1');
+
     // Try to load persisted layout (tentative de chargement layout persisté)
-    const savedLayout = localStorage.getItem('cartae_dockview_layout_v1');
+    // Version incremented to v2 to force new layout structure (Properties+MapSettings split)
+    const savedLayout = localStorage.getItem('cartae_dockview_layout_v2');
 
     if (savedLayout) {
       try {
@@ -337,6 +415,7 @@ export const DockableLayoutV2: React.FC = () => {
         console.warn('[DockableLayoutV2] Failed to restore layout, using default:', error);
         // localStorage peut être corrompu, le nettoyer (clean corrupted localStorage)
         localStorage.removeItem('cartae_dockview_layout_v1');
+        localStorage.removeItem('cartae_dockview_layout_v2');
       }
     }
 
@@ -359,7 +438,7 @@ export const DockableLayoutV2: React.FC = () => {
       if (dockviewApiRef.current) {
         try {
           const layoutState = dockviewApiRef.current.toJSON();
-          localStorage.setItem('cartae_dockview_layout_v1', JSON.stringify(layoutState));
+          localStorage.setItem('cartae_dockview_layout_v2', JSON.stringify(layoutState));
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error('[DockableLayoutV2] Failed to save layout:', error);
@@ -378,13 +457,22 @@ export const DockableLayoutV2: React.FC = () => {
   }, []);
 
   return (
-    <div style={{ height: '100vh', width: '100vw' }}>
-      <DockviewReact
-        components={components}
-        tabComponents={tabComponents}
-        onReady={handleReady}
-        className="dockview-theme-custom"
-      />
+    <div className="dockable-layout">
+      {/* MenuBar en haut (Session 69) */}
+      <MenuBar className="dockable-layout-menubar" />
+
+      {/* Contenu principal avec Dockview panels */}
+      <div className="dockable-layout-content">
+        <DockviewReact
+          components={components}
+          tabComponents={tabComponents}
+          onReady={handleReady}
+          className="dockview-theme-custom"
+        />
+      </div>
+
+      {/* StatusBar en bas (Session 69) */}
+      <StatusBar className="dockable-layout-statusbar" />
     </div>
   );
 };

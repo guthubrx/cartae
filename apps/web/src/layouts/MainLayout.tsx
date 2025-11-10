@@ -4,12 +4,12 @@
  */
 
 import React from 'react';
-import MenuBar from '../components/MenuBar';
+import { MenuBar } from '../components/MenuBar/MenuBar';
 import FileTabs from '../components/FileTabs';
 import NodeExplorer from '../components/NodeExplorer';
 import NodeProperties from '../components/NodeProperties';
 import TagLayersPanelRCT from '../components/TagLayersPanelRCT';
-import StatusBar from '../components/StatusBar';
+import { StatusBar } from '../components/StatusBar/StatusBar';
 import CollapseButton from '../components/CollapseButton';
 import ViewSwitcher from '../components/ViewSwitcher';
 import ViewContainer from '../components/ViewContainer';
