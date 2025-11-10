@@ -33,6 +33,18 @@
 
 /* Ensure Dockview takes full height of its container */
 .dockable-layout-content > div {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* Force Dockview to fill container */
+.dockview-theme-custom {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* Ensure all Dockview internals expand */
+.dockview-theme-custom [role='presentation'] {
   height: 100%;
   width: 100%;
 }
