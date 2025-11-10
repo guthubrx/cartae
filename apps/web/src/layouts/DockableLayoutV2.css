@@ -5,8 +5,8 @@
  */
 
 .dockable-layout {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   height: 100vh;
   width: 100vw;
   overflow: hidden;
@@ -20,20 +20,25 @@
 
 /* MenuBar - Fixed en haut */
 .dockable-layout-menubar {
-  flex-shrink: 0;
   width: 100%;
 }
 
 /* Contenu principal - Prend tout l'espace restant */
 .dockable-layout-content {
-  flex: 1;
   overflow: hidden;
   position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Ensure Dockview takes full height of its container */
+.dockable-layout-content > div {
+  height: 100%;
+  width: 100%;
 }
 
 /* StatusBar - Fixed en bas */
 .dockable-layout-statusbar {
-  flex-shrink: 0;
   width: 100%;
 }
 

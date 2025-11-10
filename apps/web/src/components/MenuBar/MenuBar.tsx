@@ -5,7 +5,7 @@
  * Session 69: MenuBar restoration pour DockableLayoutV2
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './MenuBar.css';
 
 export interface MenuBarProps {
@@ -14,6 +14,7 @@ export interface MenuBarProps {
 
 export const MenuBar: React.FC<MenuBarProps> = ({ className = '' }) => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const menuBarRef = useRef<HTMLDivElement>(null);
 
   const handleMenuClick = (menu: string) => {
     setActiveMenu(activeMenu === menu ? null : menu);
@@ -25,14 +26,37 @@ export const MenuBar: React.FC<MenuBarProps> = ({ className = '' }) => {
     // TODO: Implémenter les actions
   };
 
+  // Fermer le menu quand on clique en dehors
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+
+      // Ne rien faire si le click est sur un bouton de menu (handleMenuClick gère déjà)
+      if (target.closest('.menu-button')) {
+        return;
+      }
+
+      // Fermer si click en dehors de la MenuBar
+      if (menuBarRef.current && !menuBarRef.current.contains(target)) {
+        setActiveMenu(null);
+      }
+    };
+
+    if (activeMenu) {
+      // Utiliser 'click' au lieu de 'mousedown' pour éviter conflits de timing
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [activeMenu]);
+
   return (
     <div className={`menu-bar ${className}`}>
       {/* Menu Fichier */}
       <div className="menu-item">
-        <button
-          className="menu-button"
-          onClick={() => handleMenuClick('file')}
-        >
+        <button className="menu-button" onClick={() => handleMenuClick('file')}>
           Fichier
         </button>
         {activeMenu === 'file' && (
@@ -54,22 +78,15 @@ export const MenuBar: React.FC<MenuBarProps> = ({ className = '' }) => {
               <span className="menu-shortcut">Ctrl+Shift+S</span>
             </button>
             <div className="menu-separator" />
-            <button onClick={() => handleMenuItemClick('export')}>
-              Exporter...
-            </button>
-            <button onClick={() => handleMenuItemClick('import')}>
-              Importer...
-            </button>
+            <button onClick={() => handleMenuItemClick('export')}>Exporter...</button>
+            <button onClick={() => handleMenuItemClick('import')}>Importer...</button>
           </div>
         )}
       </div>
 
       {/* Menu Édition */}
       <div className="menu-item">
-        <button
-          className="menu-button"
-          onClick={() => handleMenuClick('edit')}
-        >
+        <button className="menu-button" onClick={() => handleMenuClick('edit')}>
           Édition
         </button>
         {activeMenu === 'edit' && (
@@ -101,10 +118,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({ className = '' }) => {
 
       {/* Menu Affichage */}
       <div className="menu-item">
-        <button
-          className="menu-button"
-          onClick={() => handleMenuClick('view')}
-        >
+        <button className="menu-button" onClick={() => handleMenuClick('view')}>
           Affichage
         </button>
         {activeMenu === 'view' && (
@@ -132,24 +146,15 @@ export const MenuBar: React.FC<MenuBarProps> = ({ className = '' }) => {
 
       {/* Menu Aide */}
       <div className="menu-item">
-        <button
-          className="menu-button"
-          onClick={() => handleMenuClick('help')}
-        >
+        <button className="menu-button" onClick={() => handleMenuClick('help')}>
           Aide
         </button>
         {activeMenu === 'help' && (
           <div className="menu-dropdown">
-            <button onClick={() => handleMenuItemClick('docs')}>
-              Documentation
-            </button>
-            <button onClick={() => handleMenuItemClick('shortcuts')}>
-              Raccourcis clavier
-            </button>
+            <button onClick={() => handleMenuItemClick('docs')}>Documentation</button>
+            <button onClick={() => handleMenuItemClick('shortcuts')}>Raccourcis clavier</button>
             <div className="menu-separator" />
-            <button onClick={() => handleMenuItemClick('about')}>
-              À propos de Cartae
-            </button>
+            <button onClick={() => handleMenuItemClick('about')}>À propos de Cartae</button>
           </div>
         )}
       </div>

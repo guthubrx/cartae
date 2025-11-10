@@ -277,6 +277,12 @@ export const DockableLayoutV2: React.FC = () => {
     placeholder: PlaceholderPanel, // Fallback pour composants inconnus
   };
 
+  // Log available components on mount
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('[DockableLayoutV2] Available components:', Object.keys(components));
+  }, [components]);
+
   /**
    * Tab components map (carte des composants d'onglets)
    * Support pour custom rendering avec badges
@@ -292,34 +298,74 @@ export const DockableLayoutV2: React.FC = () => {
   const initializeDefaultLayout = (api: DockviewApi): void => {
     const groups: Array<any> = [];
 
-    DEFAULT_LAYOUT_CONFIG.columns.forEach(column => {
-      // Créer le premier panneau du groupe pour définir la colonne
-      const firstPanel = column.panels[0];
-      const group = api.addGroup();
+    DEFAULT_LAYOUT_CONFIG.columns.forEach((column, columnIndex) => {
+      // Créer le groupe pour cette colonne
+      let group;
+
+      if (columnIndex === 0) {
+        // Premier groupe (colonne gauche) - pas de position nécessaire
+        group = api.addGroup();
+      } else {
+        // Groupes suivants - positionnés à droite du groupe précédent
+        group = api.addGroup({
+          referenceGroup: groups[columnIndex - 1],
+          direction: 'right',
+          size: column.weight, // Largeur relative (15, 55, 30)
+        });
+      }
+
       groups.push(group);
 
-      api.addPanel({
-        id: firstPanel.id,
-        component: firstPanel.component,
-        title: firstPanel.title,
-        position: { referenceGroup: group },
-        params: { component: firstPanel.component }, // Pour le badge lookup
-      });
+      // Ajouter les panneaux à ce groupe
+      column.panels.forEach((panel, panelIndex) => {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[DockableLayoutV2] Adding panel: ${panel.id} (${panel.component}) to group ${columnIndex}`
+        );
 
-      // Ajouter les panneaux supplémentaires de la colonne
-      column.panels.slice(1).forEach(panel => {
-        api.addPanel({
-          id: panel.id,
-          component: panel.component,
-          title: panel.title,
-          position: {
-            referenceGroup: group,
-            direction: panel.position === 'below' ? 'below' : undefined,
-          },
-          params: { component: panel.component }, // Pour le badge lookup
-        });
+        if (panelIndex === 0) {
+          // Premier panneau du groupe
+          const addedPanel = api.addPanel({
+            id: panel.id,
+            component: panel.component,
+            title: panel.title,
+            position: { referenceGroup: group },
+            params: { component: panel.component }, // Pour le badge lookup
+          });
+          // eslint-disable-next-line no-console
+          console.log(
+            `[DockableLayoutV2] Panel ${panel.id} added:`,
+            addedPanel ? 'SUCCESS' : 'FAILED'
+          );
+        } else {
+          // Panneaux suivants - positionnés selon la config
+          const addedPanel = api.addPanel({
+            id: panel.id,
+            component: panel.component,
+            title: panel.title,
+            position: {
+              referenceGroup: group,
+              direction: panel.position === 'below' ? 'below' : undefined,
+            },
+            params: { component: panel.component }, // Pour le badge lookup
+          });
+          // eslint-disable-next-line no-console
+          console.log(
+            `[DockableLayoutV2] Panel ${panel.id} added:`,
+            addedPanel ? 'SUCCESS' : 'FAILED'
+          );
+        }
       });
     });
+
+    // eslint-disable-next-line no-console
+    console.log(
+      '[DockableLayoutV2] Created',
+      groups.length,
+      'groups with',
+      DEFAULT_LAYOUT_CONFIG.columns.flatMap(c => c.panels).length,
+      'panels'
+    );
   };
 
   /**
