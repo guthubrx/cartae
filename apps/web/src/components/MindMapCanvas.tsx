@@ -1093,7 +1093,7 @@ function MindMapCanvas() {
 
   if (!activeFile) {
     return (
-      <div className="mindmap-canvas" style={{ width: '100%', height: '100%', minHeight: '400px' }}>
+      <div className="mindmap-canvas" style={{ width: '100%', height: '100%' }}>
         <div className="no-file-message">
           <h3>Aucun fichier ouvert</h3>
           <p>Ouvrez un fichier .mm ou .xmind pour voir la carte mentale</p>
@@ -1110,7 +1110,6 @@ function MindMapCanvas() {
       style={{
         width: '100%',
         height: '100%',
-        minHeight: '400px',
         backgroundColor: canvasBackgroundColor,
       }}
     >

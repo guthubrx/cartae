@@ -48,6 +48,8 @@
   overflow: auto;
   background: var(--bg);
   padding: 4px;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-content.canvas-panel {
@@ -86,6 +88,9 @@
 .flexlayout__tabset {
   background: var(--bg-secondary);
   border: 0.5px solid var(--border-color, #e2e8f0);
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .flexlayout__tabset_header {
@@ -94,6 +99,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-start; /* FR: Alignement à gauche / EN: Left alignment */
+  flex: 0 0 auto !important; /* Ne prend que la hauteur nécessaire */
 }
 
 .flexlayout__tabset_header_sizer {
@@ -112,6 +118,10 @@
 
 .flexlayout__tabset_content {
   background: var(--bg);
+  flex: 1 1 auto !important; /* Prend tout l'espace restant */
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
 }
 
 .flexlayout__splitter {

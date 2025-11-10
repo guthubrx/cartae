@@ -121,19 +121,19 @@ export class SentimentAnalyzerPlugin implements AIPlugin {
     const sentiment = await this.analyzeSentiment(item);
 
     // Enrichir metadata
+    // Note: AIInsights utilise sentiment (number -1 à +1), pas sentiment (string enum)
     const enrichedItem: CartaeItem = {
       ...item,
       metadata: {
         ...item.metadata,
         aiInsights: {
           ...item.metadata.aiInsights,
-          sentiment: sentiment.sentiment,
-          sentimentScore: sentiment.sentimentScore,
-          emotionalTones: sentiment.emotionalTones,
-          toxicity: sentiment.toxicity,
-          urgency: sentiment.urgency,
-          sentimentConfidence: sentiment.confidence,
-          sentimentReasoning: sentiment.reasoning,
+          sentiment: sentiment.sentimentScore, // Utiliser score numérique
+          // toxicity et urgency retirés de AIInsights (pas de propriétés dédiées)
+          // sentimentConfidence → confidence
+          confidence: sentiment.confidence,
+          // sentimentReasoning → summary
+          summary: sentiment.reasoning,
         },
       },
     };
@@ -298,6 +298,19 @@ Retourne le JSON avec sentiment, sentimentScore, emotionalTones, toxicity, urgen
   }
 
   /**
+   * Convertit sentiment score (number -1 à +1) en catégorie
+   */
+  private scoreToSentimentCategory(score: number | undefined): 'positive' | 'neutral' | 'negative' | 'urgent' | 'unknown' {
+    if (score === undefined) return 'unknown';
+    // score < -0.5 = negative, -0.5 à 0.5 = neutral, > 0.5 = positive
+    // urgent détecté si score très négatif < -0.8
+    if (score < -0.8) return 'urgent';
+    if (score < -0.3) return 'negative';
+    if (score > 0.3) return 'positive';
+    return 'neutral';
+  }
+
+  /**
    * Génère des insights sur le sentiment global
    */
   async generateInsights(items: CartaeItem[]): Promise<Insight[]> {
@@ -312,23 +325,10 @@ Retourne le JSON avec sentiment, sentimentScore, emotionalTones, toxicity, urgen
       unknown: 0,
     };
 
-    let totalToxicity = 0;
-    let toxicItems = 0;
-
     for (const item of items) {
-      const sentiment = item.metadata.aiInsights?.sentiment as 'positive' | 'neutral' | 'negative' | 'urgent' | undefined;
-      const toxicity = item.metadata.aiInsights?.toxicity ?? 0;
-
-      if (sentiment && sentiment in sentimentCounts) {
-        sentimentCounts[sentiment]++;
-      } else {
-        sentimentCounts.unknown++;
-      }
-
-      if (toxicity > 0.5) {
-        toxicItems++;
-        totalToxicity += toxicity;
-      }
+      const score = item.metadata.aiInsights?.sentiment;
+      const category = this.scoreToSentimentCategory(score);
+      sentimentCounts[category]++;
     }
 
     // Insight 1: Moral négatif (beaucoup de messages négatifs)
@@ -338,7 +338,7 @@ Retourne le JSON avec sentiment, sentimentScore, emotionalTones, toxicity, urgen
     if (negativeRatio > 0.4) {
       // >40% négatifs
       const negativeItems = items.filter(
-        (i) => i.metadata.aiInsights?.sentiment === 'negative',
+        (i) => this.scoreToSentimentCategory(i.metadata.aiInsights?.sentiment) === 'negative',
       );
 
       insights.push({
@@ -353,24 +353,28 @@ Retourne le JSON avec sentiment, sentimentScore, emotionalTones, toxicity, urgen
     }
 
     // Insight 2: Toxicité détectée
-    if (toxicItems > 0) {
-      const toxicItemsList = items.filter((i) => (i.metadata.aiInsights?.toxicity ?? 0) > 0.5);
+    // Note: toxicity retiré de AIInsights, on utilise sentiment très négatif comme proxy
+    const veryNegativeItems = items.filter((i) => {
+      const score = i.metadata.aiInsights?.sentiment;
+      return score !== undefined && score < -0.7; // Très négatif
+    });
 
+    if (veryNegativeItems.length > 0) {
       insights.push({
         type: 'anomaly',
-        title: `${toxicItems} message(s) toxiques détecté(s)`,
-        description: `Langage agressif ou inapproprié détecté. Toxicité moyenne: ${(totalToxicity / toxicItems).toFixed(2)}`,
-        relatedItems: toxicItemsList.map((i) => i.id),
+        title: `${veryNegativeItems.length} message(s) très négatifs détecté(s)`,
+        description: `Langage potentiellement problématique détecté (sentiment < -0.7)`,
+        relatedItems: veryNegativeItems.map((i) => i.id),
         priority: 9,
         confidence: 0.85,
-        data: { toxicItems, avgToxicity: totalToxicity / toxicItems },
+        data: { veryNegativeCount: veryNegativeItems.length },
       });
     }
 
     // Insight 3: Beaucoup d'urgence
     if (sentimentCounts.urgent > totalAnalyzed * 0.3) {
       // >30% urgents
-      const urgentItems = items.filter((i) => i.metadata.aiInsights?.sentiment === 'urgent');
+      const urgentItems = items.filter((i) => this.scoreToSentimentCategory(i.metadata.aiInsights?.sentiment) === 'urgent');
 
       insights.push({
         type: 'suggestion',

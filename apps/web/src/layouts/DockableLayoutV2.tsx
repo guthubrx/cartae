@@ -23,7 +23,8 @@ import './DockableLayoutV2.css';
 // Import core components (composants principaux)
 import FileTabs from '../components/FileTabs';
 import NodeExplorer from '../components/NodeExplorer';
-import MindMapCanvas from '../components/MindMapCanvas';
+import ViewContainer from '../components/ViewContainer';
+import ViewSwitcher from '../components/ViewSwitcher';
 import NodeProperties from '../components/NodeProperties';
 import MapSettings from '../components/MapSettings';
 
@@ -94,6 +95,21 @@ interface PanelComponentProps extends IDockviewPanelProps {
 }
 
 /**
+ * Canvas wrapper component with ViewSwitcher and ViewContainer
+ * Inclut les boutons de switch entre MindMap/Kanban/Table
+ */
+const CanvasWithSwitcher = () => (
+  <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ padding: '8px', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>
+      <ViewSwitcher />
+    </div>
+    <div style={{ flex: 1, overflow: 'hidden' }}>
+      <ViewContainer />
+    </div>
+  </div>
+);
+
+/**
  * Composant factory wrapper (enveloppe factory de composant)
  * Encapsule chaque composant dans un div.panel-content (comme DockableLayout.tsx)
  */
@@ -113,7 +129,7 @@ const wrapPanelContent = (Component: React.ComponentType<any>, className?: strin
 const CORE_PANELS: Record<string, React.ComponentType<any>> = {
   files: wrapPanelContent(FileTabs),
   explorer: wrapPanelContent(NodeExplorer),
-  canvas: wrapPanelContent(MindMapCanvas, 'canvas-panel'),
+  canvas: wrapPanelContent(CanvasWithSwitcher, 'canvas-panel'),
   properties: wrapPanelContent(NodeProperties),
   mapsettings: wrapPanelContent(MapSettings),
 };
@@ -293,79 +309,79 @@ export const DockableLayoutV2: React.FC = () => {
 
   /**
    * Initialize default layout (initialiser le layout par défaut)
-   * Crée la structure 3 colonnes depuis la configuration
+   * Crée 3 colonnes: Left (Files+Explorer), Center (Canvas), Right (Properties+MapSettings)
+   * All groups expand to full height by default
    */
   const initializeDefaultLayout = (api: DockviewApi): void => {
-    const groups: Array<any> = [];
+    // Create groups with explicit sizing
+    // First group: root (no direction/reference needed)
+    const leftGroup = api.addGroup();
 
-    DEFAULT_LAYOUT_CONFIG.columns.forEach((column, columnIndex) => {
-      // Créer le groupe pour cette colonne
-      let group;
+    // Add panels to left group
+    api.addPanel({
+      id: 'files-panel',
+      component: 'files',
+      title: 'Files',
+      position: { referenceGroup: leftGroup },
+      params: { component: 'files' },
+    });
 
-      if (columnIndex === 0) {
-        // Premier groupe (colonne gauche) - pas de position nécessaire
-        group = api.addGroup();
-      } else {
-        // Groupes suivants - positionnés à droite du groupe précédent
-        group = api.addGroup({
-          referenceGroup: groups[columnIndex - 1],
-          direction: 'right',
-          size: column.weight, // Largeur relative (15, 55, 30)
-        });
-      }
+    api.addPanel({
+      id: 'explorer-panel',
+      component: 'explorer',
+      title: 'Explorer',
+      position: { referenceGroup: leftGroup },
+      params: { component: 'explorer' },
+    });
 
-      groups.push(group);
+    // Center group: 55% width (positioned right of left group)
+    const centerGroup = api.addGroup({
+      referenceGroup: leftGroup,
+      direction: 'right',
+      ratio: 55 / 15, // Ratio pour avoir 55% vs 15%
+    });
 
-      // Ajouter les panneaux à ce groupe
-      column.panels.forEach((panel, panelIndex) => {
-        // eslint-disable-next-line no-console
-        console.log(
-          `[DockableLayoutV2] Adding panel: ${panel.id} (${panel.component}) to group ${columnIndex}`
-        );
+    api.addPanel({
+      id: 'canvas-panel',
+      component: 'canvas',
+      title: 'Canvas',
+      position: { referenceGroup: centerGroup },
+      params: { component: 'canvas' },
+    });
 
-        if (panelIndex === 0) {
-          // Premier panneau du groupe
-          const addedPanel = api.addPanel({
-            id: panel.id,
-            component: panel.component,
-            title: panel.title,
-            position: { referenceGroup: group },
-            params: { component: panel.component }, // Pour le badge lookup
-          });
-          // eslint-disable-next-line no-console
-          console.log(
-            `[DockableLayoutV2] Panel ${panel.id} added:`,
-            addedPanel ? 'SUCCESS' : 'FAILED'
-          );
-        } else {
-          // Panneaux suivants - positionnés selon la config
-          const addedPanel = api.addPanel({
-            id: panel.id,
-            component: panel.component,
-            title: panel.title,
-            position: {
-              referenceGroup: group,
-              direction: panel.position === 'below' ? 'below' : undefined,
-            },
-            params: { component: panel.component }, // Pour le badge lookup
-          });
-          // eslint-disable-next-line no-console
-          console.log(
-            `[DockableLayoutV2] Panel ${panel.id} added:`,
-            addedPanel ? 'SUCCESS' : 'FAILED'
-          );
-        }
-      });
+    // Right column: Split vertical (30% width)
+    // Top group (Properties) - 50% height
+    const rightTopGroup = api.addGroup({
+      referenceGroup: centerGroup,
+      direction: 'right',
+      ratio: 30 / 55, // 30% vs 55% (horizontal)
+    });
+
+    api.addPanel({
+      id: 'properties-panel',
+      component: 'properties',
+      title: 'Properties',
+      position: { referenceGroup: rightTopGroup },
+      params: { component: 'properties' },
+    });
+
+    // Bottom group (MapSettings) - 50% height (below top group)
+    const rightBottomGroup = api.addGroup({
+      referenceGroup: rightTopGroup,
+      direction: 'below',
+      ratio: 1, // 50/50 split vertical
+    });
+
+    api.addPanel({
+      id: 'mapsettings-panel',
+      component: 'mapsettings',
+      title: 'Map Settings',
+      position: { referenceGroup: rightBottomGroup },
+      params: { component: 'mapsettings' },
     });
 
     // eslint-disable-next-line no-console
-    console.log(
-      '[DockableLayoutV2] Created',
-      groups.length,
-      'groups with',
-      DEFAULT_LAYOUT_CONFIG.columns.flatMap(c => c.panels).length,
-      'panels'
-    );
+    console.log('[DockableLayoutV2] Initialized layout with 3 columns');
   };
 
   /**
@@ -380,8 +396,12 @@ export const DockableLayoutV2: React.FC = () => {
   const handleReady = (event: DockviewReadyEvent) => {
     dockviewApiRef.current = event.api;
 
+    // FORCE clear old v1 layout to prevent cached layout issues
+    localStorage.removeItem('cartae_dockview_layout_v1');
+
     // Try to load persisted layout (tentative de chargement layout persisté)
-    const savedLayout = localStorage.getItem('cartae_dockview_layout_v1');
+    // Version incremented to v2 to force new layout structure (Properties+MapSettings split)
+    const savedLayout = localStorage.getItem('cartae_dockview_layout_v2');
 
     if (savedLayout) {
       try {
@@ -395,6 +415,7 @@ export const DockableLayoutV2: React.FC = () => {
         console.warn('[DockableLayoutV2] Failed to restore layout, using default:', error);
         // localStorage peut être corrompu, le nettoyer (clean corrupted localStorage)
         localStorage.removeItem('cartae_dockview_layout_v1');
+        localStorage.removeItem('cartae_dockview_layout_v2');
       }
     }
 
@@ -417,7 +438,7 @@ export const DockableLayoutV2: React.FC = () => {
       if (dockviewApiRef.current) {
         try {
           const layoutState = dockviewApiRef.current.toJSON();
-          localStorage.setItem('cartae_dockview_layout_v1', JSON.stringify(layoutState));
+          localStorage.setItem('cartae_dockview_layout_v2', JSON.stringify(layoutState));
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error('[DockableLayoutV2] Failed to save layout:', error);

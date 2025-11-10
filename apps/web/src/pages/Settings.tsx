@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import MenuBar from '../components/MenuBar';
-import StatusBar from '../components/StatusBar';
+import { MenuBar } from '../components/MenuBar/MenuBar';
+import { StatusBar } from '../components/StatusBar/StatusBar';
 import '../layouts/MainLayout.css';
 import './Settings.css';
 import { useShortcuts, ShortcutAction } from '../hooks/useShortcuts';
