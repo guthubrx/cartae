@@ -47,6 +47,19 @@ warning() {
 check_prerequisites() {
     info "Vérification des prérequis..."
 
+    # Vérifier structure projet
+    info "Validation structure projet..."
+    if [ ! -f "pnpm-workspace.yaml" ]; then
+        error "Fichier pnpm-workspace.yaml introuvable. Êtes-vous dans le dossier racine du projet ?"
+    fi
+    if [ ! -f "turbo.json" ]; then
+        error "Fichier turbo.json introuvable. Structure monorepo incomplète."
+    fi
+    if [ ! -d "infra" ]; then
+        error "Dossier infra/ introuvable. Structure projet incorrecte."
+    fi
+    success "Structure projet validée ✅"
+
     # Node.js
     if ! command -v node &> /dev/null; then
         error "Node.js n'est pas installé. Téléchargez-le depuis https://nodejs.org/"
@@ -119,7 +132,7 @@ setup_full() {
 
     # PostgreSQL setup
     info "Configuration PostgreSQL + pgvector..."
-    cd infrastructure/database
+    cd infra/database
 
     if [ ! -f .env ]; then
         cp .env.example .env
