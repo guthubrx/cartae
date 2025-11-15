@@ -1,0 +1,492 @@
+# High Availability Docker Compose
+# Session 81f - Load Balancing + API Scaling
+# Cartae Infrastructure
+
+version: '3.9'
+
+services:
+  # ============================================================
+  # Traefik Load Balancer
+  # ============================================================
+  traefik-lb:
+    image: traefik:v2.10
+    container_name: cartae-traefik-lb
+    restart: unless-stopped
+
+    ports:
+      - "80:80"       # HTTP
+      - "443:443"     # HTTPS
+      - "8080:8080"   # Dashboard
+      - "8082:8082"   # Metrics
+
+    volumes:
+      # Docker socket (read-only)
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+      # Traefik configuration
+      - ../traefik/traefik-ha.yml:/etc/traefik/traefik.yml:ro
+      - ../traefik/dynamic:/etc/traefik/dynamic:ro
+
+      # Certificates
+      - traefik-certs:/certs
+
+      # Logs
+      - traefik-logs:/var/log/traefik
+
+    networks:
+      - dmz-network
+      - monitoring-network
+
+    labels:
+      # Disable Traefik for itself
+      - "traefik.enable=false"
+
+    environment:
+      - TZ=Europe/Paris
+
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================================
+  # Database API - Instance 1
+  # ============================================================
+  database-api-1:
+    image: cartae-database-api:latest
+    container_name: cartae-api-1
+    restart: unless-stopped
+
+    environment:
+      # Instance identification
+      NODE_ENV: production
+      INSTANCE_ID: api-1
+      PORT: 3001
+
+      # Database
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-cartae}
+      POSTGRES_USER: ${POSTGRES_USER:-cartae_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_POOL_MIN: 2
+      POSTGRES_POOL_MAX: 10
+
+      # Redis
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: 0
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+
+      # Monitoring
+      PROMETHEUS_ENABLED: "true"
+      PROMETHEUS_PORT: 9090
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: json
+
+      # Performance
+      NODE_OPTIONS: "--max-old-space-size=896"
+
+      # Timezone
+      TZ: Europe/Paris
+
+    networks:
+      - app-network
+      - data-network
+      - monitoring-network
+
+    labels:
+      # Traefik labels
+      - "traefik.enable=true"
+      - "traefik.docker.network=cartae-dmz-network"
+
+      # HTTP router
+      - "traefik.http.routers.api-1.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.api-1.entrypoints=web,websecure"
+      - "traefik.http.routers.api-1.service=database-api-lb"
+
+      # Service
+      - "traefik.http.services.api-1.loadbalancer.server.port=3001"
+      - "traefik.http.services.api-1.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.api-1.loadbalancer.healthcheck.interval=10s"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ============================================================
+  # Database API - Instance 2
+  # ============================================================
+  database-api-2:
+    image: cartae-database-api:latest
+    container_name: cartae-api-2
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: production
+      INSTANCE_ID: api-2
+      PORT: 3001
+
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-cartae}
+      POSTGRES_USER: ${POSTGRES_USER:-cartae_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_POOL_MIN: 2
+      POSTGRES_POOL_MAX: 10
+
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: 0
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+
+      PROMETHEUS_ENABLED: "true"
+      PROMETHEUS_PORT: 9090
+
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: json
+
+      NODE_OPTIONS: "--max-old-space-size=896"
+      TZ: Europe/Paris
+
+    networks:
+      - app-network
+      - data-network
+      - monitoring-network
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=cartae-dmz-network"
+      - "traefik.http.routers.api-2.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.api-2.entrypoints=web,websecure"
+      - "traefik.http.routers.api-2.service=database-api-lb"
+      - "traefik.http.services.api-2.loadbalancer.server.port=3001"
+      - "traefik.http.services.api-2.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.api-2.loadbalancer.healthcheck.interval=10s"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ============================================================
+  # Database API - Instance 3
+  # ============================================================
+  database-api-3:
+    image: cartae-database-api:latest
+    container_name: cartae-api-3
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: production
+      INSTANCE_ID: api-3
+      PORT: 3001
+
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-cartae}
+      POSTGRES_USER: ${POSTGRES_USER:-cartae_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_POOL_MIN: 2
+      POSTGRES_POOL_MAX: 10
+
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: 0
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+
+      PROMETHEUS_ENABLED: "true"
+      PROMETHEUS_PORT: 9090
+
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: json
+
+      NODE_OPTIONS: "--max-old-space-size=896"
+      TZ: Europe/Paris
+
+    networks:
+      - app-network
+      - data-network
+      - monitoring-network
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=cartae-dmz-network"
+      - "traefik.http.routers.api-3.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.api-3.entrypoints=web,websecure"
+      - "traefik.http.routers.api-3.service=database-api-lb"
+      - "traefik.http.services.api-3.loadbalancer.server.port=3001"
+      - "traefik.http.services.api-3.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.api-3.loadbalancer.healthcheck.interval=10s"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ============================================================
+  # PostgreSQL Database (referenced from base compose)
+  # ============================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: cartae-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cartae}
+      POSTGRES_USER: ${POSTGRES_USER:-cartae_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      PGDATA: /var/lib/postgresql/data
+      TZ: Europe/Paris
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+
+    networks:
+      - data-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cartae_user} -d ${POSTGRES_DB:-cartae}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================================
+  # Redis Cache (referenced from base compose)
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: cartae-redis
+    restart: unless-stopped
+
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+      --appendonly yes
+      --appendfsync everysec
+
+    volumes:
+      - redis-data:/data
+
+    networks:
+      - data-network
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ============================================================
+# Volumes
+# ============================================================
+volumes:
+  # Traefik
+  traefik-certs:
+    driver: local
+    name: cartae-traefik-certs
+
+  traefik-logs:
+    driver: local
+    name: cartae-traefik-logs
+
+  # PostgreSQL
+  postgres-data:
+    driver: local
+    name: cartae-postgres-data
+
+  # Redis
+  redis-data:
+    driver: local
+    name: cartae-redis-data
+
+# ============================================================
+# Networks
+# ============================================================
+networks:
+  # DMZ Network (Internet-facing)
+  dmz-network:
+    name: cartae-dmz-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+          gateway: 172.20.0.1
+    labels:
+      - "com.cartae.network=dmz"
+      - "com.cartae.description=DMZ Network - Internet-facing services"
+
+  # App Network (Application tier)
+  app-network:
+    name: cartae-app-network
+    driver: bridge
+    internal: false
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+          gateway: 172.21.0.1
+    labels:
+      - "com.cartae.network=app"
+      - "com.cartae.description=Application Network - Business logic"
+
+  # Data Network (Database tier)
+  data-network:
+    name: cartae-data-network
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.22.0.0/24
+          gateway: 172.22.0.1
+    labels:
+      - "com.cartae.network=data"
+      - "com.cartae.description=Data Network - Databases and caches"
+
+  # Monitoring Network
+  monitoring-network:
+    name: cartae-monitoring-network
+    driver: bridge
+    internal: false
+    ipam:
+      config:
+        - subnet: 172.23.0.0/24
+          gateway: 172.23.0.1
+    labels:
+      - "com.cartae.network=monitoring"
+      - "com.cartae.description=Monitoring Network - Observability stack"

@@ -1,0 +1,322 @@
+# Dynamic Load Balancer Configuration
+# Session 81f - High Availability & Load Balancing
+# Sticky sessions + health checks + rate limiting
+
+http:
+  # Services
+  services:
+    # Database API Load Balancer
+    database-api-lb:
+      loadBalancer:
+        # Backend servers (3 instances)
+        servers:
+          - url: "http://database-api-1:3001"
+          - url: "http://database-api-2:3001"
+          - url: "http://database-api-3:3001"
+
+        # Health check configuration
+        healthCheck:
+          path: /health
+          interval: 10s
+          timeout: 3s
+          scheme: http
+          port: 3001
+          followRedirects: false
+          headers:
+            X-Health-Check: "traefik"
+
+        # Sticky sessions (session affinity)
+        sticky:
+          cookie:
+            name: cartae_server
+            httpOnly: true
+            secure: true
+            sameSite: lax
+
+        # Load balancing strategy
+        # Options: wrr (weighted round robin), lc (least connections)
+        passHostHeader: true
+
+        # Response forwarding
+        responseForwarding:
+          flushInterval: 100ms
+
+        # ServersTransport (optional override)
+        serversTransport: default
+
+    # WebSocket Load Balancer (for real-time features)
+    websocket-lb:
+      loadBalancer:
+        servers:
+          - url: "http://database-api-1:3001"
+          - url: "http://database-api-2:3001"
+          - url: "http://database-api-3:3001"
+
+        healthCheck:
+          path: /health
+          interval: 10s
+          timeout: 3s
+
+        sticky:
+          cookie:
+            name: cartae_ws_server
+            httpOnly: true
+            secure: true
+
+        passHostHeader: true
+
+    # Metrics aggregator (single endpoint)
+    metrics-aggregator:
+      loadBalancer:
+        servers:
+          - url: "http://database-api-1:3001"
+
+        passHostHeader: true
+
+  # Routers
+  routers:
+    # API router (main HTTP/REST API)
+    api-router:
+      rule: "PathPrefix(`/api`)"
+      service: database-api-lb
+      entryPoints:
+        - web
+        - websecure
+
+      middlewares:
+        - api-headers
+        - rate-limit
+        - compress
+        - error-pages
+
+      priority: 100
+
+      # TLS configuration
+      tls:
+        certResolver: letsencrypt
+        domains:
+          - main: "api.cartae.local"
+            sans:
+              - "*.api.cartae.local"
+
+    # WebSocket router
+    websocket-router:
+      rule: "PathPrefix(`/ws`)"
+      service: websocket-lb
+      entryPoints:
+        - websecure
+
+      middlewares:
+        - ws-headers
+
+      priority: 200
+
+      tls:
+        certResolver: letsencrypt
+
+    # Metrics router
+    metrics-router:
+      rule: "PathPrefix(`/metrics`)"
+      service: metrics-aggregator
+      entryPoints:
+        - metrics
+
+      middlewares:
+        - metrics-auth
+
+      priority: 300
+
+    # Health check router (bypass load balancer)
+    health-router:
+      rule: "Path(`/health/lb`)"
+      service: api@internal
+      entryPoints:
+        - web
+
+      priority: 1000
+
+  # Middlewares
+  middlewares:
+    # API Headers
+    api-headers:
+      headers:
+        # Security headers
+        browserXssFilter: true
+        contentTypeNosniff: true
+        frameDeny: true
+        sslRedirect: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 31536000
+        forceSTSHeader: true
+
+        # Custom headers
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+
+        customResponseHeaders:
+          X-Load-Balancer: "Traefik-HA"
+          X-Content-Type-Options: "nosniff"
+          X-Frame-Options: "DENY"
+          X-XSS-Protection: "1; mode=block"
+          Referrer-Policy: "strict-origin-when-cross-origin"
+
+        # CORS headers
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - PATCH
+          - OPTIONS
+
+        accessControlAllowOriginList:
+          - "https://cartae.local"
+          - "https://*.cartae.local"
+
+        accessControlAllowCredentials: true
+        accessControlMaxAge: 3600
+
+        accessControlAllowHeaders:
+          - Content-Type
+          - Authorization
+          - X-Requested-With
+          - X-CSRF-Token
+
+        accessControlExposeHeaders:
+          - X-Total-Count
+          - X-Page-Number
+          - X-Page-Size
+
+    # WebSocket Headers
+    ws-headers:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+          Connection: "Upgrade"
+          Upgrade: "websocket"
+
+    # Rate Limiting
+    rate-limit:
+      rateLimit:
+        average: 100
+        period: 1s
+        burst: 50
+        sourceCriterion:
+          requestHeaderName: X-Real-IP
+          requestHost: true
+          ipStrategy:
+            depth: 1
+            excludedIPs:
+              - 127.0.0.1
+              - 10.0.0.0/8
+
+    # Compression
+    compress:
+      compress:
+        excludedContentTypes:
+          - text/event-stream
+          - application/grpc
+        minResponseBodyBytes: 1024
+
+    # Error Pages
+    error-pages:
+      errors:
+        status:
+          - "400-599"
+        service: error-service
+        query: "/{status}.html"
+
+    # Metrics Authentication
+    metrics-auth:
+      basicAuth:
+        users:
+          # admin:admin (BCrypt hash)
+          - "admin:$2y$05$W5x5LlPw.gJXlGGjBYJ0GeXm3Y8Z0VY3pI0IqfIJzMYPvBFzLB6Ta"
+
+        realm: "Cartae Metrics"
+
+    # Circuit Breaker
+    circuit-breaker:
+      circuitBreaker:
+        expression: "NetworkErrorRatio() > 0.30"
+        checkPeriod: 10s
+        fallbackDuration: 30s
+        recoveryDuration: 60s
+
+    # Retry
+    retry:
+      retry:
+        attempts: 3
+        initialInterval: 100ms
+
+    # In-Flight Requests
+    in-flight:
+      inFlightReq:
+        amount: 100
+        sourceCriterion:
+          requestHeaderName: X-Real-IP
+          ipStrategy:
+            depth: 1
+
+    # Redirects
+    redirect-scheme:
+      redirectScheme:
+        scheme: https
+        permanent: true
+        port: 443
+
+    # Strip Prefix
+    strip-api-prefix:
+      stripPrefix:
+        prefixes:
+          - "/api"
+        forceSlash: false
+
+    # Add Prefix
+    add-api-prefix:
+      addPrefix:
+        prefix: "/api"
+
+    # Replace Path
+    replace-path:
+      replacePath:
+        path: "/api"
+
+    # Request ID
+    request-id:
+      headers:
+        customRequestHeaders:
+          X-Request-ID: "{{ .RequestID }}"
+
+  # ServersTransports
+  serversTransports:
+    # Default transport
+    default:
+      forwardingTimeouts:
+        dialTimeout: 30s
+        responseHeaderTimeout: 60s
+        idleConnTimeout: 90s
+
+      maxIdleConnsPerHost: 200
+      insecureSkipVerify: false
+
+    # Fast transport (for health checks)
+    fast:
+      forwardingTimeouts:
+        dialTimeout: 5s
+        responseHeaderTimeout: 10s
+        idleConnTimeout: 30s
+
+      maxIdleConnsPerHost: 50
+
+# TCP configuration (for future use)
+tcp:
+  routers: {}
+  services: {}
+  middlewares: {}
+
+# UDP configuration (for future use)
+udp:
+  routers: {}
+  services: {}
