@@ -14,6 +14,10 @@ import type { CartaeItem } from '../types';
 import type { StorageAdapter, QueryOptions, StorageStats } from './StorageAdapter';
 import type { DatabaseClient } from './DatabaseClient';
 import { IndexedDBStore } from './IndexedDBStore';
+import { CacheManager } from './CacheManager';
+import { SmartCache } from './SmartCache';
+import type { CacheConfig } from './CacheConfig';
+import { DEFAULT_CACHE_CONFIG } from './CacheConfig';
 
 /**
  * Configuration HybridStore
@@ -33,6 +37,9 @@ export interface HybridStoreConfig {
 
   /** Sync au démarrage ? */
   syncOnInit?: boolean;
+
+  /** Configuration du cache (optionnelle) */
+  cacheConfig?: Partial<CacheConfig>;
 }
 
 /**
@@ -68,6 +75,9 @@ export class HybridStore implements StorageAdapter {
   private client: DatabaseClient;
   private config: Required<HybridStoreConfig>;
   private syncTimer: NodeJS.Timeout | null = null;
+  private pruneTimer: NodeJS.Timeout | null = null;
+  private cacheManager: CacheManager;
+  private smartCache: SmartCache;
   private syncStats: SyncStats = {
     lastSync: null,
     itemsPushed: 0,
@@ -83,8 +93,13 @@ export class HybridStore implements StorageAdapter {
       autoSync: true,
       syncInterval: 60000, // 60s
       syncOnInit: true,
+      cacheConfig: DEFAULT_CACHE_CONFIG,
       ...config,
     };
+
+    // Initialiser CacheManager et SmartCache
+    this.cacheManager = new CacheManager(this.config.cacheConfig);
+    this.smartCache = new SmartCache(this.cacheManager);
   }
 
   // ==========================================================================
@@ -94,6 +109,12 @@ export class HybridStore implements StorageAdapter {
   async init(): Promise<void> {
     // Init IndexedDB
     await this.db.init();
+
+    // Charger items existants dans CacheManager
+    const existingItems = await this.db.getAll();
+    for (const item of existingItems) {
+      this.cacheManager.add(item);
+    }
 
     // Test connexion PostgreSQL
     const isConnected = await this.client.testConnection();
@@ -112,11 +133,18 @@ export class HybridStore implements StorageAdapter {
     if (this.config.autoSync) {
       this.startAutoSync();
     }
+
+    // Démarrer auto-pruning si configuré
+    const cacheConfig = this.cacheManager.getConfig();
+    if (cacheConfig.autoPruneEnabled) {
+      this.startAutoPrune();
+    }
   }
 
   async close(): Promise<void> {
-    // Stop sync timer
+    // Stop timers
     this.stopAutoSync();
+    this.stopAutoPrune();
 
     // Sync final avant fermeture
     if (!this.syncStats.isSyncing) {
@@ -132,7 +160,21 @@ export class HybridStore implements StorageAdapter {
   // ==========================================================================
 
   async create(item: CartaeItem): Promise<CartaeItem> {
+    // Vérifier quotas cache AVANT d'ajouter
+    if (!this.cacheManager.canAdd(item)) {
+      // Évincer un item pour faire de la place
+      const toEvict = this.cacheManager.getItemsToEvict(1);
+      if (toEvict.length > 0) {
+        await this.db.delete(toEvict[0]);
+        this.cacheManager.remove(toEvict[0]);
+        console.log(`🧹 Evicted item ${toEvict[0]} to make space`);
+      }
+    }
+
     const created = await this.db.create(item);
+
+    // Enregistrer dans CacheManager
+    this.cacheManager.add(created);
 
     // Sync immédiat vers PostgreSQL en background (fire-and-forget)
     this.syncItemToPostgreSQL(created).catch((error) => {
@@ -154,7 +196,14 @@ export class HybridStore implements StorageAdapter {
   }
 
   async get(id: string): Promise<CartaeItem | null> {
-    return this.db.get(id);
+    const item = await this.db.get(id);
+
+    // Update LRU si item trouvé
+    if (item) {
+      this.cacheManager.touch(id);
+    }
+
+    return item;
   }
 
   async getMany(ids: string[]): Promise<CartaeItem[]> {
@@ -418,6 +467,92 @@ export class HybridStore implements StorageAdapter {
    */
   async forceSync(): Promise<void> {
     return this.sync();
+  }
+
+  // ==========================================================================
+  // Cache Management (NEW - Session 77)
+  // ==========================================================================
+
+  /**
+   * Start auto-prune timer
+   */
+  private startAutoPrune(): void {
+    if (this.pruneTimer) {
+      return;
+    }
+
+    const config = this.cacheManager.getConfig();
+    console.log(`🧹 Auto-prune enabled (interval: ${config.pruneInterval}ms)`);
+
+    this.pruneTimer = setInterval(() => {
+      this.performPrune().catch((error) => {
+        console.error('Auto-prune failed:', error);
+      });
+    }, config.pruneInterval);
+  }
+
+  /**
+   * Stop auto-prune timer
+   */
+  private stopAutoPrune(): void {
+    if (this.pruneTimer) {
+      clearInterval(this.pruneTimer);
+      this.pruneTimer = null;
+      console.log('🧹 Auto-prune disabled');
+    }
+  }
+
+  /**
+   * Effectuer pruning du cache
+   */
+  private async performPrune(): Promise<void> {
+    // Vérifier si pruning nécessaire
+    if (!this.cacheManager.shouldPrune()) {
+      return;
+    }
+
+    console.log('🧹 Starting cache pruning...');
+
+    // Obtenir items à évincer
+    const evicted = await this.cacheManager.prune();
+
+    // Supprimer de IndexedDB
+    if (evicted.length > 0) {
+      await this.db.deleteMany(evicted);
+      console.log(`🧹 Pruned ${evicted.length} items from cache`);
+    }
+
+    // Log stats
+    const stats = this.cacheManager.getStats();
+    console.log(`📊 Cache stats: ${stats.totalItems} items, ${stats.totalSizeMB.toFixed(2)} MB, ${(stats.utilization * 100).toFixed(1)}% utilization`);
+  }
+
+  /**
+   * Force pruning manuel
+   */
+  async forcePrune(): Promise<void> {
+    return this.performPrune();
+  }
+
+  /**
+   * Obtenir statistiques du cache
+   */
+  getCacheStats() {
+    return this.cacheManager.getStats();
+  }
+
+  /**
+   * Obtenir SmartCache (pour usage avancé)
+   */
+  getSmartCache(): SmartCache {
+    return this.smartCache;
+  }
+
+  /**
+   * Obtenir CacheManager (pour usage avancé)
+   */
+  getCacheManager(): CacheManager {
+    return this.cacheManager;
   }
 
   // ==========================================================================
