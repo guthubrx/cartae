@@ -1,0 +1,377 @@
+#
+# Docker Compose - Security Stack for Cartae
+# Session 81g - Incident Response & Security Operations
+#
+# Services de sécurité:
+# - Fail2ban: Protection contre brute force et port scanning
+# - Security Ops Dashboard: Monitoring temps réel
+# - Audit Logger: Collecteur d'événements d'audit
+#
+
+version: '3.8'
+
+services:
+  #
+  # Fail2ban Service
+  # Protection périmétrique contre attaques réseau
+  #
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    container_name: cartae-fail2ban
+
+    # Privilèges réseau pour modifier iptables
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+
+    # Variables d'environnement
+    environment:
+      - TZ=Europe/Paris
+      - F2B_LOG_LEVEL=WARNING
+      - F2B_DB_PURGE_AGE=1d
+      - F2B_MAX_RETRY=5
+      - F2B_DEST_EMAIL=security@cartae.com
+      - F2B_SENDER=fail2ban@cartae.com
+      - F2B_ACTION=%(action_)s
+
+    # Volumes pour configuration et logs
+    volumes:
+      # Configuration Fail2ban
+      - ../fail2ban/fail2ban.conf:/etc/fail2ban/fail2ban.conf:ro
+      - ../fail2ban/jail.local:/etc/fail2ban/jail.local:ro
+
+      # Filtres custom
+      - ../fail2ban/filters/cartae-api-auth.conf:/etc/fail2ban/filter.d/cartae-api-auth.conf:ro
+      - ../fail2ban/filters/cartae-port-scan.conf:/etc/fail2ban/filter.d/cartae-port-scan.conf:ro
+
+      # Logs à surveiller (read-only)
+      - /var/log/cartae:/var/log/cartae:ro
+      - /var/log/syslog:/var/log/syslog:ro
+      - /var/log/auth.log:/var/log/auth.log:ro
+
+      # Persistance base de données bans
+      - fail2ban-data:/var/lib/fail2ban
+
+      # Logs Fail2ban (pour debugging)
+      - fail2ban-logs:/var/log/fail2ban
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "fail2ban-client", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Ressources limitées
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+    # Labels pour monitoring
+    labels:
+      - "com.cartae.service=fail2ban"
+      - "com.cartae.tier=security"
+      - "com.cartae.monitoring=true"
+
+  #
+  # Security Operations Dashboard
+  # Interface web pour monitoring sécurité temps réel
+  #
+  security-dashboard:
+    build:
+      context: ../../packages/security-ops
+      dockerfile: Dockerfile
+    container_name: cartae-security-dashboard
+
+    # Port exposition (interne seulement, derrière nginx)
+    ports:
+      - "3010:3010"
+
+    # Variables d'environnement
+    environment:
+      - NODE_ENV=production
+      - PORT=3010
+      - DATABASE_URL=postgresql://cartae:${DB_PASSWORD}@postgres:5432/cartae
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+      - AUDIT_LOG_PATH=/var/log/cartae/audit.log
+      - FAIL2BAN_LOG_PATH=/var/log/fail2ban/fail2ban.log
+      - METRICS_ENABLED=true
+      - PROMETHEUS_PORT=9090
+
+    # Volumes
+    volumes:
+      # Logs en lecture seule
+      - /var/log/cartae:/var/log/cartae:ro
+      - fail2ban-logs:/var/log/fail2ban:ro
+
+      # Configuration
+      - ../security/dashboard-config.yml:/app/config/dashboard.yml:ro
+
+    # Dépendances
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      fail2ban:
+        condition: service_healthy
+
+    # Réseau
+    networks:
+      - cartae-network
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    # Ressources
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+    # Labels
+    labels:
+      - "com.cartae.service=security-dashboard"
+      - "com.cartae.tier=security"
+      - "com.cartae.monitoring=true"
+      - "traefik.enable=true"
+      - "traefik.http.routers.security.rule=Host(`security.cartae.local`)"
+      - "traefik.http.routers.security.entrypoints=websecure"
+      - "traefik.http.routers.security.tls=true"
+
+  #
+  # Audit Logger Service
+  # Collecteur centralisé d'événements d'audit
+  #
+  audit-logger:
+    build:
+      context: ../../packages/database-api
+      dockerfile: Dockerfile.audit
+    container_name: cartae-audit-logger
+
+    # Pas d'exposition externe (communication interne seulement)
+    expose:
+      - "3011"
+
+    # Variables d'environnement
+    environment:
+      - NODE_ENV=production
+      - PORT=3011
+      - DATABASE_URL=postgresql://cartae:${DB_PASSWORD}@postgres:5432/cartae
+      - LOG_LEVEL=info
+      - AUDIT_RETENTION_DAYS=2555
+      - IMMUTABLE_MODE=true
+      - HASH_CHAIN_ENABLED=true
+      - COMPLIANCE_MODE=SOC2
+
+    # Volumes
+    volumes:
+      # Logs d'audit (write-only, WORM pattern)
+      - audit-logs:/var/log/cartae/audit
+
+      # Configuration
+      - ../security/audit-config.yml:/app/config/audit.yml:ro
+
+    # Dépendances
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    # Réseau
+    networks:
+      - cartae-network
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3011/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    # Ressources
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+    # Labels
+    labels:
+      - "com.cartae.service=audit-logger"
+      - "com.cartae.tier=security"
+      - "com.cartae.monitoring=true"
+
+  #
+  # SOAR Automation Engine
+  # Security Orchestration, Automation and Response
+  #
+  soar-engine:
+    build:
+      context: ../../packages/security-ops
+      dockerfile: Dockerfile.soar
+    container_name: cartae-soar-engine
+
+    # Pas d'exposition externe
+    expose:
+      - "3012"
+
+    # Variables d'environnement
+    environment:
+      - NODE_ENV=production
+      - PORT=3012
+      - DATABASE_URL=postgresql://cartae:${DB_PASSWORD}@postgres:5432/cartae
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+
+      # Threat Intelligence APIs
+      - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY}
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY}
+
+      # Alerting
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - PAGERDUTY_API_KEY=${PAGERDUTY_API_KEY}
+      - EMAIL_SMTP_HOST=${EMAIL_SMTP_HOST}
+      - EMAIL_SMTP_PORT=${EMAIL_SMTP_PORT}
+      - EMAIL_FROM=soar@cartae.com
+
+      # Automation settings
+      - AUTO_BLOCK_ENABLED=true
+      - AUTO_BLOCK_THRESHOLD=10
+      - AUTO_BLOCK_DURATION=86400
+
+    # Volumes
+    volumes:
+      # Configuration SOAR
+      - ../security/soar-config.yml:/app/config/soar.yml:ro
+
+      # Playbooks
+      - ../security/playbooks:/app/playbooks:ro
+
+      # Logs
+      - /var/log/cartae:/var/log/cartae:rw
+
+    # Dépendances
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      fail2ban:
+        condition: service_healthy
+
+    # Réseau
+    networks:
+      - cartae-network
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3012/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    # Ressources
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+    # Labels
+    labels:
+      - "com.cartae.service=soar-engine"
+      - "com.cartae.tier=security"
+      - "com.cartae.monitoring=true"
+
+#
+# Volumes persistants
+#
+volumes:
+  # Base de données Fail2ban (bans persistants)
+  fail2ban-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/cartae/fail2ban
+
+  # Logs Fail2ban
+  fail2ban-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/log/cartae/fail2ban
+
+  # Audit logs (WORM - Write Once Read Many)
+  audit-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/log/cartae/audit
+
+#
+# Réseau partagé avec stack principale
+#
+networks:
+  cartae-network:
+    external: true
+    name: cartae-network
+
+#
+# Configuration Docker Compose pour production:
+#
+# Démarrage:
+#   docker-compose -f docker-compose.security.yml up -d
+#
+# Logs:
+#   docker-compose -f docker-compose.security.yml logs -f fail2ban
+#   docker-compose -f docker-compose.security.yml logs -f security-dashboard
+#
+# Status:
+#   docker-compose -f docker-compose.security.yml ps
+#
+# Restart service:
+#   docker-compose -f docker-compose.security.yml restart fail2ban
+#
+# Arrêt:
+#   docker-compose -f docker-compose.security.yml down
+#
