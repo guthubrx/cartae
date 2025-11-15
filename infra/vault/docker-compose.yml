@@ -1,0 +1,55 @@
+version: '3.9'
+
+services:
+  # HashiCorp Vault - Gestionnaire de secrets
+  vault:
+    image: hashicorp/vault:1.17
+    container_name: cartae-vault
+    restart: unless-stopped
+    ports:
+      - '8200:8200' # API Vault
+    environment:
+      VAULT_ADDR: 'http://0.0.0.0:8200'
+      VAULT_DEV_ROOT_TOKEN_ID: 'dev-only-token' # ⚠️ DEV ONLY - Ne JAMAIS utiliser en prod
+      VAULT_DEV_LISTEN_ADDRESS: '0.0.0.0:8200'
+    cap_add:
+      - IPC_LOCK # Requis pour mlock() - empêche swap des secrets en RAM
+    volumes:
+      - vault-data:/vault/file # Stockage persistant
+      # Note: Ne pas monter /vault/config en mode dev pour éviter les conflits de ports
+      # - ./config:/vault/config # Configuration Vault (uniquement en mode prod)
+      # - ./policies:/vault/policies # Policies ACL (uniquement en mode prod)
+    command: server -dev # Mode développement (auto-unseal, token root simple)
+    networks:
+      - cartae-secure-network
+    healthcheck:
+      test: ['CMD', 'vault', 'status']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Vault UI (optionnel) - Interface web pour explorer Vault
+  vault-ui:
+    image: djenriquez/vault-ui:latest
+    container_name: cartae-vault-ui
+    restart: unless-stopped
+    ports:
+      - '8000:8000'
+    environment:
+      VAULT_URL_DEFAULT: 'http://vault:8200'
+      VAULT_AUTH_DEFAULT: 'TOKEN'
+    depends_on:
+      - vault
+    networks:
+      - cartae-secure-network
+
+volumes:
+  vault-data:
+    driver: local
+
+networks:
+  cartae-secure-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16 # Réseau isolé pour sécurité

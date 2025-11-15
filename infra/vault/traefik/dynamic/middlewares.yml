@@ -1,0 +1,156 @@
+# Traefik Middlewares - Security Hardening
+# Session 78 - Rate Limiting + Headers + Auth
+
+http:
+  middlewares:
+    # ============================================================
+    # Rate Limiting (anti-DDoS, anti-brute-force)
+    # ============================================================
+
+    rate-limit:
+      rateLimit:
+        average: 100 # 100 requêtes par seconde
+        period: 1s
+        burst: 50 # Burst de 50 requêtes max
+        sourceCriterion:
+          ipStrategy:
+            depth: 1 # Récupérer vraie IP derrière proxy
+
+    rate-limit-strict:
+      rateLimit:
+        average: 10 # 10 requêtes/sec (API sensibles)
+        period: 1s
+        burst: 5
+
+    # ============================================================
+    # Security Headers (OWASP recommendations)
+    # ============================================================
+
+    security-headers:
+      headers:
+        # Content Security Policy (CSP) - Empêche XSS
+        contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://vault:8200; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+        # Empêche clickjacking
+        customFrameOptionsValue: 'DENY'
+
+        # Force HTTPS (HSTS)
+        stsSeconds: 31536000 # 1 an
+        stsIncludeSubdomains: true
+        stsPreload: true
+
+        # Empêche MIME sniffing
+        contentTypeNosniff: true
+
+        # Empêche navigateur de mettre en cache données sensibles
+        customResponseHeaders:
+          X-Robots-Tag: 'none,noarchive,nosnippet,notranslate,noimageindex'
+          Cache-Control: 'no-store, no-cache, must-revalidate, proxy-revalidate'
+          Pragma: 'no-cache'
+          Expires: '0'
+          X-Content-Type-Options: 'nosniff'
+          X-Frame-Options: 'DENY'
+          X-XSS-Protection: '1; mode=block'
+          Referrer-Policy: 'strict-origin-when-cross-origin'
+          Permissions-Policy: 'geolocation=(), microphone=(), camera=(), payment=(), usb=()'
+
+    # ============================================================
+    # Authentication (BasicAuth pour admin)
+    # ============================================================
+
+    auth-admin:
+      basicAuth:
+        # Généré avec: htpasswd -nb admin SecurePassword123!
+        # À remplacer par vraies credentials
+        users:
+          - 'admin:$apr1$xyz...' # Placeholder - générer avec htpasswd
+
+        # Message custom
+        realm: 'Cartae Production - Authorized Access Only'
+
+        # Remove headers après auth
+        removeHeader: true
+
+    # ============================================================
+    # IP Whitelisting (bastion host uniquement)
+    # ============================================================
+
+    ip-whitelist-admin:
+      ipWhiteList:
+        sourceRange:
+          - '127.0.0.1/32' # Localhost
+          - '172.25.1.0/24' # DMZ network
+          # Ajouter IP du bastion host ici
+
+    # ============================================================
+    # Compression (performance)
+    # ============================================================
+
+    compress:
+      compress:
+        excludedContentTypes:
+          - 'text/event-stream' # Pas de compression SSE
+
+    # ============================================================
+    # Retry (résilience)
+    # ============================================================
+
+    retry:
+      retry:
+        attempts: 3
+        initialInterval: 100ms
+
+# ============================================================
+# TLS Options (Modern TLS 1.3 uniquement)
+# ============================================================
+
+tls:
+  options:
+    modern:
+      minVersion: VersionTLS13 # TLS 1.3 uniquement
+      cipherSuites:
+        - TLS_AES_256_GCM_SHA384
+        - TLS_CHACHA20_POLY1305_SHA256
+        - TLS_AES_128_GCM_SHA256
+      curvePreferences:
+        - X25519
+        - CurveP521
+        - CurveP384
+      sniStrict: true # Strict SNI checking
+      alpnProtocols:
+        - h2 # HTTP/2
+        - http/1.1
+
+    # Fallback pour compatibilité (TLS 1.2+)
+    intermediate:
+      minVersion: VersionTLS12
+      cipherSuites:
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+      curvePreferences:
+        - CurveP384
+        - CurveP256
+
+# ============================================================
+# Certificats (mTLS pour inter-service communication)
+# ============================================================
+
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /certs/default.crt
+        keyFile: /certs/default.key
+
+  certificates:
+    # Certificat pour Cartae Web
+    - certFile: /certs/cartae.crt
+      keyFile: /certs/cartae.key
+      stores:
+        - default
+
+    # Certificat pour pgAdmin
+    - certFile: /certs/pgadmin.crt
+      keyFile: /certs/pgadmin.key
+      stores:
+        - default
