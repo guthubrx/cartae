@@ -1,0 +1,18 @@
+# Restic Backup Crontab Configuration
+# Session 81e - Backup & Disaster Recovery
+# This file is mounted at /etc/crontabs/root in the container
+
+# Daily full backup at 02:00 UTC
+0 2 * * * /scripts/backup.sh all >> /var/log/restic/cron.log 2>&1
+
+# Weekly integrity check on Sundays at 03:00 UTC
+0 3 * * 0 restic check --read-data-subset=10% >> /var/log/restic/integrity-check.log 2>&1
+
+# Monthly repository prune on 1st of month at 04:00 UTC
+0 4 1 * * restic prune --max-unused 10% >> /var/log/restic/prune.log 2>&1
+
+# Log rotation: Keep last 30 days of logs
+0 5 * * * find /var/log/restic -name "*.log" -mtime +30 -delete
+
+# Health check: Verify last snapshot exists (every 6 hours)
+0 */6 * * * restic snapshots --last || echo "WARNING: No recent snapshot found!" >> /var/log/restic/health-check.log 2>&1

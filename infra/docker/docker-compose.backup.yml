@@ -1,0 +1,137 @@
+# Docker Compose - Backup & Disaster Recovery
+# Session 81e - Restic Backup System
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.backup.yml up -d
+
+services:
+  # Restic Backup Container
+  restic-backup:
+    image: restic/restic:0.16.2
+    container_name: cartae-restic-backup
+    restart: unless-stopped
+
+    # Env vars for Restic configuration
+    environment:
+      # Restic repository configuration
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:-/backups/repo}
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD}
+
+      # S3 backend (optional, for remote backups)
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      RESTIC_S3_ENDPOINT: ${RESTIC_S3_ENDPOINT:-}
+
+      # Backup configuration
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 2 * * *}  # Daily at 02:00 UTC
+      BACKUP_RETENTION_DAILY: ${BACKUP_RETENTION_DAILY:-7}
+      BACKUP_RETENTION_WEEKLY: ${BACKUP_RETENTION_WEEKLY:-4}
+      BACKUP_RETENTION_MONTHLY: ${BACKUP_RETENTION_MONTHLY:-12}
+
+      # PostgreSQL connection
+      POSTGRES_HOST: cartae-database
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # Redis connection
+      REDIS_HOST: cartae-redis
+      REDIS_PORT: 6379
+
+      # Monitoring
+      PROMETHEUS_PUSHGATEWAY: ${PROMETHEUS_PUSHGATEWAY:-http://prometheus:9091}
+
+    # Volumes for backup sources and destination
+    volumes:
+      # Backup repository (local storage)
+      - restic-repo:/backups/repo
+
+      # PostgreSQL data (read-only for pg_dump)
+      - postgres-data:/postgres-data:ro
+
+      # Redis data (read-only for RDB snapshots)
+      - redis-data:/redis-data:ro
+
+      # Vault data (read-only for secrets backup)
+      - vault-data:/vault-data:ro
+
+      # Application data volumes (read-only)
+      - app-uploads:/app-data/uploads:ro
+      - app-exports:/app-data/exports:ro
+
+      # Backup scripts
+      - ../restic/scripts:/scripts:ro
+
+      # Crontab configuration
+      - ../restic/crontab:/etc/crontabs/root:ro
+
+      # Backup logs
+      - restic-logs:/var/log/restic
+
+    # Entrypoint: Run cron + keep container alive
+    command: >
+      sh -c "
+        echo 'Initializing Restic backup system...';
+
+        # Initialize Restic repository if not exists
+        if ! restic snapshots > /dev/null 2>&1; then
+          echo 'Initializing new Restic repository...';
+          restic init || echo 'Repository already initialized';
+        fi;
+
+        # Install PostgreSQL client (for pg_dump)
+        apk add --no-cache postgresql-client redis;
+
+        # Install cron
+        apk add --no-cache dcron;
+
+        # Make scripts executable
+        chmod +x /scripts/*.sh;
+
+        # Start cron daemon
+        crond -f -l 2;
+      "
+
+    # Network: Monitoring zone for Prometheus metrics
+    networks:
+      - monitoring-network
+      - data-network
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "restic", "snapshots", "--last"]
+      interval: 1h
+      timeout: 30s
+      retries: 3
+      start_period: 1m
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+# Volumes
+volumes:
+  restic-repo:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${RESTIC_BACKUP_PATH:-./backups}
+
+  restic-logs:
+    driver: local
+
+# Networks (reference existing networks from base docker-compose.yml)
+networks:
+  monitoring-network:
+    external: true
+    name: cartae-monitoring-network
+
+  data-network:
+    external: true
+    name: cartae-data-network
