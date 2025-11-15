@@ -1,0 +1,251 @@
+#
+# SOAR Configuration for Cartae
+# Session 81g - Incident Response & Security Operations
+#
+# Configuration pour Security Orchestration, Automation and Response
+#
+
+# Auto-Blocker Rules
+autoBlocker:
+  enabled: true
+
+  # Règles de blocage
+  rules:
+    - id: auth-failure
+      name: Authentication Failures
+      threshold: 5          # 5 tentatives
+      windowMs: 600000      # en 10 minutes
+      duration: 3600        # ban 1 heure
+      action: ban_temp
+      severity: medium
+
+    - id: brute-force
+      name: Brute Force Attack
+      threshold: 10         # 10 tentatives
+      windowMs: 300000      # en 5 minutes
+      duration: 86400       # ban 24 heures
+      action: ban_temp
+      severity: high
+
+    - id: port-scan
+      name: Port Scanning
+      threshold: 1          # 1 seule tentative
+      windowMs: 300000      # en 5 minutes
+      duration: -1          # ban permanent
+      action: ban_permanent
+      severity: critical
+
+    - id: sql-injection
+      name: SQL Injection Attempt
+      threshold: 1
+      windowMs: 60000
+      duration: 86400
+      action: ban_temp
+      severity: critical
+
+    - id: path-traversal
+      name: Path Traversal Attempt
+      threshold: 1
+      windowMs: 60000
+      duration: 86400
+      action: ban_temp
+      severity: critical
+
+    - id: ddos
+      name: DDoS Attack
+      threshold: 300        # 300 requêtes
+      windowMs: 60000       # en 1 minute
+      duration: 600         # ban 10 minutes
+      action: rate_limit
+      severity: high
+
+  # Whitelist d'IPs de confiance (jamais bloquées)
+  whitelist:
+    - 127.0.0.1
+    - ::1
+    - 10.0.0.0/8          # Réseau privé
+    - 172.16.0.0/12       # Réseau privé
+    - 192.168.0.0/16      # Réseau privé
+    # - 203.0.113.10      # IP monitoring externe (exemple)
+
+  # Intégrations
+  fail2ban:
+    enabled: true
+
+  iptables:
+    enabled: true
+
+  # Métriques
+  metrics:
+    enabled: true
+    prometheusPort: 9090
+
+# Alert Manager
+alertManager:
+  # Email notifications
+  email:
+    enabled: true
+    smtp:
+      host: smtp.example.com
+      port: 587
+      secure: true
+      auth:
+        user: security@cartae.com
+        pass: ${EMAIL_PASSWORD}   # From env var
+    from: security@cartae.com
+    to:
+      - security-team@cartae.com
+      - admin@cartae.com
+
+  # Slack notifications
+  slack:
+    enabled: true
+    webhookUrl: ${SLACK_WEBHOOK_URL}
+
+  # PagerDuty alerts (pour critical seulement)
+  pagerduty:
+    enabled: true
+    integrationKey: ${PAGERDUTY_INTEGRATION_KEY}
+
+  # SMS notifications (optionnel)
+  # sms:
+  #   enabled: false
+  #   provider: twilio
+  #   accountSid: ${TWILIO_ACCOUNT_SID}
+  #   authToken: ${TWILIO_AUTH_TOKEN}
+  #   from: +1234567890
+  #   to:
+  #     - +1234567890
+
+  # Rate limiting pour éviter spam
+  rateLimiting:
+    enabled: true
+    maxAlertsPerMinute: 10
+
+  # Grouping d'alertes similaires
+  grouping:
+    enabled: true
+    windowMs: 300000      # 5 minutes
+
+  # Routing par criticité
+  routing:
+    critical:
+      - pagerduty
+      - slack
+      - email
+    high:
+      - slack
+      - email
+    medium:
+      - email
+    low:
+      - email
+    info:
+      - slack
+
+# Threat Intelligence
+threatIntelligence:
+  # AbuseIPDB
+  abuseIPDB:
+    enabled: true
+    apiKey: ${ABUSEIPDB_API_KEY}
+
+  # VirusTotal
+  virusTotal:
+    enabled: true
+    apiKey: ${VIRUSTOTAL_API_KEY}
+
+  # Custom blacklists (IPs malveillantes connues)
+  customBlacklists:
+    # - 192.0.2.100
+    # - 198.51.100.50
+
+  # Cache pour performance
+  cache:
+    enabled: true
+    ttlSeconds: 3600      # 1 heure
+
+  # Auto-enrichment des événements
+  autoEnrich:
+    enabled: true
+    minSeverity: medium   # Enrich seulement medium+ pour économiser API calls
+
+# Automated Responses (décisions automatiques)
+automatedResponses:
+  # Auto-block si threat intel score > seuil
+  autoBlockMaliciousIPs:
+    enabled: true
+    scoreThreshold: 70    # AbuseIPDB score > 70 = auto-block
+    duration: 86400       # ban 24h
+
+  # Auto-escalate après X bans
+  autoEscalate:
+    enabled: true
+    banThreshold: 3       # Si IP banni 3x → ban permanent
+
+  # Auto-create incident tickets
+  autoTicketing:
+    enabled: false        # Nécessite intégration Jira/ServiceNow
+    severity: critical    # Créer ticket seulement pour critical
+
+  # Auto-run playbooks
+  autoPlaybooks:
+    enabled: true
+    ddos:
+      trigger: ddos-detected
+      playbook: /infra/security/playbooks/ddos-response.sh
+    breach:
+      trigger: breach-detected
+      playbook: /infra/security/playbooks/breach-response.sh
+    credentials:
+      trigger: credentials-compromised
+      playbook: /infra/security/playbooks/credential-compromise.sh
+
+# Compliance & Reporting
+compliance:
+  # Audit trail
+  auditTrail:
+    enabled: true
+    retentionDays: 2555   # 7 ans (SOC2)
+    immutable: true       # WORM pattern
+
+  # Reporting
+  reports:
+    enabled: true
+    frequency: daily
+    recipients:
+      - security-team@cartae.com
+    include:
+      - blocked-ips
+      - suspicious-activities
+      - failed-authentications
+      - compliance-violations
+
+  # Standards
+  standards:
+    - SOC2
+    - GDPR
+    - HIPAA
+
+# Logging
+logging:
+  level: info           # debug | info | warn | error
+  format: json
+  outputs:
+    - file: /var/log/cartae/soar.log
+    - syslog: true
+    - stdout: false
+
+# Performance
+performance:
+  # Workers parallèles
+  workers: 4
+
+  # Queue size
+  maxQueueSize: 10000
+
+  # Timeouts
+  timeouts:
+    apiCall: 5000       # 5 secondes
+    playbook: 300000    # 5 minutes
+    alert: 10000        # 10 secondes

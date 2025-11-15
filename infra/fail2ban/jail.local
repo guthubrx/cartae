@@ -1,0 +1,202 @@
+#
+# Fail2ban Jails Configuration for Cartae
+# Session 81g - Incident Response & Security Operations
+#
+# Définit les "jails" (prisons) pour différents types d'attaques:
+# 1. API Authentication Failures (login échoués)
+# 2. Brute Force Attacks (tentatives répétées)
+# 3. Port Scanning (reconnaissance réseau)
+#
+
+[DEFAULT]
+# Override global defaults si nécessaire
+# Ces valeurs s'appliquent à tous les jails sauf override local
+
+# Ignorer les IPs de monitoring interne
+ignoreip = 127.0.0.1/8 ::1 10.42.0.0/16
+
+# Actions par défaut
+banaction = iptables-multiport
+action = %(action_)s
+
+# Email notifications (optionnel)
+# Décommenter et configurer si besoin d'alertes email
+# destemail = security@cartae.com
+# sender = fail2ban@cartae.com
+# action = %(action_mw)s
+
+#
+# JAIL 1: API Authentication Failures
+# Protection contre les tentatives de login échouées sur /api/auth/*
+#
+[cartae-api-auth]
+enabled = true
+port = http,https
+protocol = tcp
+
+# Filtre custom pour parser les logs d'authentification Cartae
+filter = cartae-api-auth
+
+# Logs de l'API Cartae (monté via Docker volume)
+logpath = /var/log/cartae/api.log
+
+# Seuil modéré: 5 tentatives en 10 minutes = ban 1 heure
+maxretry = 5
+findtime = 600
+bantime = 3600
+
+# Action: Bloquer l'IP sur tous les ports HTTP/HTTPS
+action = iptables-multiport[name=cartae-auth, port="http,https", protocol=tcp]
+
+# Backend de surveillance (auto-détecte pyinotify si disponible)
+backend = auto
+
+#
+# JAIL 2: Brute Force Protection
+# Protection aggravée contre attaques par force brute intensives
+#
+[cartae-brute-force]
+enabled = true
+port = http,https
+protocol = tcp
+
+# Réutilise le même filtre mais seuil plus strict
+filter = cartae-api-auth
+logpath = /var/log/cartae/api.log
+
+# Seuil strict: 10 tentatives en 5 minutes = ban 24 heures
+maxretry = 10
+findtime = 300
+bantime = 86400
+
+# Action aggravée: Ban permanent si récidive
+# (nécessite fail2ban-recidive jail en plus)
+action = iptables-multiport[name=cartae-brute, port="http,https", protocol=tcp]
+
+# Log les bans dans un fichier séparé pour analyse
+logpath = /var/log/cartae/api.log
+          /var/log/cartae/auth.log
+
+#
+# JAIL 3: Port Scanning Detection
+# Détecte les scans de ports (reconnaissance pré-attaque)
+#
+[cartae-port-scan]
+enabled = true
+
+# Bloquer sur TOUS les ports (pas juste HTTP)
+port = 0:65535
+protocol = tcp
+
+# Filtre générique pour détecter port scans
+# Détecte connexions SYN sans suite (port scanning signature)
+filter = cartae-port-scan
+
+# Logs système réseau
+logpath = /var/log/syslog
+          /var/log/messages
+
+# Seuil très strict: 1 seule tentative de scan = ban permanent
+maxretry = 1
+findtime = 300
+bantime = -1
+
+# Ban permanent (-1 = infini)
+# Action sur tous les ports
+action = iptables-allports[name=cartae-portscan, protocol=all]
+
+#
+# JAIL 4: Recidive (IP déjà bannies qui reviennent)
+# Ban permanent pour IPs qui persistent après ban temporaire
+#
+[cartae-recidive]
+enabled = true
+port = all
+protocol = all
+
+# Filtre qui lit les logs de fail2ban lui-même
+filter = recidive
+
+# Cherche les bans précédents dans les logs fail2ban
+logpath = /var/log/fail2ban.log
+
+# Si IP déjà bannie 3 fois en 1 semaine = ban permanent
+maxretry = 3
+findtime = 604800
+bantime = -1
+
+# Action la plus sévère: DROP all packets
+action = iptables-allports[name=cartae-recidive, protocol=all, blocktype=DROP]
+
+#
+# JAIL 5: DDoS Protection (limite de connexions)
+# Protection basique contre DDoS HTTP
+#
+[cartae-http-ddos]
+enabled = true
+port = http,https
+protocol = tcp
+
+# Filtre qui détecte trop de requêtes HTTP
+filter = http-get-dos
+
+# Logs nginx/API
+logpath = /var/log/cartae/nginx-access.log
+          /var/log/cartae/api.log
+
+# Seuil: 300 requêtes en 1 minute = ban 10 minutes
+# (300 req/min = 5 req/sec, légitime pour user normal)
+maxretry = 300
+findtime = 60
+bantime = 600
+
+# Action rate-limiting plutôt que ban total
+action = iptables-multiport[name=cartae-ddos, port="http,https", protocol=tcp]
+
+#
+# JAIL 6: SQL Injection Attempts
+# Détecte patterns SQL injection dans query strings
+#
+[cartae-sql-injection]
+enabled = false
+port = http,https
+protocol = tcp
+
+# Filtre custom pour détecter patterns SQL injection
+# DÉSACTIVÉ par défaut: nécessite configuration ORM/prepared statements
+# Activer seulement si vraiment nécessaire (peut avoir false positives)
+filter = cartae-sql-injection
+
+logpath = /var/log/cartae/api.log
+
+# 1 seule tentative = ban immédiat
+maxretry = 1
+findtime = 300
+bantime = 86400
+
+action = iptables-multiport[name=cartae-sqli, port="http,https", protocol=tcp]
+
+#
+# JAIL 7: Path Traversal Attempts
+# Détecte tentatives d'accès à des fichiers système (../, etc.)
+#
+[cartae-path-traversal]
+enabled = false
+port = http,https
+protocol = tcp
+
+# Filtre custom pour détecter patterns path traversal
+filter = cartae-path-traversal
+
+logpath = /var/log/cartae/api.log
+          /var/log/cartae/nginx-access.log
+
+maxretry = 1
+findtime = 300
+bantime = 86400
+
+action = iptables-multiport[name=cartae-pathtraversal, port="http,https", protocol=tcp]
+
+# Note: Jails 6 et 7 désactivés par défaut
+# Raison: Application doit valider inputs (defense in depth)
+# Fail2ban est dernière ligne de défense, pas première
