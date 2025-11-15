@@ -1,0 +1,80 @@
+# Cartae - Promtail Configuration
+# Session 81d - Monitoring + Observability
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # System logs
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          __path__: /var/log/*log
+
+  # Docker container logs
+  - job_name: containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values:
+              - "com.docker.compose.project=cartae"
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+
+  # Application logs (database-api)
+  - job_name: database-api
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: database-api
+          service: api
+          __path__: /var/log/cartae/database-api/*.log
+
+  # Nginx/Traefik access logs
+  - job_name: access-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: access-logs
+          __path__: /var/log/traefik/*.log
+
+pipeline_stages:
+  # Parse JSON logs
+  - json:
+      expressions:
+        level: level
+        msg: msg
+        timestamp: time
+
+  # Extract log level
+  - labels:
+      level:
+
+  # Parse timestamp
+  - timestamp:
+      source: timestamp
+      format: RFC3339Nano
+
+  # Output formatting
+  - output:
+      source: msg
