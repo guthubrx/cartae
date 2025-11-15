@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Cartae PostgreSQL",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "cartae",
+      "Username": "cartae",
+      "SSLMode": "prefer",
+      "PassFile": "/pgpass"
+    }
+  }
+}

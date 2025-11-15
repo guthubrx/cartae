@@ -1,0 +1,3 @@
+# Format: hostname:port:database:username:password
+# Copy this file to 'pgpass' and update with your credentials
+postgres:5432:cartae:cartae:cartae_dev_password
