@@ -6,3 +6,5 @@
 
 export * from './StorageAdapter';
 export * from './IndexedDBStore';
+export * from './DatabaseClient';
+export * from './HybridStore';
