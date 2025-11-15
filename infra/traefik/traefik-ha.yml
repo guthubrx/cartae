@@ -1,0 +1,228 @@
+# Traefik Load Balancer Configuration - HA Mode
+# Session 81f - High Availability & Load Balancing
+# Cartae Infrastructure
+
+# Logging configuration
+log:
+  level: INFO
+  format: json
+  filePath: /var/log/traefik/traefik.log
+
+accessLog:
+  filePath: /var/log/traefik/access.log
+  format: json
+  fields:
+    defaultMode: keep
+    names:
+      ClientUsername: drop
+    headers:
+      defaultMode: keep
+      names:
+        User-Agent: keep
+        Authorization: drop
+        Content-Type: keep
+
+# API and Dashboard
+api:
+  dashboard: true
+  insecure: true  # DEV only - use authentication in production
+  debug: false
+
+# Entry Points
+entryPoints:
+  # HTTP entry point
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+
+    # Connection limits
+    transport:
+      lifeCycle:
+        requestAcceptGraceTimeout: 5s
+        graceTimeOut: 10s
+      respondingTimeouts:
+        readTimeout: 60s
+        writeTimeout: 60s
+        idleTimeout: 180s
+
+  # HTTPS entry point
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        options: default
+        certResolver: letsencrypt
+
+    transport:
+      lifeCycle:
+        requestAcceptGraceTimeout: 5s
+        graceTimeOut: 10s
+      respondingTimeouts:
+        readTimeout: 60s
+        writeTimeout: 60s
+        idleTimeout: 180s
+
+  # Metrics entry point
+  metrics:
+    address: ":8082"
+
+  # gRPC entry point (for future use)
+  grpc:
+    address: ":9000"
+
+# Providers
+providers:
+  # Docker provider
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    watch: true
+    exposedByDefault: false
+    network: cartae-dmz-network
+    swarmMode: false
+    useBindPortIP: false
+    constraints: ""
+
+    # Default rule template
+    defaultRule: "Host(`{{ normalize .Name }}.cartae.local`)"
+
+  # File provider for dynamic configuration
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+    debugLogGeneratedTemplate: true
+
+# Certificate Resolvers
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: admin@cartae.local
+      storage: /certs/acme.json
+      caServer: https://acme-v02.api.letsencrypt.org/directory
+
+      # HTTP challenge
+      httpChallenge:
+        entryPoint: web
+
+      # TLS challenge (alternative)
+      # tlsChallenge: {}
+
+      # DNS challenge (for wildcards)
+      # dnsChallenge:
+      #   provider: cloudflare
+      #   delayBeforeCheck: 0
+
+# TLS Options
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      maxVersion: VersionTLS13
+      cipherSuites:
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+        - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+
+      curvePreferences:
+        - CurveP521
+        - CurveP384
+
+      sniStrict: true
+
+    # Modern TLS (TLS 1.3 only)
+    modern:
+      minVersion: VersionTLS13
+      sniStrict: true
+
+# Health check endpoint
+ping:
+  entryPoint: web
+  manualRouting: false
+
+# Metrics
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+
+    # Buckets for response time histogram
+    buckets:
+      - 0.1
+      - 0.3
+      - 1.0
+      - 3.0
+      - 10.0
+
+    # Manual routing for Prometheus endpoint
+    manualRouting: false
+
+  # StatsD metrics (optional)
+  # statsD:
+  #   address: localhost:8125
+  #   pushInterval: 10s
+  #   addEntryPointsLabels: true
+  #   addServicesLabels: true
+
+  # InfluxDB metrics (optional)
+  # influxDB:
+  #   address: localhost:8089
+  #   protocol: udp
+  #   pushInterval: 10s
+  #   database: traefik
+  #   retentionPolicy: autogen
+  #   addEntryPointsLabels: true
+  #   addServicesLabels: true
+
+# Global configuration
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+# Tracing (optional - for debugging)
+# tracing:
+#   serviceName: traefik
+#   jaeger:
+#     samplingServerURL: http://jaeger:5778/sampling
+#     localAgentHostPort: jaeger:6831
+#     gen128Bit: true
+#     propagation: jaeger
+#     traceContextHeaderName: uber-trace-id
+
+# ServersTransport
+serversTransport:
+  # Timeouts
+  forwardingTimeouts:
+    dialTimeout: 30s
+    responseHeaderTimeout: 60s
+    idleConnTimeout: 90s
+
+  # Keep-alive
+  maxIdleConnsPerHost: 200
+
+  # Disable SSL verification (DEV only)
+  insecureSkipVerify: false
+
+  # Root CAs
+  # rootCAs:
+  #   - /path/to/ca.crt
+
+# Pilot (deprecated in v3, commented out)
+# pilot:
+#   dashboard: false
+
+# Experimental features
+experimental:
+  # HTTP/3 support
+  http3: false
+
+  # Plugins
+  plugins: {}
