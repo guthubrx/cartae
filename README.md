@@ -45,28 +45,38 @@
 
 ## 🚀 Installation
 
-### Prérequis
+### Installation Rapide (Recommandée)
 
-- **Node.js** ≥ 18.0.0
-- **pnpm** ≥ 8.0.0
-- **Rust** (pour l'app desktop)
-
-### Installation
+**Option 1: Script automatique**
 
 ```bash
 # Cloner le repository
 git clone https://github.com/guthubrx/cartae.git
 cd cartae
 
-# Installer les dépendances
-pnpm install
-
-# Lancer l'application web
-pnpm dev
-
-# Lancer l'application desktop
-pnpm dev:desktop
+# Lancer le setup wizard
+./setup.sh full
 ```
+
+**Option 2: Installation manuelle**
+
+Consultez le **[Guide de Démarrage Complet](./GETTING-STARTED.md)** pour un setup détaillé étape par étape.
+
+### Installation Simple (Frontend seulement)
+
+Si vous voulez juste tester l'application sans PostgreSQL/Vault :
+
+```bash
+git clone https://github.com/guthubrx/cartae.git
+cd cartae
+./setup.sh simple
+
+# Ou manuellement:
+pnpm install
+pnpm dev
+```
+
+Puis ouvrir **http://localhost:5173**
 
 ## 📱 Utilisation
 
