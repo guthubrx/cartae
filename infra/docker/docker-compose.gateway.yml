@@ -1,0 +1,484 @@
+# Docker Compose - API Gateway (Traefik) & Rate Limiting
+# Session 81h - API Gateway & Rate Limiting
+#
+# Ce fichier définit l'API Gateway Traefik en mode standalone.
+# Architecture: Traefik (reverse proxy + rate limiting) + Redis (quotas backend)
+#
+# Composants:
+# - traefik-gateway: Reverse proxy avec rate limiting middlewares
+# - cartae-redis: Backend Redis pour sliding window quotas
+# - prometheus: Monitoring métriques Traefik
+#
+# Configuration:
+# - Static config: CLI arguments (providers, entrypoints, metrics)
+# - Dynamic config: Fichiers YAML dans ./traefik/dynamic/ (rate-limit.yml)
+# - Labels Docker: Auto-discovery services (provider.docker)
+#
+# Ports exposés:
+# - 80: HTTP (web entrypoint)
+# - 443: HTTPS (websecure entrypoint)
+# - 8080: Traefik dashboard + API + Prometheus metrics
+#
+# Volumes:
+# - /var/run/docker.sock: Auto-discovery containers Docker
+# - ./traefik/dynamic: Configuration dynamique (rate-limit.yml)
+# - ./traefik/certs: Certificats SSL/TLS (optionnel)
+#
+# Réseau:
+# - cartae-network: Réseau bridge partagé avec services backend
+
+version: '3.8'
+
+# ==============================================================================
+# RÉSEAUX
+# ==============================================================================
+networks:
+  cartae-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+    # Réseau partagé avec tous les services Cartae
+    # Permet à Traefik de router vers cartae-database-api, cartae-plugins, etc.
+
+# ==============================================================================
+# VOLUMES
+# ==============================================================================
+volumes:
+  # Redis data persistence (quotas, rate limit state)
+  redis-data:
+    driver: local
+
+  # Prometheus data (metrics history)
+  prometheus-data:
+    driver: local
+
+# ==============================================================================
+# SERVICES
+# ==============================================================================
+services:
+  # ----------------------------------------------------------------------------
+  # TRAEFIK - API Gateway & Reverse Proxy
+  # ----------------------------------------------------------------------------
+  # Responsabilités:
+  # 1. Reverse proxy vers services backend (database-api, plugins, etc.)
+  # 2. Rate limiting multi-niveau (global, per-IP, plugin quotas)
+  # 3. Load balancing (si plusieurs instances backend)
+  # 4. SSL/TLS termination (HTTPS)
+  # 5. Monitoring (Prometheus metrics)
+  # 6. Auto-discovery services Docker (labels)
+  #
+  # Workflow requête:
+  # 1. Client → Traefik :80 ou :443
+  # 2. Traefik applique middlewares (rate limiting)
+  # 3. Si OK → Router vers service backend
+  # 4. Backend process requête → Response
+  # 5. Traefik retourne response + headers rate limit
+  #
+  # Configuration:
+  # - Static: Arguments CLI (--providers, --entrypoints, --metrics)
+  # - Dynamic: Fichiers YAML (./traefik/dynamic/rate-limit.yml)
+  # - Labels: Sur services backend (traefik.http.routers.*, traefik.http.services.*)
+  traefik-gateway:
+    image: traefik:v2.10
+    container_name: cartae-traefik-gateway
+    restart: unless-stopped
+
+    # Configuration statique (CLI arguments)
+    command:
+      # ----------------------------------------------------------------------
+      # PROVIDERS - Sources de configuration
+      # ----------------------------------------------------------------------
+      # Docker provider: Auto-discovery containers avec labels traefik.*
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"  # Require explicit traefik.enable=true
+      - "--providers.docker.network=cartae-network"   # Réseau à surveiller
+
+      # File provider: Configuration dynamique depuis fichiers YAML
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"                 # Hot reload si fichier modifié
+
+      # ----------------------------------------------------------------------
+      # ENTRYPOINTS - Points d'entrée (ports)
+      # ----------------------------------------------------------------------
+      # Web: HTTP port 80
+      - "--entrypoints.web.address=:80"
+      # Optionnel: Redirect HTTP → HTTPS
+      # - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      # - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+
+      # Websecure: HTTPS port 443
+      - "--entrypoints.websecure.address=:443"
+
+      # ----------------------------------------------------------------------
+      # API & DASHBOARD
+      # ----------------------------------------------------------------------
+      # Dashboard Traefik (http://localhost:8080/dashboard/)
+      - "--api.dashboard=true"
+      - "--api.insecure=true"  # WARNING: Désactiver en production (use auth middleware)
+
+      # ----------------------------------------------------------------------
+      # METRICS - Prometheus
+      # ----------------------------------------------------------------------
+      # Expose métriques sur :8080/metrics
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.addEntryPointsLabels=true"
+      - "--metrics.prometheus.addServicesLabels=true"
+      - "--metrics.prometheus.buckets=0.1,0.3,1.2,5.0"  # Histogrammes latence
+
+      # ----------------------------------------------------------------------
+      # LOGS
+      # ----------------------------------------------------------------------
+      # Access logs (requêtes HTTP)
+      - "--accesslog=true"
+      - "--accesslog.format=json"
+      - "--accesslog.fields.headers.names.X-Ratelimit-Limit=keep"
+      - "--accesslog.fields.headers.names.X-Ratelimit-Remaining=keep"
+
+      # Application logs (Traefik internal)
+      - "--log.level=INFO"
+      - "--log.format=json"
+
+    # Ports exposés
+    ports:
+      - "80:80"       # HTTP
+      - "443:443"     # HTTPS
+      - "8080:8080"   # Dashboard + API + Metrics
+
+    # Volumes
+    volumes:
+      # Docker socket (auto-discovery containers)
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+      # Configuration dynamique (rate-limit.yml)
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+
+      # Certificats SSL/TLS (optionnel)
+      # - ./traefik/certs:/etc/traefik/certs:ro
+
+    # Variables d'environnement
+    environment:
+      - TZ=UTC
+
+    # Labels Docker (self-configuration)
+    labels:
+      # Activer Traefik pour lui-même (dashboard)
+      - "traefik.enable=true"
+
+      # Router: Dashboard (http://localhost:8080/dashboard/)
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.localhost`) || PathPrefix(`/dashboard`) || PathPrefix(`/api`)"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=web"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+
+      # Middleware: Basic Auth pour dashboard (production)
+      # Générer: echo $(htpasswd -nB admin) | sed -e s/\\$/\\$\\$/g
+      # - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$apr1$$..."
+      # - "traefik.http.routers.traefik-dashboard.middlewares=traefik-auth"
+
+    # Réseau
+    networks:
+      - cartae-network
+
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+    # Dépendances
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # REDIS - Backend Rate Limiting (Sliding Window)
+  # ----------------------------------------------------------------------------
+  # Responsabilités:
+  # 1. Stocker état rate limiting (ZSET: clé = rate_limit:{plugin_id}:{user_id})
+  # 2. Sliding window counter (ZCOUNT sur fenêtre temporelle)
+  # 3. Cleanup automatique (EXPIRE + ZREMRANGEBYSCORE)
+  # 4. Persistence données (AOF + RDB snapshots)
+  #
+  # Data structures:
+  # - ZSET rate_limit:{plugin_id}:{user_id}
+  #   - Score: timestamp Unix (secondes)
+  #   - Member: "timestamp-random" (unique)
+  #   - TTL: 3600s (1 heure)
+  #
+  # Opérations:
+  # - ZCOUNT key (now-3600) now → Count requests dans fenêtre
+  # - ZADD key now "timestamp-random" → Ajouter request actuelle
+  # - ZREMRANGEBYSCORE key 0 (now-3600) → Cleanup vieilles entrées
+  # - EXPIRE key 3600 → Auto-delete après 1h inactivité
+  #
+  # Performances:
+  # - ZCOUNT: O(log N) où N = nombre entries dans ZSET
+  # - ZADD: O(log N)
+  # - ZREMRANGEBYSCORE: O(log N + M) où M = nombre entries supprimées
+  # - Typical: N < 100 entries par user/plugin → < 1ms latency
+  #
+  # Persistence:
+  # - AOF (Append-Only File): Écrit chaque commande (durabilité)
+  # - RDB snapshots: Snapshots périodiques (backup)
+  # - Strategy: appendfsync everysec (balance perfs/durabilité)
+  redis:
+    image: redis:7-alpine
+    container_name: cartae-redis
+    restart: unless-stopped
+
+    # Configuration Redis
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --loglevel notice
+
+    # Ports (interne seulement, pas exposé host)
+    expose:
+      - "6379"
+
+    # Volumes
+    volumes:
+      # Persistence données
+      - redis-data:/data
+
+    # Variables d'environnement
+    environment:
+      - TZ=UTC
+
+    # Réseau
+    networks:
+      - cartae-network
+
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+    # Limits resources
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # ----------------------------------------------------------------------------
+  # PROMETHEUS - Monitoring Metrics
+  # ----------------------------------------------------------------------------
+  # Collecte métriques Traefik + QuotaManager
+  #
+  # Métriques Traefik:
+  # - traefik_entrypoint_requests_total{code, entrypoint, method}
+  # - traefik_entrypoint_request_duration_seconds{entrypoint}
+  # - traefik_service_requests_total{code, service}
+  # - traefik_service_request_duration_seconds{service}
+  #
+  # Métriques custom (QuotaManager):
+  # - cartae_plugin_quota_remaining{plugin_id, user_id}
+  # - cartae_plugin_quota_exceeded_total{plugin_id}
+  # - cartae_redis_operations_total{operation}
+  # - cartae_redis_operation_duration_seconds{operation}
+  #
+  # Alertes:
+  # - Rate limit exceeded > 100/min (abuse)
+  # - Redis down (impossible check quotas)
+  # - Latency P95 > 200ms (performance dégradée)
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: cartae-prometheus
+    restart: unless-stopped
+
+    # Configuration Prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+
+    # Ports
+    ports:
+      - "9090:9090"  # Prometheus UI
+
+    # Volumes
+    volumes:
+      # Configuration
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+      # Data persistence
+      - prometheus-data:/prometheus
+
+    # Variables d'environnement
+    environment:
+      - TZ=UTC
+
+    # Réseau
+    networks:
+      - cartae-network
+
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+    # Dépendances
+    depends_on:
+      - traefik-gateway
+
+# ==============================================================================
+# CONFIGURATION PROMETHEUS
+# ==============================================================================
+# Créer fichier: ./prometheus/prometheus.yml
+#
+# global:
+#   scrape_interval: 15s
+#   evaluation_interval: 15s
+#
+# scrape_configs:
+#   # Traefik metrics
+#   - job_name: 'traefik'
+#     static_configs:
+#       - targets: ['traefik-gateway:8080']
+#
+#   # QuotaManager metrics (database-api)
+#   - job_name: 'quota-manager'
+#     static_configs:
+#       - targets: ['cartae-database-api:3000']
+#     metrics_path: '/metrics'
+#
+# ==============================================================================
+# USAGE
+# ==============================================================================
+#
+# Démarrer API Gateway:
+#   docker-compose -f docker-compose.gateway.yml up -d
+#
+# Vérifier services:
+#   docker-compose -f docker-compose.gateway.yml ps
+#
+# Logs Traefik:
+#   docker-compose -f docker-compose.gateway.yml logs -f traefik-gateway
+#
+# Dashboard Traefik:
+#   http://localhost:8080/dashboard/
+#
+# Prometheus UI:
+#   http://localhost:9090
+#
+# Tester rate limiting:
+#   # Global (1000 req/s)
+#   ab -n 2000 -c 100 http://localhost/api/health
+#
+#   # Per-IP (100 req/s)
+#   ab -n 200 -c 50 http://localhost/api/plugins
+#
+# Vérifier quotas Redis:
+#   docker exec -it cartae-redis redis-cli
+#   > KEYS rate_limit:*
+#   > ZRANGE rate_limit:plugin-1:user-1 0 -1 WITHSCORES
+#   > ZCOUNT rate_limit:plugin-1:user-1 (now-3600) now
+#
+# Stopper API Gateway:
+#   docker-compose -f docker-compose.gateway.yml down
+#
+# Cleanup volumes (WARNING: Supprime données):
+#   docker-compose -f docker-compose.gateway.yml down -v
+
+# ==============================================================================
+# TROUBLESHOOTING
+# ==============================================================================
+#
+# Problème: Traefik ne démarre pas
+# → Check: docker-compose logs traefik-gateway
+# → Causes fréquentes:
+#   - Port 80/443/8080 déjà utilisé (autre service)
+#   - /var/run/docker.sock permissions (macOS: OK, Linux: add user to docker group)
+#   - Fichier rate-limit.yml syntax error (YAML invalide)
+#
+# Problème: Services backend non routés (404 Not Found)
+# → Check: http://localhost:8080/api/rawdata → Voir routers configurés
+# → Causes:
+#   - Service backend pas sur réseau cartae-network
+#   - Label traefik.enable=true manquant
+#   - Règle router incorrecte (Host() ou PathPrefix())
+#
+# Problème: Rate limiting ne fonctionne pas
+# → Check: docker exec cartae-traefik-gateway cat /etc/traefik/dynamic/rate-limit.yml
+# → Check: Logs Traefik (voir si middleware appliqué)
+# → Causes:
+#   - Middleware pas attaché au router (labels manquants)
+#   - rate-limit.yml pas chargé (volume mal monté)
+#   - Redis down (plugin-quota-check fails)
+#
+# Problème: Redis perd données au redémarrage
+# → Check: docker volume inspect redis-data
+# → Causes:
+#   - Volume pas monté correctement
+#   - AOF/RDB disabled (vérifier config Redis)
+# → Solution: Vérifier persistence config (--appendonly yes)
+#
+# Problème: Latence élevée sur /api/gateway/quota-check
+# → Check: Prometheus metrics (cartae_redis_operation_duration_seconds)
+# → Causes:
+#   - Redis slow queries (ZSET trop large)
+#   - Réseau lent (Redis sur host distant?)
+# → Solution: Cleanup Redis (ZREMRANGEBYSCORE), optimiser TTL
+#
+# Problème: Prometheus ne scrappe pas Traefik
+# → Check: http://localhost:9090/targets → Voir status targets
+# → Causes:
+#   - prometheus.yml config incorrecte
+#   - Traefik metrics pas enabled (--metrics.prometheus=true)
+#   - Réseau (Prometheus pas sur cartae-network)
+# → Solution: Vérifier prometheus.yml, redémarrer Prometheus
+
+# ==============================================================================
+# PRODUCTION RECOMMENDATIONS
+# ==============================================================================
+#
+# 1. SÉCURITÉ
+# - Activer Basic Auth sur dashboard Traefik (traefik-auth middleware)
+# - Désactiver API insecure (--api.insecure=false)
+# - Utiliser HTTPS uniquement (redirect HTTP → HTTPS)
+# - Certificats SSL/TLS (Let's Encrypt avec Traefik ACME)
+# - Rate limiting plus strict (50 req/s per-IP au lieu de 100)
+#
+# 2. PERFORMANCE
+# - Augmenter resources Redis (1GB RAM au lieu de 512MB)
+# - Activer Redis clustering si > 10k req/s
+# - Load balancing backend (plusieurs instances database-api)
+# - Cache responses (Traefik cache middleware ou Varnish)
+#
+# 3. MONITORING
+# - Alertmanager Prometheus (alertes Slack/email)
+# - Grafana dashboards (visualisation métriques)
+# - Logs centralisés (ELK ou Loki)
+# - Tracing (Jaeger ou Tempo)
+#
+# 4. HIGH AVAILABILITY
+# - Traefik HA (plusieurs instances + Consul/etcd config backend)
+# - Redis Sentinel (failover automatique)
+# - Database-api replicas (3 instances minimum)
+# - Health checks agressifs (interval 5s, retries 3)
+#
+# 5. BACKUPS
+# - Redis snapshots réguliers (RDB chaque heure)
+# - Prometheus data backup (TSDB snapshots)
+# - Configuration versionnée (Git)
