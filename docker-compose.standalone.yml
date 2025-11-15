@@ -1,0 +1,364 @@
+version: '3.9'
+
+# Cartae - Docker Compose Standalone
+# Profils: minimal, standard, full
+# Usage: docker compose -f docker-compose.standalone.yml --profile standard up -d
+
+services:
+  # ============================================================================
+  # DATABASE LAYER (All Profiles)
+  # ============================================================================
+
+  cartae-postgres:
+    image: pgvector/pgvector:pg16
+    container_name: cartae-postgres
+    profiles: ["minimal", "standard", "full"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cartae}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-cartae}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../infra/database/init-scripts:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"  # Internal only (not exposed to host in production)
+    networks:
+      - data-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cartae}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ============================================================================
+  # CACHE LAYER (Standard/Full)
+  # ============================================================================
+
+  cartae-redis:
+    image: redis:7-alpine
+    container_name: cartae-redis
+    profiles: ["standard", "full"]
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ============================================================================
+  # SECRETS MANAGEMENT (Standard/Full)
+  # ============================================================================
+
+  cartae-vault:
+    image: hashicorp/vault:1.15
+    container_name: cartae-vault
+    profiles: ["standard", "full"]
+    environment:
+      VAULT_ADDR: http://0.0.0.0:8200
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - vault-data:/vault/data
+      - vault-logs:/vault/logs
+      - ../infra/vault/config:/vault/config:ro
+    ports:
+      - "8200:8200"
+    networks:
+      - secrets-network
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ============================================================================
+  # API LAYER (All Profiles)
+  # ============================================================================
+
+  database-api:
+    image: cartae/database-api:latest
+    container_name: database-api
+    profiles: ["minimal", "standard", "full"]
+    environment:
+      NODE_ENV: production
+      API_PORT: 3001
+
+      # PostgreSQL
+      POSTGRES_HOST: cartae-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-cartae}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-cartae}
+      POSTGRES_SSL: "false"
+
+      # Redis (Standard/Full only)
+      REDIS_HOST: cartae-redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+      # Vault (Standard/Full only)
+      VAULT_ADDR: http://cartae-vault:8200
+      VAULT_TOKEN: ${VAULT_TOKEN}
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 7d
+
+      # CORS
+      CORS_ORIGIN: http://localhost:5173
+    depends_on:
+      cartae-postgres:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    networks:
+      - app-network
+      - data-network
+      - secrets-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ============================================================================
+  # FRONTEND (All Profiles)
+  # ============================================================================
+
+  cartae-frontend:
+    image: cartae/frontend:latest
+    container_name: cartae-frontend
+    profiles: ["minimal", "standard", "full"]
+    environment:
+      VITE_API_URL: http://localhost:3001
+      VITE_VAULT_ADDR: http://localhost:8200
+    depends_on:
+      - database-api
+    ports:
+      - "5173:5173"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # REVERSE PROXY (All Profiles)
+  # ============================================================================
+
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    profiles: ["minimal", "standard", "full"]
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@localhost}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik Dashboard (dev only)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certs:/letsencrypt
+    networks:
+      - dmz-network
+      - app-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # SECURITY (Standard/Full)
+  # ============================================================================
+
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    container_name: fail2ban
+    profiles: ["standard", "full"]
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - /var/log:/var/log:ro
+      - fail2ban-data:/data
+    networks:
+      - dmz-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # BACKUP (Standard/Full)
+  # ============================================================================
+
+  restic-backup:
+    image: mazzolino/restic:latest
+    container_name: restic-backup
+    profiles: ["standard", "full"]
+    environment:
+      RESTIC_REPOSITORY: /backups
+      RESTIC_PASSWORD: ${BACKUP_PASSWORD:-changeme}
+      BACKUP_CRON: "0 */6 * * *"  # Every 6 hours
+      RESTIC_FORGET_ARGS: "--keep-last 10 --keep-daily 7 --keep-weekly 4 --keep-monthly 6"
+    volumes:
+      - postgres-data:/data/postgres:ro
+      - vault-data:/data/vault:ro
+      - backup-data:/backups
+      - ../infra/scripts/backup-postgresql.sh:/scripts/backup-postgresql.sh:ro
+      - ../infra/scripts/backup-vault.sh:/scripts/backup-vault.sh:ro
+    networks:
+      - data-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # MONITORING (Full Only)
+  # ============================================================================
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    profiles: ["full"]
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    volumes:
+      - ../infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    profiles: ["full"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: grafana-clock-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../infra/monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../infra/monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Exporters (Full Only)
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    profiles: ["full"]
+    environment:
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-cartae}:${POSTGRES_PASSWORD}@cartae-postgres:5432/${POSTGRES_DB:-cartae}?sslmode=disable
+    networks:
+      - app-network
+      - data-network
+    restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    profiles: ["full"]
+    environment:
+      REDIS_ADDR: cartae-redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    profiles: ["full"]
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - app-network
+    restart: unless-stopped
+
+# ============================================================================
+# NETWORKS (Defense-in-Depth Zones)
+# ============================================================================
+
+networks:
+  dmz-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.1.0/24  # DMZ Zone (Traefik, Fail2ban)
+
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.2.0/24  # Application Zone (API, Frontend, Redis)
+
+  data-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.3.0/24  # Data Zone (PostgreSQL)
+
+  secrets-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.4.0/24  # Secrets Zone (Vault)
+
+# ============================================================================
+# VOLUMES (Persistent Data)
+# ============================================================================
+
+volumes:
+  postgres-data:
+    driver: local
+
+  redis-data:
+    driver: local
+
+  vault-data:
+    driver: local
+
+  vault-logs:
+    driver: local
+
+  traefik-certs:
+    driver: local
+
+  fail2ban-data:
+    driver: local
+
+  backup-data:
+    driver: local
+
+  prometheus-data:
+    driver: local
+
+  grafana-data:
+    driver: local
