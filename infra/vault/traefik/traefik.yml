@@ -1,0 +1,89 @@
+# Traefik Configuration - Production Hardened
+# Session 78 - Zero Trust Reverse Proxy
+
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+# Entry Points (ports d'écoute)
+entryPoints:
+  web:
+    address: ':80'
+    # Redirection automatique HTTP → HTTPS
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+
+  websecure:
+    address: ':443'
+    http:
+      tls:
+        options: modern # TLS 1.3 uniquement
+        certResolver: letsencrypt
+      middlewares:
+        - security-headers@file
+        - rate-limit@file
+
+# API et Dashboard (désactiver en production OU limiter à localhost)
+api:
+  dashboard: true
+  insecure: false # HTTPS obligatoire
+
+# Logs
+log:
+  level: INFO # DEBUG en dev, INFO en prod
+  format: json
+  filePath: /var/log/traefik/traefik.log
+
+# Access Logs (pour fail2ban)
+accessLog:
+  format: json
+  filePath: /var/log/traefik/access.log
+  filters:
+    statusCodes:
+      - '400-599' # Logs uniquement erreurs (économie disk)
+  fields:
+    headers:
+      defaultMode: drop # Ne pas logger headers sensibles
+      names:
+        User-Agent: keep
+        X-Real-Ip: keep
+
+# Providers
+providers:
+  docker:
+    endpoint: 'unix:///var/run/docker.sock'
+    exposedByDefault: false # Sécurité: pas d'auto-exposition
+    network: app_network
+    watch: true
+
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+# Certificats TLS (Let's Encrypt)
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: security@cartae.local
+      storage: /certs/acme.json
+      # Production: caServer par défaut (Let's Encrypt)
+      # Staging: https://acme-staging-v02.api.letsencrypt.org/directory
+      tlsChallenge: true
+      httpChallenge:
+        entryPoint: web
+
+# Metrics (Prometheus)
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addServicesLabels: true
+    buckets:
+      - 0.1
+      - 0.3
+      - 1.0
+      - 3.0
+      - 10.0

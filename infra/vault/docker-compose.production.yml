@@ -1,0 +1,313 @@
+# Docker Compose - Production Hardened (Zero Trust Network)
+# Session 78 - Security-Driven Architecture
+# Conforme NIST SP 800-207 + HashiCorp Vault Production Hardening Guide
+
+version: '3.9'
+
+services:
+  # ============================================================
+  # TIER 1: DMZ Network (Public-facing)
+  # ============================================================
+
+  # Reverse Proxy avec TLS termination
+  traefik:
+    image: traefik:v3.0
+    container_name: cartae-traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true # Empêche escalade privilèges
+    cap_drop:
+      - ALL # Drop toutes les capabilities
+    cap_add:
+      - NET_BIND_SERVICE # Uniquement bind ports <1024
+    ports:
+      - '443:443' # HTTPS uniquement (NO HTTP)
+      - '8080:8080' # Dashboard (à désactiver en prod ou limiter à localhost)
+    environment:
+      - TLS_MIN_VERSION=1.3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Read-only !
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - ./certs:/certs:ro # Certificats TLS
+    networks:
+      - dmz_network
+      - app_network # Seul service avec accès DMZ + App
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.traefik.tls=true'
+      - 'traefik.http.routers.traefik.tls.options=modern@file'
+
+  # Rate limiter / IPS (Intrusion Prevention System)
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    container_name: cartae-fail2ban
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./fail2ban:/data
+      - /var/log:/var/log:ro # Logs Traefik en lecture seule
+    networks:
+      - dmz_network
+
+  # ============================================================
+  # TIER 2: Application Network (Backend)
+  # ============================================================
+
+  # Application Cartae Web (Next.js)
+  cartae-web:
+    image: cartae/web:latest
+    container_name: cartae-web
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true # Filesystem read-only (immutabilité)
+    tmpfs:
+      - /tmp:noexec,nosuid,nodev # Temp writable mais no-exec
+      - /app/.next/cache:noexec,nosuid,nodev
+    environment:
+      - NODE_ENV=production
+      - VAULT_ADDR=https://vault:8200 # TLS interne
+      - VAULT_TOKEN_FILE=/run/secrets/vault_app_token
+    secrets:
+      - vault_app_token # Docker secret (chiffré)
+    networks:
+      - app_network
+      - secrets_network # Accès à Vault
+      - data_network # Accès à PostgreSQL
+    depends_on:
+      - vault
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.cartae.rule=Host(`app.cartae.local`)'
+      - 'traefik.http.routers.cartae.tls=true'
+      - 'traefik.http.routers.cartae.middlewares=rate-limit@file'
+      - 'traefik.http.services.cartae.loadbalancer.server.port=3000'
+
+  # ============================================================
+  # TIER 3: Secrets Network (Vault) - NO INTERNET ACCESS
+  # ============================================================
+
+  vault:
+    image: hashicorp/vault:1.17
+    container_name: cartae-vault
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - IPC_LOCK # mlock() pour empêcher swap
+    # PAS DE PORTS EXPOSÉS PUBLIQUEMENT !
+    # Accessible uniquement via réseaux internes
+    environment:
+      VAULT_ADDR: 'https://0.0.0.0:8200' # TLS activé
+      VAULT_LOG_LEVEL: 'info'
+      VAULT_DISABLE_MLOCK: 'false'
+    volumes:
+      - vault-data:/vault/file:rw
+      - ./config/vault.hcl:/vault/config/vault.hcl:ro
+      - ./policies:/vault/policies:ro
+      - ./certs/vault.crt:/vault/certs/vault.crt:ro
+      - ./certs/vault.key:/vault/certs/vault.key:ro
+      - ./certs/ca.crt:/vault/certs/ca.crt:ro
+    command: server
+    networks:
+      secrets_network:
+        ipv4_address: 172.25.3.10 # IP fixe pour ACL
+      data_network: # Accès à PostgreSQL uniquement
+    healthcheck:
+      test: ['CMD', 'vault', 'status', '-tls-skip-verify']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    # Isolation réseau stricte
+    sysctls:
+      - net.ipv4.ip_forward=0 # Désactive IP forwarding
+      - net.ipv6.conf.all.disable_ipv6=1 # Désactive IPv6
+
+  # ============================================================
+  # TIER 4: Data Network (PostgreSQL) - NO INTERNET ACCESS
+  # ============================================================
+
+  postgresql:
+    image: postgres:16-alpine
+    container_name: cartae-postgresql
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true # Filesystem read-only
+    tmpfs:
+      - /tmp:noexec,nosuid,nodev
+      - /var/run/postgresql:noexec,nosuid,nodev
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: cartae_db
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C'
+      # Sécurité SSL
+      POSTGRES_HOST_AUTH_METHOD: 'scram-sha-256' # Auth forte
+    secrets:
+      - postgres_user
+      - postgres_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data:rw
+      - ./certs/postgres.crt:/var/lib/postgresql/server.crt:ro
+      - ./certs/postgres.key:/var/lib/postgresql/server.key:ro
+      - ./certs/ca.crt:/var/lib/postgresql/ca.crt:ro
+    networks:
+      data_network:
+        ipv4_address: 172.25.4.10 # IP fixe pour ACL
+    command:
+      - 'postgres'
+      - '-c'
+      - 'ssl=on'
+      - '-c'
+      - 'ssl_cert_file=/var/lib/postgresql/server.crt'
+      - '-c'
+      - 'ssl_key_file=/var/lib/postgresql/server.key'
+      - '-c'
+      - 'ssl_ca_file=/var/lib/postgresql/ca.crt'
+      - '-c'
+      - 'ssl_min_protocol_version=TLSv1.3'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin (DEV ONLY - Accès via Bastion uniquement)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: cartae-pgadmin
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # PAS DE PORTS EXPOSÉS - Accès via Traefik + Auth
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@cartae.local
+      PGADMIN_DEFAULT_PASSWORD_FILE: /run/secrets/pgadmin_password
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: 'True'
+      PGADMIN_CONFIG_LOGIN_BANNER: '"🔒 Production Environment - Authorized Access Only"'
+    secrets:
+      - pgadmin_password
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin:rw
+    networks:
+      - data_network
+      - app_network # Accès via Traefik
+    depends_on:
+      - postgresql
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.pgadmin.rule=Host(`pgadmin.cartae.local`)'
+      - 'traefik.http.routers.pgadmin.tls=true'
+      - 'traefik.http.routers.pgadmin.middlewares=auth-admin@file' # Auth obligatoire
+      - 'traefik.http.services.pgadmin.loadbalancer.server.port=80'
+
+# ============================================================
+# Secrets Docker (chiffrés au repos)
+# ============================================================
+
+secrets:
+  vault_app_token:
+    file: ./secrets/vault_app_token.txt
+  postgres_user:
+    file: ./secrets/postgres_user.txt
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  pgadmin_password:
+    file: ./secrets/pgadmin_password.txt
+
+# ============================================================
+# Volumes (chiffrés au repos via LUKS - Phase 6)
+# ============================================================
+
+volumes:
+  vault-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/encrypted/vault-data # Volume chiffré LUKS
+
+  postgres-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/encrypted/postgres-data # Volume chiffré LUKS
+
+  pgadmin-data:
+    driver: local
+
+# ============================================================
+# Réseaux - Isolation stricte (Zero Trust)
+# ============================================================
+
+networks:
+  # DMZ: Public-facing (Internet → Traefik)
+  dmz_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.1.0/24
+          gateway: 172.25.1.1
+    driver_opts:
+      com.docker.network.bridge.name: cartae-dmz
+      com.docker.network.bridge.enable_icc: 'false' # Désactive inter-container comm
+      com.docker.network.bridge.enable_ip_masquerade: 'true'
+
+  # App Network: Application tier (Traefik → Cartae Web)
+  app_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.2.0/24
+          gateway: 172.25.2.1
+    driver_opts:
+      com.docker.network.bridge.name: cartae-app
+      com.docker.network.bridge.enable_icc: 'false'
+    # Firewall rules (iptables) - seulement Traefik → Cartae Web
+    internal: false
+
+  # Secrets Network: Vault tier (Cartae Web → Vault UNIQUEMENT)
+  secrets_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.3.0/24
+          gateway: 172.25.3.1
+    driver_opts:
+      com.docker.network.bridge.name: cartae-secrets
+      com.docker.network.bridge.enable_icc: 'false'
+    internal: true # PAS d'accès Internet
+
+  # Data Network: Database tier (Vault + Cartae Web → PostgreSQL UNIQUEMENT)
+  data_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.4.0/24
+          gateway: 172.25.4.1
+    driver_opts:
+      com.docker.network.bridge.name: cartae-data
+      com.docker.network.bridge.enable_icc: 'false'
+    internal: true # PAS d'accès Internet

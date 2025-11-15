@@ -24,12 +24,16 @@ import { parseRouter } from './api/routes/parse';
 import { searchRouter } from './api/routes/search';
 import { semanticRouter } from './api/routes/semantic';
 import { hybridRouter } from './api/routes/hybrid';
+import { vaultRouter } from './api/routes/vault';
 
 // Middlewares
 import { errorHandler, notFoundHandler } from './api/middlewares/errorHandler';
 
 // DB
 import { testConnection } from './db/client';
+
+// Vault
+import { getVaultClient } from './vault/VaultClient';
 
 dotenv.config();
 
@@ -102,6 +106,7 @@ async function createApp(): Promise<Application> {
   app.use('/api/search', searchRouter);
   app.use('/api/semantic', semanticRouter);
   app.use('/api/hybrid', hybridRouter);
+  app.use('/api/vault', vaultRouter);
 
   // ========== Error handlers (doivent être après les routes) ==========
 
@@ -116,6 +121,30 @@ async function createApp(): Promise<Application> {
  */
 async function startServer() {
   try {
+    // Initialise Vault client (si configuré)
+    const vaultEnabled = process.env.VAULT_ENABLED === 'true';
+    if (vaultEnabled) {
+      console.log('🔐 Initializing Vault client...');
+      const vaultEndpoint = process.env.VAULT_ADDR || 'http://localhost:8200';
+      const vaultToken = process.env.VAULT_TOKEN || '';
+
+      if (!vaultToken) {
+        console.warn('⚠️ VAULT_TOKEN not set. Vault integration disabled.');
+      } else {
+        getVaultClient({
+          endpoint: vaultEndpoint,
+          token: vaultToken,
+          mountPoint: process.env.VAULT_MOUNT_POINT || 'secret',
+          apiVersion: 'v2',
+        });
+
+        // Health check Vault
+        const vaultClient = getVaultClient();
+        await vaultClient.ensureVaultReady();
+        console.log('✅ Vault client initialized and ready');
+      }
+    }
+
     // Test connexion PostgreSQL
     console.log('🔌 Testing PostgreSQL connection...');
     await testConnection();
@@ -140,6 +169,10 @@ async function startServer() {
       console.log(`   POST   /api/semantic/batch - Batch vector search`);
       console.log(`   POST   /api/hybrid         - Hybrid search (text + vector)`);
       console.log(`   POST   /api/hybrid/auto    - Auto-weighted hybrid search`);
+      console.log(`   POST   /api/vault/secrets  - Store secret in Vault`);
+      console.log(`   GET    /api/vault/secrets/:path - Retrieve secret from Vault`);
+      console.log(`   DELETE /api/vault/secrets/:path - Delete secret from Vault`);
+      console.log(`   GET    /api/vault/health   - Vault health check`);
       console.log('');
     });
   } catch (error) {

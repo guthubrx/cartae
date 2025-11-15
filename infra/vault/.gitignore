@@ -1,0 +1,51 @@
+# Ne JAMAIS commiter les secrets !
+
+# Configuration locale
+.env
+
+# Tokens et clés générés
+/tmp/vault-init-output.json
+*.token
+*.key
+*.pem
+*.crt
+*.srl
+
+# Docker Secrets (CRITIQUE - NE JAMAIS COMMIT)
+/secrets/
+secrets/*.txt
+vault_app_token.txt
+postgres_user.txt
+postgres_password.txt
+pgadmin_password.txt
+
+# Logs d'audit
+/logs/
+*.log
+
+# Certificats TLS (Phase 6)
+/certs/
+ca.key
+ca.crt
+vault.key
+vault.crt
+postgres.key
+postgres.crt
+cartae.key
+cartae.crt
+pgadmin.key
+pgadmin.crt
+default.key
+default.crt
+*.cnf
+
+# Données Vault (volume Docker)
+/data/
+vault-data/
+postgres-data/
+pgadmin-data/
+
+# Backup chiffrés (Phase 6)
+/backups/
+*.backup
+*.dump
