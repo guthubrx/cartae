@@ -1,0 +1,139 @@
+# Cartae - Docker Compose mTLS Overlay
+# Session 81b - TLS/mTLS End-to-End
+#
+# Overlay pour activer mTLS (mutual TLS) sur Vault et PostgreSQL
+# À utiliser EN PLUS de staging/prod pour sécurité maximale
+#
+# Usage:
+#   docker-compose -f docker-compose.networks.yml \
+#                  -f docker-compose.base.yml \
+#                  -f docker-compose.staging.yml \
+#                  -f docker-compose.mtls.yml \
+#                  up -d
+
+version: '3.8'
+
+services:
+  # ==================================================
+  # SECRETS - Vault (mTLS Override)
+  # ==================================================
+
+  vault:
+    volumes:
+      # Override: Config mTLS (au lieu de config.staging.hcl)
+      - ./vault/config.mtls.hcl:/vault/config/config.hcl:ro
+
+      # Certificats PKI (CA + Server + Client)
+      - ../pki/ca:/vault/tls/ca:ro
+      - ../pki/server:/vault/tls/server:ro
+      # Note: client certs montés dans database-api, pas dans Vault
+
+      # Data persistante (inchangé)
+      - vault-data:/vault/data
+      - vault-logs:/vault/logs
+
+    environment:
+      # Override: HTTPS avec mTLS
+      VAULT_ADDR: https://0.0.0.0:8200
+      VAULT_API_ADDR: https://vault:8200
+      VAULT_CLUSTER_ADDR: https://vault:8201
+
+      # TLS/mTLS enabled (certificats dans /vault/tls/)
+      VAULT_TLS_CERT_FILE: /vault/tls/server/vault.crt
+      VAULT_TLS_KEY_FILE: /vault/tls/server/vault.key
+      VAULT_TLS_CLIENT_CA_FILE: /vault/tls/ca/ca.crt
+
+  # ==================================================
+  # DATA - PostgreSQL (TLS Override)
+  # ==================================================
+
+  postgres:
+    volumes:
+      # Certificats PKI (CA + Server)
+      - ../pki/ca:/var/lib/postgresql/tls/ca:ro
+      - ../pki/server:/var/lib/postgresql/tls/server:ro
+
+      # Config PostgreSQL avec TLS (override)
+      - ./database/postgresql.tls.conf:/etc/postgresql/postgresql.conf:ro
+      - ./database/pg_hba.tls.conf:/var/lib/postgresql/data/pg_hba.conf:ro
+
+      # Data persistante (inchangé)
+      - postgres-data:/var/lib/postgresql/data
+
+    environment:
+      # Activer SSL
+      POSTGRES_INITDB_ARGS: "--auth-host=cert"
+
+    command: >
+      postgres
+      -c ssl=on
+      -c ssl_cert_file=/var/lib/postgresql/tls/server/postgres.crt
+      -c ssl_key_file=/var/lib/postgresql/tls/server/postgres.key
+      -c ssl_ca_file=/var/lib/postgresql/tls/ca/ca.crt
+      -c config_file=/etc/postgresql/postgresql.conf
+
+  # ==================================================
+  # APP - Database API (Client TLS Override)
+  # ==================================================
+
+  database-api:
+    volumes:
+      # Certificats client (pour mTLS Vault + PostgreSQL)
+      - ../pki/ca:/app/tls/ca:ro
+      - ../pki/client:/app/tls/client:ro
+
+    environment:
+      # Override: Vault avec mTLS
+      VAULT_ADDR: https://vault:8200
+      VAULT_TLS_ENABLED: "true"
+      VAULT_TLS_CA_CERT: /app/tls/ca/ca.crt
+      VAULT_TLS_CLIENT_CERT: /app/tls/client/database-api.crt
+      VAULT_TLS_CLIENT_KEY: /app/tls/client/database-api.key
+      VAULT_TLS_VERIFY: "true"
+
+      # Override: PostgreSQL avec TLS
+      DATABASE_SSL_ENABLED: "true"
+      DATABASE_SSL_CA: /app/tls/ca/ca.crt
+      DATABASE_SSL_CERT: /app/tls/client/database-api.crt
+      DATABASE_SSL_KEY: /app/tls/client/database-api.key
+      DATABASE_SSL_REJECT_UNAUTHORIZED: "true"
+
+# ==================================================
+# VOLUMES (inchangés, définis dans base/staging)
+# ==================================================
+
+# Note: Les volumes sont définis dans docker-compose.base.yml
+# Pas besoin de les redéfinir ici
+
+# ==================================================
+# NOTES D'UTILISATION
+# ==================================================
+
+# 1. Générer PKI avant démarrage:
+#    cd infra/pki/scripts
+#    ./setup-pki.sh
+#
+# 2. Vérifier que certificats existent:
+#    ls -lh infra/pki/ca/ca.crt
+#    ls -lh infra/pki/server/{vault,postgres}.crt
+#    ls -lh infra/pki/client/database-api.crt
+#
+# 3. Démarrer avec mTLS:
+#    docker-compose -f infra/docker/docker-compose.networks.yml \
+#                   -f infra/docker/docker-compose.base.yml \
+#                   -f infra/docker/docker-compose.staging.yml \
+#                   -f infra/docker/docker-compose.mtls.yml \
+#                   up -d
+#
+# 4. Tester mTLS Vault:
+#    docker exec -it cartae-vault sh
+#    vault status
+#    # Ou depuis host:
+#    curl --cacert infra/pki/ca/ca.crt \
+#         --cert infra/pki/client/database-api.crt \
+#         --key infra/pki/client/database-api.key \
+#         https://localhost:8200/v1/sys/health
+#
+# 5. Tester TLS PostgreSQL:
+#    docker exec -it cartae-postgres sh
+#    psql "host=localhost dbname=cartae user=cartae sslmode=verify-full sslcert=/var/lib/postgresql/tls/client/database-api.crt sslkey=/var/lib/postgresql/tls/client/database-api.key sslrootcert=/var/lib/postgresql/tls/ca/ca.crt"

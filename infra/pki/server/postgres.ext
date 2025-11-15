@@ -1,0 +1,4 @@
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName = DNS:postgres,DNS:cartae-postgres,DNS:localhost,IP:127.0.0.1,IP:172.22.0.10
