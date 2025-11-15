@@ -1,0 +1,280 @@
+# Traefik Dynamic Configuration - Rate Limiting & API Gateway
+# Session 81h - API Gateway & Rate Limiting
+#
+# Ce fichier définit les middlewares de rate limiting pour protéger l'API Cartae.
+# Architecture: Traefik (API Gateway) + Redis (sliding window backend)
+#
+# Stratégie multi-niveau:
+# 1. Global rate limit: Protection DDoS basique (1000 req/s tous users)
+# 2. Per-IP rate limit: Protection abuse par IP (100 req/s par IP)
+# 3. Plugin quota: Quotas par plugin (100 req/h, Redis sliding window)
+#
+# Algorithme: Sliding window avec Redis ZSET
+# - Chaque request = entry dans ZSET (score = timestamp)
+# - Count requests dans fenêtre glissante (now - window, now)
+# - Cleanup automatique (TTL Redis + ZREMRANGEBYSCORE)
+
+http:
+  # ============================================================================
+  # MIDDLEWARES - RATE LIMITING
+  # ============================================================================
+
+  middlewares:
+    # ------------------------------------------------------------------------
+    # 1. GLOBAL RATE LIMIT (Protection DDoS basique)
+    # ------------------------------------------------------------------------
+    # Limite globale sur toutes les requêtes (tous endpoints, tous users)
+    # Objectif: Prévenir surcharge serveur en cas de spike trafic ou attaque DDoS
+    #
+    # Paramètres:
+    # - average: 1000 req/s (86.4M req/jour) - suffisant pour usage standalone
+    # - period: 1s (fenêtre de calcul)
+    # - burst: 100 req (pic momentané accepté)
+    #
+    # Comportement:
+    # - Si > 1000 req/s sur 1s → 429 Too Many Requests
+    # - Burst buffer: Accepte jusqu'à 100 req supplémentaires en spike
+    # - Pas de différenciation par IP/user (limite globale)
+    #
+    # Use case:
+    # - Appliquer sur entrypoint principal (web/websecure)
+    # - Complété par per-IP limit pour protection fine
+    global-rate-limit:
+      rateLimit:
+        average: 1000          # 1000 requêtes/seconde max (throughput global)
+        period: "1s"           # Fenêtre glissante de 1 seconde
+        burst: 100             # Buffer pour pics momentanés (jusqu'à 1100 req/s en spike)
+
+    # ------------------------------------------------------------------------
+    # 2. PER-IP RATE LIMIT (Protection abuse par IP)
+    # ------------------------------------------------------------------------
+    # Limite par adresse IP source (API publique)
+    # Objectif: Empêcher un seul client de monopoliser les ressources
+    #
+    # Paramètres:
+    # - average: 100 req/s par IP (8.64M req/jour par IP)
+    # - period: 1s (fenêtre de calcul)
+    # - burst: 10 req (pic momentané par IP)
+    # - sourceCriterion: Extraction IP depuis X-Forwarded-For (depth: 1)
+    #
+    # Comportement:
+    # - Si > 100 req/s depuis même IP sur 1s → 429 Too Many Requests
+    # - Headers retournés: X-RateLimit-Limit, X-RateLimit-Remaining, Retry-After
+    # - Burst buffer: 10 req supplémentaires en spike par IP
+    #
+    # Source IP extraction:
+    # - ipStrategy.depth: 1 → Prendre 1er IP dans X-Forwarded-For
+    # - Cas proxy/load balancer: X-Forwarded-For = "client_ip, proxy1, proxy2"
+    # - depth: 1 → Utiliser "client_ip" (vraie IP client)
+    #
+    # Use case:
+    # - Appliquer sur routes API (/api/*)
+    # - Combiné avec plugin-quota pour rate limiting plugins
+    api-rate-limit:
+      rateLimit:
+        average: 100           # 100 requêtes/seconde max par IP
+        period: "1s"           # Fenêtre glissante de 1 seconde
+        burst: 10              # Buffer pour pics momentanés (jusqu'à 110 req/s en spike)
+        sourceCriterion:
+          ipStrategy:
+            depth: 1           # Extraire IP réelle depuis X-Forwarded-For (1er élément)
+            # Note: Si pas de proxy, utilise directement RemoteAddr
+
+    # ------------------------------------------------------------------------
+    # 3. PLUGIN QUOTA (Rate limiting par plugin - Custom logic)
+    # ------------------------------------------------------------------------
+    # Quotas par plugin avec Redis backend (sliding window)
+    # Objectif: Limiter usage par plugin (free tier vs premium)
+    #
+    # Architecture:
+    # - Backend: Redis ZSET (clé: rate_limit:{plugin_id}:{user_id})
+    # - Algorithme: Sliding window counter
+    # - Window: 1 heure glissante (3600s)
+    # - Limit: 100 req/h (default), 1000 req/h (premium)
+    #
+    # Workflow:
+    # 1. Requête arrive → Extraire plugin_id et user_id (JWT/headers)
+    # 2. Redis: ZCOUNT rate_limit:{plugin_id}:{user_id} (now-3600) now
+    # 3. Si count >= limit → 429 (quota exceeded)
+    # 4. Sinon → ZADD rate_limit:{plugin_id}:{user_id} now "timestamp-random"
+    # 5. EXPIRE key 3600 (cleanup auto)
+    #
+    # Headers retournés (429):
+    # - X-RateLimit-Limit: 100
+    # - X-RateLimit-Remaining: 0
+    # - X-RateLimit-Reset: <timestamp unix>
+    # - Retry-After: <seconds until reset>
+    #
+    # Prometheus metrics:
+    # - cartae_plugin_quota_remaining{plugin_id, user_id} (gauge)
+    # - cartae_plugin_quota_exceeded_total{plugin_id} (counter)
+    #
+    # NOTE: Ce middleware nécessite implémentation custom (pas built-in Traefik)
+    # → Utiliser ForwardAuth middleware avec service QuotaManager
+    plugin-quota-check:
+      forwardAuth:
+        address: "http://cartae-database-api:3000/api/gateway/quota-check"
+        authResponseHeaders:
+          - "X-RateLimit-Limit"
+          - "X-RateLimit-Remaining"
+          - "X-RateLimit-Reset"
+        # Traefik envoie requête à QuotaManager AVANT de router vers backend
+        # QuotaManager retourne:
+        # - 200 OK → Quota OK, continuer requête
+        # - 429 Too Many Requests → Quota dépassé, bloquer requête
+
+  # ============================================================================
+  # ROUTERS - APPLICATION DES MIDDLEWARES
+  # ============================================================================
+
+  routers:
+    # ------------------------------------------------------------------------
+    # API Router (HTTP)
+    # ------------------------------------------------------------------------
+    # Applique tous les middlewares de rate limiting aux routes API
+    # Ordre d'exécution:
+    # 1. global-rate-limit (protection DDoS globale)
+    # 2. api-rate-limit (protection par IP)
+    # 3. plugin-quota-check (vérification quotas plugins)
+    # 4. Route vers service backend si tout OK
+    api-router:
+      rule: "Host(`api.cartae.localhost`) || PathPrefix(`/api`)"
+      entryPoints:
+        - web
+      middlewares:
+        - global-rate-limit      # 1. Check limite globale (1000 req/s)
+        - api-rate-limit         # 2. Check limite par IP (100 req/s)
+        - plugin-quota-check     # 3. Check quota plugin (100 req/h)
+        - compress               # 4. Compression réponses (gzip)
+        - error-pages            # 5. Pages d'erreur custom
+      service: cartae-api
+
+    # ------------------------------------------------------------------------
+    # Plugins Router (HTTP)
+    # ------------------------------------------------------------------------
+    # Routes spécifiques plugins (/api/plugins/*)
+    # Applique plugin-quota-check uniquement (pas api-rate-limit)
+    # Car rate limiting déjà fait par plugin-quota (plus granulaire)
+    plugins-router:
+      rule: "PathPrefix(`/api/plugins`)"
+      entryPoints:
+        - web
+      middlewares:
+        - global-rate-limit      # Protection DDoS globale
+        - plugin-quota-check     # Quotas plugins (100 req/h)
+        - compress
+      service: cartae-api
+      priority: 10               # Priorité haute (avant api-router)
+
+  # ============================================================================
+  # SERVICES - BACKENDS
+  # ============================================================================
+
+  services:
+    # Service API principal
+    cartae-api:
+      loadBalancer:
+        servers:
+          - url: "http://cartae-database-api:3000"
+        healthCheck:
+          path: "/health"
+          interval: "10s"
+          timeout: "3s"
+
+    # Service QuotaManager (ForwardAuth)
+    quota-manager:
+      loadBalancer:
+        servers:
+          - url: "http://cartae-database-api:3000"
+
+  # ============================================================================
+  # MIDDLEWARES SUPPLÉMENTAIRES (Utility)
+  # ============================================================================
+
+  middlewares:
+    # Compression responses
+    compress:
+      compress:
+        excludedContentTypes:
+          - "text/event-stream"  # Ne pas compresser SSE
+
+    # Pages d'erreur custom
+    error-pages:
+      errors:
+        status:
+          - "429"  # Rate limit exceeded
+          - "500"  # Internal server error
+          - "502"  # Bad gateway
+          - "503"  # Service unavailable
+        service: error-service
+        query: "/{status}.html"
+
+    # Headers sécurité
+    security-headers:
+      headers:
+        customResponseHeaders:
+          X-Content-Type-Options: "nosniff"
+          X-Frame-Options: "DENY"
+          X-XSS-Protection: "1; mode=block"
+          Referrer-Policy: "strict-origin-when-cross-origin"
+
+  services:
+    # Service pages d'erreur
+    error-service:
+      loadBalancer:
+        servers:
+          - url: "http://cartae-nginx:80"
+
+# ============================================================================
+# MONITORING & PROMETHEUS METRICS
+# ============================================================================
+#
+# Métriques Traefik exposées sur :8080/metrics
+#
+# Rate limiting metrics:
+# - traefik_entrypoint_requests_total{code="429"} → Requêtes bloquées
+# - traefik_entrypoint_request_duration_seconds → Latence
+# - traefik_service_requests_total → Requests par service
+#
+# Custom metrics (QuotaManager):
+# - cartae_plugin_quota_remaining{plugin_id, user_id} → Quota restant
+# - cartae_plugin_quota_exceeded_total{plugin_id} → Quotas dépassés total
+# - cartae_redis_operations_total{operation} → Opérations Redis
+# - cartae_redis_operation_duration_seconds{operation} → Latence Redis
+#
+# Alertes Prometheus:
+# - Alert si rate_limit_exceeded > 100/min (abuse détecté)
+# - Alert si quota_exceeded > 50/min par plugin (quota trop bas?)
+# - Alert si Redis down (impossible check quotas)
+#
+# Grafana dashboards:
+# - Dashboard "API Gateway": Requests/s, 429 errors, latency P50/P95/P99
+# - Dashboard "Quotas Plugins": Usage par plugin, top consumers, quota violations
+
+# ============================================================================
+# TROUBLESHOOTING
+# ============================================================================
+#
+# Problème: 429 Too Many Requests sur toutes requêtes
+# → Check: traefik_entrypoint_requests_total{code="429"}
+# → Cause probable: global-rate-limit trop bas (augmenter à 2000 req/s?)
+#
+# Problème: 429 sur un seul client
+# → Check: Logs Traefik (voir IP source)
+# → Cause probable: api-rate-limit (100 req/s par IP)
+# → Solution: Whitelister IP si légitime, ou demander client de throttle
+#
+# Problème: 429 sur endpoint /api/plugins/* uniquement
+# → Check: Redis ZCOUNT rate_limit:{plugin_id}:{user_id}
+# → Cause probable: Quota plugin dépassé (100 req/h)
+# → Solution: Upgrade tier plugin (1000 req/h premium)
+#
+# Problème: Redis down → Tous plugins bloqués (500 error)
+# → Check: cartae-redis health (docker ps, redis-cli PING)
+# → Fallback: Désactiver plugin-quota-check temporairement
+# → Solution: Redémarrer Redis, vérifier persistence (/data volume)
+#
+# Problème: Latence élevée sur QuotaManager (/api/gateway/quota-check)
+# → Check: cartae_redis_operation_duration_seconds (> 50ms?)
+# → Cause: Redis slow queries (ZCOUNT sur ZSET trop large?)
+# → Solution: Cleanup Redis (ZREMRANGEBYSCORE), optimiser TTL
