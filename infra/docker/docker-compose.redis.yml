@@ -1,0 +1,95 @@
+# Cartae - Docker Compose Redis Overlay
+# Session 81c - Redis Cache + Queue
+#
+# Configuration avancée Redis pour:
+# - Caching (multi-level avec TTL)
+# - Job Queue (BullMQ)
+# - Token Blacklist (session revocation)
+#
+# Usage:
+#   docker-compose -f docker-compose.networks.yml \
+#                  -f docker-compose.base.yml \
+#                  -f docker-compose.redis.yml \
+#                  -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  # ==================================================
+  # REDIS - Cache + Queue Configuration
+  # ==================================================
+
+  redis:
+    # Override command avec configurations avancées
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --appendonly yes
+      --appendfsync everysec
+      --auto-aof-rewrite-percentage 100
+      --auto-aof-rewrite-min-size 64mb
+      --maxclients 10000
+      --timeout 300
+      --tcp-keepalive 300
+      --loglevel notice
+      --databases 16
+      --slowlog-log-slower-than 10000
+      --slowlog-max-len 128
+      --notify-keyspace-events Ex
+      --lazyfree-lazy-eviction yes
+      --lazyfree-lazy-expire yes
+      --lazyfree-lazy-server-del yes
+      --replica-lazy-flush yes
+    volumes:
+      - redis-data:/data
+      # Configuration Redis (optionnelle, overrides command)
+      # - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    environment:
+      # Redis password (optionnel, pour production)
+      # REDIS_PASSWORD: ${REDIS_PASSWORD}
+      TZ: Europe/Paris
+    labels:
+      - "cartae.zone=data"
+      - "cartae.component=cache-queue"
+      - "cartae.session=81c"
+
+  # ==================================================
+  # REDIS COMMANDER - Web UI (DEV/STAGING uniquement)
+  # ==================================================
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: cartae-redis-commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+      HTTP_USER: admin
+      HTTP_PASSWORD: ${REDIS_COMMANDER_PASSWORD:-admin}
+    networks:
+      - data-network
+      - dmz-network  # Exposition via Traefik
+    labels:
+      - "cartae.zone=data"
+      - "cartae.component=redis-ui"
+      - "cartae.env=dev-staging-only"
+      # Traefik routing
+      - "traefik.enable=true"
+      - "traefik.http.routers.redis-ui.rule=Host(`redis.cartae.local`)"
+      - "traefik.http.routers.redis-ui.entrypoints=web"
+      - "traefik.http.services.redis-ui.loadbalancer.server.port=8081"
+    depends_on:
+      - redis
+
+volumes:
+  redis-data:
+    external: true
+
+networks:
+  data-network:
+    external: true
+  dmz-network:
+    external: true
