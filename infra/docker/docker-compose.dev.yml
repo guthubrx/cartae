@@ -1,0 +1,150 @@
+# Cartae - Docker Compose DEV Mode (Overlay)
+# Session 81a - Network Segmentation & Firewall
+#
+# Mode développement:
+# - Rapide à démarrer (< 30 secondes)
+# - Localhost uniquement (pas de TLS)
+# - Mot de passe simple (changeme123)
+# - Firewall désactivé (mode ACCEPT)
+# - Hot-reload activé (volumes montés)
+# - Logs verbeux (DEBUG)
+#
+# Usage:
+#   docker-compose -f docker-compose.networks.yml \
+#                  -f docker-compose.base.yml \
+#                  -f docker-compose.dev.yml up
+#
+# OU (via script simplifié):
+#   ./setup.sh   # Choix 1 = DEV
+
+version: '3.8'
+
+services:
+  # ==================================================
+  # DMZ - Traefik (Mode Dev)
+  # ==================================================
+
+  traefik:
+    command:
+      # Override: Mode dev (pas de TLS, dashboard accessible)
+      - "--api.dashboard=true"
+      - "--api.insecure=true"  # Dashboard sur :8080 (pas de auth)
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      # Log verbeux
+      - "--log.level=DEBUG"
+      - "--accesslog=true"
+    environment:
+      # Pas de Let's Encrypt en DEV
+      LETSENCRYPT_ENABLED: "false"
+
+  # ==================================================
+  # APP - Database API (Mode Dev)
+  # ==================================================
+
+  database-api:
+    build:
+      context: ../../packages/database-api
+      dockerfile: Dockerfile.dev  # Dockerfile avec hot-reload
+      args:
+        - NODE_ENV=development
+    environment:
+      # Override: Mode dev
+      NODE_ENV: development
+      LOG_LEVEL: debug
+
+      # Database (password simple pour dev)
+      DATABASE_URL: postgresql://cartae:changeme123@postgres:5432/cartae
+
+      # Redis (pas de password en dev)
+      REDIS_URL: redis://redis:6379
+
+      # Vault (dev mode, token root)
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: root-dev-token
+      VAULT_DEV_MODE: "true"
+
+      # JWT (clés générées à la volée en dev, pas de Vault)
+      JWT_DEV_MODE: "true"
+      JWT_ACCESS_EXPIRY: 1h  # Plus long pour dev (moins de refresh)
+      JWT_REFRESH_EXPIRY: 30d
+    volumes:
+      # Hot-reload (nodemon/tsx watch)
+      - ../../packages/database-api/src:/app/src:ro
+      - ../../packages/database-api/package.json:/app/package.json:ro
+    ports:
+      # Expose directement pour debug (bypass Traefik)
+      - "3001:3001"
+
+  # ==================================================
+  # DATA - PostgreSQL (Mode Dev)
+  # ==================================================
+
+  postgres:
+    environment:
+      # Password simple pour dev
+      POSTGRES_PASSWORD: changeme123
+      # Pas d'optimisations perfs (dev rapide)
+    ports:
+      # Expose pour debug avec psql/pgAdmin
+      - "5432:5432"
+    volumes:
+      # Override: Pas de persistence en dev (volumes anonymes)
+      # => Données supprimées à chaque docker-compose down
+      - postgres-dev-data:/var/lib/postgresql/data
+
+  # ==================================================
+  # DATA - Redis (Mode Dev)
+  # ==================================================
+
+  redis:
+    command: >
+      redis-server
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --appendonly no
+    ports:
+      # Expose pour debug avec redis-cli
+      - "6379:6379"
+    volumes:
+      # Pas de persistence en dev
+      - redis-dev-data:/data
+
+  # ==================================================
+  # SECRETS - Vault (Mode Dev)
+  # ==================================================
+
+  vault:
+    environment:
+      # Dev mode (in-memory, pas de seal, token root simple)
+      VAULT_DEV_ROOT_TOKEN_ID: root-dev-token
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    command: server -dev -dev-root-token-id=root-dev-token
+    ports:
+      # Expose pour debug avec vault CLI
+      - "8200:8200"
+    # Pas de volumes en dev mode (in-memory)
+
+# ==================================================
+# VOLUMES DEV (Non persistants)
+# ==================================================
+
+volumes:
+  postgres-dev-data:
+    driver: local
+    labels:
+      - "cartae.mode=dev"
+      - "cartae.persistent=false"
+
+  redis-dev-data:
+    driver: local
+    labels:
+      - "cartae.mode=dev"
+      - "cartae.persistent=false"
+
+# Notes:
+# - Pour réinitialiser la DB: docker-compose down -v
+# - Logs: docker-compose logs -f database-api
+# - Shell dans API: docker exec -it cartae-database-api sh

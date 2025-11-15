@@ -1,0 +1,260 @@
+# Cartae - Docker Compose STAGING Mode (Overlay)
+# Session 81a - Network Segmentation & Firewall
+#
+# Mode staging (pré-production):
+# - Sécurisé (TLS, firewall strict)
+# - 1 seul serveur (pas encore HA)
+# - Mots de passe forts (depuis .env)
+# - TLS auto-généré (Let's Encrypt staging)
+# - Identical to PROD (sauf HA)
+# - Backups activés
+# - Monitoring basic
+#
+# Usage:
+#   docker-compose -f docker-compose.networks.yml \
+#                  -f docker-compose.base.yml \
+#                  -f docker-compose.staging.yml up -d
+#
+# OU (via script simplifié):
+#   ./setup.sh   # Choix 2 = STAGING
+
+version: '3.8'
+
+services:
+  # ==================================================
+  # DMZ - Traefik (Mode Staging - TLS auto)
+  # ==================================================
+
+  traefik:
+    command:
+      # API dashboard (protégé par auth basic)
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+
+      # Entrypoints
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+
+      # Redirect HTTP → HTTPS
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+
+      # Let's Encrypt (staging pour éviter rate-limit)
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+
+      # Security headers
+      - "--entrypoints.websecure.http.tls=true"
+      - "--entrypoints.websecure.http.tls.options=default"
+
+      # Logging (INFO level pour staging)
+      - "--log.level=INFO"
+      - "--accesslog=true"
+      - "--accesslog.filepath=/var/log/traefik/access.log"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL}
+      DOMAIN: ${DOMAIN}
+    volumes:
+      # Certificats persistants
+      - traefik-staging-certs:/letsencrypt
+      - traefik-staging-logs:/var/log/traefik
+    labels:
+      # Dashboard protégé (auth basic)
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dashboard.middlewares=auth"
+      # Auth basic (htpasswd)
+      - "traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH}"
+
+  # ==================================================
+  # APP - Database API (Mode Staging)
+  # ==================================================
+
+  database-api:
+    build:
+      context: ../../packages/database-api
+      dockerfile: Dockerfile  # Production build (multi-stage)
+      args:
+        - NODE_ENV=production
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: info
+
+      # Database (strong password depuis .env)
+      DATABASE_URL: postgresql://cartae:${POSTGRES_PASSWORD}@postgres:5432/cartae
+
+      # Redis (auth enabled)
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+
+      # Vault (TLS enabled, token depuis .env)
+      VAULT_ADDR: https://vault:8200
+      VAULT_TOKEN: ${VAULT_TOKEN}
+      VAULT_SKIP_VERIFY: "false"  # Vérifier certificat TLS
+
+      # JWT (clés RSA depuis Vault)
+      JWT_ISSUER: cartae-auth
+      JWT_AUDIENCE: cartae-api
+      JWT_ACCESS_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY: 7d
+
+      # Security
+      HELMET_ENABLED: "true"
+      RATE_LIMIT_ENABLED: "true"
+      RATE_LIMIT_MAX: 100  # 100 req/min par IP
+    restart: always  # Auto-restart en prod
+    # Pas de ports exposés (accès uniquement via Traefik)
+    labels:
+      # Routing Traefik avec TLS
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`api.${DOMAIN}`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls=true"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.api.loadbalancer.server.port=3001"
+
+      # Security headers middleware
+      - "traefik.http.middlewares.security-headers.headers.framedeny=true"
+      - "traefik.http.middlewares.security-headers.headers.sslredirect=true"
+      - "traefik.http.middlewares.security-headers.headers.stsincludesubdomains=true"
+      - "traefik.http.middlewares.security-headers.headers.stspreload=true"
+      - "traefik.http.middlewares.security-headers.headers.stsseconds=31536000"
+      - "traefik.http.routers.api.middlewares=security-headers"
+
+  # ==================================================
+  # DATA - PostgreSQL (Mode Staging)
+  # ==================================================
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      # Strong password depuis .env
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # Performance tuning (8GB RAM serveur)
+      POSTGRES_SHARED_BUFFERS: 2GB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 6GB
+      POSTGRES_WORK_MEM: 64MB
+      POSTGRES_MAINTENANCE_WORK_MEM: 512MB
+
+      # WAL archiving (backups)
+      POSTGRES_WAL_LEVEL: replica
+      POSTGRES_ARCHIVE_MODE: on
+      POSTGRES_ARCHIVE_COMMAND: 'cp %p /var/lib/postgresql/wal_archive/%f'
+    volumes:
+      # Data persistante (backups)
+      - postgres-staging-data:/var/lib/postgresql/data
+      - postgres-staging-wal:/var/lib/postgresql/wal_archive
+    restart: always
+    # Pas de port exposé (isolation)
+
+  # ==================================================
+  # DATA - Redis (Mode Staging)
+  # ==================================================
+
+  redis:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --appendonly yes
+      --appendfsync everysec
+    volumes:
+      # Data persistante
+      - redis-staging-data:/data
+    restart: always
+    # Pas de port exposé
+
+  # ==================================================
+  # SECRETS - Vault (Mode Staging - single node, TLS)
+  # ==================================================
+
+  vault:
+    image: hashicorp/vault:1.15
+    environment:
+      VAULT_ADDR: https://0.0.0.0:8200
+      VAULT_API_ADDR: https://vault:8200
+      VAULT_CLUSTER_ADDR: https://vault:8201
+
+      # TLS enabled
+      VAULT_TLS_CERT_FILE: /vault/config/tls/vault.crt
+      VAULT_TLS_KEY_FILE: /vault/config/tls/vault.key
+    volumes:
+      # Config Vault (backend file, TLS)
+      - ./vault/config.staging.hcl:/vault/config/config.hcl:ro
+
+      # Certificats TLS (auto-générés via script)
+      - ./vault/tls:/vault/config/tls:ro
+
+      # Data persistante (Raft storage)
+      - vault-staging-data:/vault/data
+      - vault-staging-logs:/vault/logs
+    restart: always
+    # Pas de port exposé (accès uniquement depuis APP zone)
+
+# ==================================================
+# VOLUMES STAGING (Persistants avec backups)
+# ==================================================
+
+volumes:
+  traefik-staging-certs:
+    driver: local
+    labels:
+      - "cartae.mode=staging"
+      - "cartae.backup=true"
+
+  traefik-staging-logs:
+    driver: local
+
+  postgres-staging-data:
+    driver: local
+    labels:
+      - "cartae.mode=staging"
+      - "cartae.backup=critical"  # Backups quotidiens
+
+  postgres-staging-wal:
+    driver: local
+    labels:
+      - "cartae.mode=staging"
+      - "cartae.backup=true"
+
+  redis-staging-data:
+    driver: local
+    labels:
+      - "cartae.mode=staging"
+      - "cartae.backup=true"
+
+  vault-staging-data:
+    driver: local
+    labels:
+      - "cartae.mode=staging"
+      - "cartae.backup=critical"
+
+  vault-staging-logs:
+    driver: local
+
+# Notes:
+# - Variables .env requises:
+#   - DOMAIN (exemple: cartae.example.com)
+#   - ACME_EMAIL (email Let's Encrypt)
+#   - POSTGRES_PASSWORD (strong password)
+#   - REDIS_PASSWORD (strong password)
+#   - VAULT_TOKEN (initial root token)
+#   - TRAEFIK_DASHBOARD_AUTH (htpasswd format)
+#
+# - Générer htpasswd:
+#   echo $(htpasswd -nb admin password) | sed -e s/\\$/\\$\\$/g
+#
+# - Initialiser Vault:
+#   docker exec -it cartae-vault vault operator init

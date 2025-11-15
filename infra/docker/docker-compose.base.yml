@@ -1,0 +1,238 @@
+# Cartae - Docker Compose Base Configuration
+# Session 81a - Network Segmentation & Firewall
+#
+# Configuration de base partagée entre tous les modes (DEV/STAGING/PROD)
+# Utilise les 4 zones réseau définies dans docker-compose.networks.yml
+#
+# Usage:
+#   docker-compose -f docker-compose.networks.yml -f docker-compose.base.yml -f docker-compose.dev.yml up
+#
+# Modes disponibles (overlays):
+#   - docker-compose.dev.yml     (DEV - rapide, localhost, no TLS)
+#   - docker-compose.staging.yml (STAGING - sécurisé, 1 serveur, TLS auto)
+#   - docker-compose.prod.yml    (PROD - multi-serveur, HA, TLS vérifié)
+
+version: '3.8'
+
+services:
+  # ==================================================
+  # ZONE DMZ - Reverse Proxy / Load Balancer
+  # ==================================================
+
+  traefik:
+    image: traefik:v2.10
+    container_name: cartae-traefik
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # Logging
+      - "--log.level=INFO"
+      - "--accesslog=true"
+    ports:
+      - "80:80"    # HTTP
+      - "443:443"  # HTTPS
+      - "8080:8080" # Dashboard (désactivé en PROD)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      # Certificats TLS (Let's Encrypt en STAGING/PROD)
+      - traefik-certs:/letsencrypt
+    networks:
+      - dmz-network     # Exposition Internet
+      - app-network     # Communication avec database-api
+    labels:
+      - "cartae.zone=dmz"
+      - "cartae.component=reverse-proxy"
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ==================================================
+  # ZONE APP - Backend API (Stateless)
+  # ==================================================
+
+  database-api:
+    build:
+      context: ../../packages/database-api
+      dockerfile: Dockerfile
+    container_name: cartae-database-api
+    restart: unless-stopped
+    environment:
+      # Mode (override par docker-compose.dev.yml / staging.yml / prod.yml)
+      NODE_ENV: production
+
+      # Database (PostgreSQL dans DATA zone)
+      DATABASE_URL: postgresql://cartae:${POSTGRES_PASSWORD}@postgres:5432/cartae
+
+      # Redis (Cache + Queue + Blacklist dans DATA zone)
+      REDIS_URL: redis://redis:6379
+
+      # Vault (Secrets dans SECRETS zone)
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_TOKEN}
+
+      # JWT (clés RSA depuis Vault)
+      JWT_ISSUER: cartae-auth
+      JWT_AUDIENCE: cartae-api
+      JWT_ACCESS_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY: 7d
+    networks:
+      - app-network     # Reçoit requêtes depuis Traefik
+      - data-network    # Accès PostgreSQL, Redis
+      - secrets-network # Accès Vault
+    labels:
+      - "cartae.zone=app"
+      - "cartae.component=backend-api"
+      # Traefik routing
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`api.cartae.local`) || PathPrefix(`/api`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls=true"
+      - "traefik.http.services.api.loadbalancer.server.port=3001"
+    depends_on:
+      - postgres
+      - redis
+      - vault
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ==================================================
+  # ZONE DATA - PostgreSQL (Primary Database)
+  # ==================================================
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: cartae-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cartae
+      POSTGRES_USER: cartae
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Performance tuning
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+    volumes:
+      # Schéma DB (session 80 - auth/rbac)
+      - ../../packages/database-api/migrations:/docker-entrypoint-initdb.d:ro
+      # Data persistence
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - data-network  # Isolé, accessible uniquement depuis APP zone
+    labels:
+      - "cartae.zone=data"
+      - "cartae.component=database"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cartae"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================================================
+  # ZONE DATA - Redis (Cache + Queue + Blacklist)
+  # ==================================================
+
+  redis:
+    image: redis:7-alpine
+    container_name: cartae-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+      --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - data-network  # Isolé, accessible uniquement depuis APP zone
+    labels:
+      - "cartae.zone=data"
+      - "cartae.component=cache-queue"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ==================================================
+  # ZONE SECRETS - HashiCorp Vault (Single node en DEV/STAGING, HA en PROD)
+  # ==================================================
+
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: cartae-vault
+    restart: unless-stopped
+    cap_add:
+      - IPC_LOCK  # Empêche swap de secrets en RAM
+    environment:
+      VAULT_ADDR: http://0.0.0.0:8200
+      VAULT_API_ADDR: http://0.0.0.0:8200
+    command: server
+    volumes:
+      - ./vault/config.hcl:/vault/config/config.hcl:ro
+      - vault-data:/vault/data
+      - vault-logs:/vault/logs
+    networks:
+      - secrets-network  # Ultra-isolé, accessible uniquement depuis APP zone
+    labels:
+      - "cartae.zone=secrets"
+      - "cartae.component=secrets-manager"
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+# ==================================================
+# VOLUMES (Persistence)
+# ==================================================
+
+volumes:
+  traefik-certs:
+    driver: local
+    labels:
+      - "cartae.volume=traefik-certificates"
+
+  postgres-data:
+    driver: local
+    labels:
+      - "cartae.volume=database"
+
+  redis-data:
+    driver: local
+    labels:
+      - "cartae.volume=cache-queue"
+
+  vault-data:
+    driver: local
+    labels:
+      - "cartae.volume=secrets"
+
+  vault-logs:
+    driver: local
+    labels:
+      - "cartae.volume=vault-logs"
+
+# ==================================================
+# NETWORKS (importés depuis docker-compose.networks.yml)
+# ==================================================
+
+networks:
+  dmz-network:
+    external: true
+  app-network:
+    external: true
+  data-network:
+    external: true
+  secrets-network:
+    external: true
