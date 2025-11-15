@@ -1,0 +1,105 @@
+# Cartae - Network Segmentation (4 zones isolées)
+# Session 81a - Network Segmentation & Firewall
+#
+# Architecture défense en profondeur (defense-in-depth):
+# - DMZ Network (172.20.0.0/24)    : Exposition Internet (Traefik reverse proxy)
+# - APP Network (172.21.0.0/24)    : Backend API (stateless, scalable)
+# - DATA Network (172.22.0.0/24)   : Bases de données (PostgreSQL, Redis)
+# - SECRETS Network (172.23.0.0/24): HashiCorp Vault (secrets management)
+#
+# Flux autorisés (firewall strict):
+# Internet → DMZ (80/443)
+# DMZ → APP (3001)
+# APP → DATA (5432, 6379)
+# APP → SECRETS (8200)
+#
+# TOUTES les autres communications sont BLOQUÉES par défaut (iptables DROP policy)
+
+version: '3.8'
+
+networks:
+  # Zone DMZ - Exposition Internet
+  # Seul Traefik est dans cette zone (reverse proxy / load balancer)
+  dmz-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/24
+          gateway: 172.20.0.1
+    driver_opts:
+      com.docker.network.bridge.name: br-dmz
+    labels:
+      - "cartae.network.zone=dmz"
+      - "cartae.network.description=Internet-facing zone (Traefik only)"
+
+  # Zone APP - Backend Application
+  # API stateless, isolée d'Internet, accès DB + Vault uniquement
+  app-network:
+    driver: bridge
+    internal: true  # Pas d'accès Internet direct (sortie bloquée)
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/24
+          gateway: 172.21.0.1
+    driver_opts:
+      com.docker.network.bridge.name: br-app
+    labels:
+      - "cartae.network.zone=app"
+      - "cartae.network.description=Backend API (stateless)"
+
+  # Zone DATA - Persistence Layer
+  # PostgreSQL, Redis (cache/queue/blacklist)
+  # Accessible uniquement depuis APP zone
+  data-network:
+    driver: bridge
+    internal: true  # Pas d'accès Internet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.22.0.0/24
+          gateway: 172.22.0.1
+    driver_opts:
+      com.docker.network.bridge.name: br-data
+    labels:
+      - "cartae.network.zone=data"
+      - "cartae.network.description=Databases (PostgreSQL, Redis)"
+
+  # Zone SECRETS - Secrets Management
+  # HashiCorp Vault (HA cluster en mode PROD)
+  # Accessible uniquement depuis APP zone
+  secrets-network:
+    driver: bridge
+    internal: true  # Pas d'accès Internet
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.23.0.0/24
+          gateway: 172.23.0.1
+    driver_opts:
+      com.docker.network.bridge.name: br-secrets
+    labels:
+      - "cartae.network.zone=secrets"
+      - "cartae.network.description=Vault secrets management (HA cluster)"
+
+# Note: Le fichier docker-compose.base.yml assignera les services à ces réseaux
+# Exemple:
+#   traefik:
+#     networks:
+#       - dmz-network
+#       - app-network  # Pour communiquer avec l'API
+#
+#   database-api:
+#     networks:
+#       - app-network     # Reçoit requêtes depuis Traefik
+#       - data-network    # Accède PostgreSQL, Redis
+#       - secrets-network # Accède Vault
+#
+#   postgres:
+#     networks:
+#       - data-network    # Isolé, pas d'accès direct Internet
+#
+#   vault:
+#     networks:
+#       - secrets-network # Ultra-isolé (secrets critiques)
