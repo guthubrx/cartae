@@ -27,6 +27,10 @@ import { hybridRouter } from './api/routes/hybrid';
 import { vaultRouter } from './api/routes/vault';
 import connectionsRouter from './api/routes/connections';
 import summariesRouter from './api/routes/summaries';
+// import backupsRouter from './api/routes/backups'; // TODO: Feature not yet implemented in Session 88
+import authRouter from './api/routes/auth';
+import usersRouter from './api/routes/users';
+import auditRouter from './api/routes/audit';
 
 // Middlewares
 import { errorHandler, notFoundHandler } from './api/middlewares/errorHandler';
@@ -154,6 +158,10 @@ async function createApp(): Promise<Application> {
   app.use('/api/vault', vaultRouter);
   app.use('/api/connections', connectionsRouter);
   app.use('/api/summaries', summariesRouter);
+  // app.use('/api/admin', backupsRouter); // TODO: Feature not yet implemented in Session 88
+  app.use('/api/auth', authRouter);
+  app.use('/api/users', usersRouter);
+  app.use('/api/audit', auditRouter);
 
   // ========== Error handlers (doivent être après les routes) ==========
 
