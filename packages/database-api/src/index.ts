@@ -32,8 +32,8 @@ import { errorHandler, notFoundHandler } from './api/middlewares/errorHandler';
 // DB
 import { testConnection } from './db/client';
 
-// Vault
-import { getVaultClient } from './vault/VaultClient';
+// Vault & Secrets Management
+import { getSecretsManager } from './vault/SecretsManager';
 
 dotenv.config();
 
@@ -48,8 +48,51 @@ async function createApp(): Promise<Application> {
 
   // ========== Middlewares de sécurité ==========
 
-  // Helmet - Sécurise les headers HTTP
-  app.use(helmet());
+  // Helmet - Sécurise les headers HTTP avec configuration renforcée
+  app.use(
+    helmet({
+      // Content Security Policy - Bloque XSS et injections de script
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"], // unsafe-inline nécessaire pour certains frameworks
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'"],
+          fontSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          mediaSrc: ["'self'"],
+          frameSrc: ["'none'"],
+        },
+      },
+      // HTTP Strict Transport Security - Force HTTPS (production uniquement)
+      hsts: {
+        maxAge: 31536000, // 1 an en secondes
+        includeSubDomains: true,
+        preload: true,
+      },
+      // X-Frame-Options - Empêche clickjacking
+      frameguard: {
+        action: 'deny',
+      },
+      // X-Content-Type-Options - Empêche MIME sniffing
+      noSniff: true,
+      // X-XSS-Protection - Protection XSS (legacy browsers)
+      xssFilter: true,
+      // Referrer-Policy - Contrôle les informations de referrer
+      referrerPolicy: {
+        policy: 'strict-origin-when-cross-origin',
+      },
+      // X-DNS-Prefetch-Control - Désactive DNS prefetching
+      dnsPrefetchControl: {
+        allow: false,
+      },
+      // X-Download-Options - Force download pour IE
+      ieNoOpen: true,
+      // X-Powered-By - Cache la techno utilisée (déjà fait par défaut)
+      hidePoweredBy: true,
+    })
+  );
 
   // CORS - Configure les origines autorisées
   app.use(
@@ -121,27 +164,30 @@ async function createApp(): Promise<Application> {
  */
 async function startServer() {
   try {
-    // Initialise Vault client (si configuré)
-    const vaultEnabled = process.env.VAULT_ENABLED === 'true';
-    if (vaultEnabled) {
-      console.log('🔐 Initializing Vault client...');
-      const vaultEndpoint = process.env.VAULT_ADDR || 'http://localhost:8200';
-      const vaultToken = process.env.VAULT_TOKEN || '';
+    // Initialise SecretsManager (Vault + fallback .env)
+    console.log('🔐 Initializing SecretsManager...');
+    const secretsManager = getSecretsManager({
+      useVault: process.env.VAULT_ENABLED === 'true',
+    });
 
-      if (!vaultToken) {
-        console.warn('⚠️ VAULT_TOKEN not set. Vault integration disabled.');
-      } else {
-        getVaultClient({
-          endpoint: vaultEndpoint,
-          token: vaultToken,
-          mountPoint: process.env.VAULT_MOUNT_POINT || 'secret',
-          apiVersion: 'v2',
-        });
+    await secretsManager.initialize();
 
-        // Health check Vault
-        const vaultClient = getVaultClient();
-        await vaultClient.ensureVaultReady();
-        console.log('✅ Vault client initialized and ready');
+    // Log source des secrets (Vault ou .env)
+    const source = secretsManager.getSource();
+    console.log(`📋 Secrets source: ${source.toUpperCase()}`);
+
+    // Récupérer secrets critiques depuis SecretsManager
+    // (au lieu de process.env.* directement)
+    if (source === 'vault') {
+      console.log('🔐 Loading secrets from Vault...');
+
+      // Optionnel: Précharger secrets critiques pour vérifier qu'ils existent
+      try {
+        await secretsManager.getSecret('POSTGRES_PASSWORD');
+        await secretsManager.getSecret('JWT_SECRET');
+        console.log('✅ Critical secrets loaded successfully');
+      } catch (error) {
+        console.warn('⚠️  Some secrets missing in Vault, will fallback to .env');
       }
     }
 
