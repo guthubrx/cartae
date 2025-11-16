@@ -59,10 +59,15 @@ export interface DecryptResult {
  */
 export class Encryptor {
   private readonly ALGORITHM = 'AES-GCM';
+
   private readonly KEY_LENGTH = 256; // bits
+
   private readonly IV_LENGTH = 12; // bytes (96 bits, recommended for GCM)
+
   private readonly SALT_LENGTH = 16; // bytes (128 bits)
+
   private readonly PBKDF2_ITERATIONS = 100000; // 100k iterations (OWASP 2023)
+
   private readonly AUTH_TAG_LENGTH = 128; // bits (16 bytes)
 
   /**
@@ -90,7 +95,7 @@ export class Encryptor {
     const derivedKey = await crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt: salt,
+        salt: salt as BufferSource,
         iterations: this.PBKDF2_ITERATIONS,
         hash: 'SHA-256',
       },
@@ -139,7 +144,7 @@ export class Encryptor {
     const ciphertextBuffer = await crypto.subtle.encrypt(
       {
         name: this.ALGORITHM,
-        iv: iv,
+        iv,
         tagLength: this.AUTH_TAG_LENGTH,
       },
       key,
@@ -148,8 +153,8 @@ export class Encryptor {
 
     // Convertir en base64 pour stockage
     const ciphertextBase64 = this.arrayBufferToBase64(ciphertextBuffer);
-    const saltBase64 = this.arrayBufferToBase64(salt);
-    const ivBase64 = this.arrayBufferToBase64(iv);
+    const saltBase64 = this.arrayBufferToBase64(salt.buffer);
+    const ivBase64 = this.arrayBufferToBase64(iv.buffer);
 
     return {
       ciphertext: ciphertextBase64,

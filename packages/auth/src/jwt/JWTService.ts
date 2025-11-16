@@ -6,22 +6,15 @@
 
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import type {
-  JWTPayload,
-  TokenPair,
-  JWTConfig,
-  User,
-  UserRole,
-} from '../types';
-import {
-  InvalidTokenError,
-  TokenExpiredError,
-  AuthenticationError,
-} from '../types';
+import { generateKeyPairSync } from 'crypto';
+import type { JWTPayload, TokenPair, JWTConfig, User, UserRole } from '../types';
+import { InvalidTokenError, TokenExpiredError, AuthenticationError } from '../types';
 
 export class JWTService {
   private privateKey: string;
+
   private publicKey: string;
+
   private config: JWTConfig;
 
   constructor(privateKey: string, publicKey: string, config?: Partial<JWTConfig>) {
@@ -69,7 +62,7 @@ export class JWTService {
       expiresIn: this.config.accessTokenExpiry,
       issuer: this.config.issuer,
       audience: this.config.audience,
-    });
+    } as any);
   }
 
   /**
@@ -89,7 +82,7 @@ export class JWTService {
       expiresIn: this.config.refreshTokenExpiry,
       issuer: this.config.issuer,
       audience: this.config.audience,
-    });
+    } as any);
   }
 
   /**
@@ -218,8 +211,6 @@ export class JWTService {
  * (À utiliser lors du setup initial, clés stockées dans Vault)
  */
 export function generateRSAKeyPair(): { privateKey: string; publicKey: string } {
-  const { generateKeyPairSync } = require('crypto');
-
   const { privateKey, publicKey } = generateKeyPairSync('rsa', {
     modulusLength: 2048,
     publicKeyEncoding: {

@@ -17,6 +17,7 @@ import type { TokenData } from '../types/auth.types';
 
 export class TokenInterceptorService implements IOffice365AuthService {
   private tokens: Map<string, TokenData> = new Map();
+
   private storageCheckInterval: number | null = null;
 
   /**
@@ -49,7 +50,9 @@ export class TokenInterceptorService implements IOffice365AuthService {
     try {
       // Vérifier si API window.cartaeBrowserStorage disponible (injectée par content script)
       if (typeof (window as any).cartaeBrowserStorage === 'undefined') {
-        console.warn('[TokenInterceptor] Extension Firefox non chargée (cartaeBrowserStorage non disponible)');
+        console.warn(
+          '[TokenInterceptor] Extension Firefox non chargée (cartaeBrowserStorage non disponible)'
+        );
         return;
       }
 
@@ -75,7 +78,7 @@ export class TokenInterceptorService implements IOffice365AuthService {
 
       // Mapper vers TokenData
       const types = ['owa', 'graph', 'sharepoint', 'teams'] as const;
-      types.forEach((type) => {
+      types.forEach(type => {
         const token = data[`cartae-o365-token-${type}`];
         if (token) {
           this.tokens.set(type, {
@@ -87,7 +90,6 @@ export class TokenInterceptorService implements IOffice365AuthService {
           console.log(`[TokenInterceptor] ✅ Token ${type} chargé`);
         }
       });
-
     } catch (error) {
       console.error('[TokenInterceptor] ❌ Erreur chargement tokens:', error);
     }
@@ -106,7 +108,7 @@ export class TokenInterceptorService implements IOffice365AuthService {
 
     // Vérifier expiration
     const capturedAt = new Date(tokenData.capturedAt).getTime();
-    const expiresAt = capturedAt + (tokenData.expiresIn * 1000);
+    const expiresAt = capturedAt + tokenData.expiresIn * 1000;
     const now = Date.now();
 
     if (now >= expiresAt) {
@@ -124,10 +126,12 @@ export class TokenInterceptorService implements IOffice365AuthService {
 
       // Re-vérifier expiration du nouveau token
       const newCapturedAt = new Date(tokenData.capturedAt).getTime();
-      const newExpiresAt = newCapturedAt + (tokenData.expiresIn * 1000);
+      const newExpiresAt = newCapturedAt + tokenData.expiresIn * 1000;
 
       if (now >= newExpiresAt) {
-        console.error(`[TokenInterceptor] ❌ Token ${service} toujours expiré. Reconnectez-vous à Office 365.`);
+        console.error(
+          `[TokenInterceptor] ❌ Token ${service} toujours expiré. Reconnectez-vous à Office 365.`
+        );
         return null;
       }
     }
@@ -162,7 +166,7 @@ export class TokenInterceptorService implements IOffice365AuthService {
     }
 
     const capturedAt = new Date(tokenData.capturedAt).getTime();
-    const expiresAt = capturedAt + (tokenData.expiresIn * 1000);
+    const expiresAt = capturedAt + tokenData.expiresIn * 1000;
     const now = Date.now();
     const expiresIn = Math.max(0, Math.floor((expiresAt - now) / 1000));
 
@@ -200,7 +204,7 @@ export class TokenInterceptorService implements IOffice365AuthService {
     if (!token) {
       throw new Error(
         '[TokenInterceptor] Token OWA non disponible. ' +
-        'Assurez-vous que l\'extension est chargée et que vous êtes connecté à OWA.'
+          "Assurez-vous que l'extension est chargée et que vous êtes connecté à OWA."
       );
     }
 
@@ -214,8 +218,8 @@ export class TokenInterceptorService implements IOffice365AuthService {
     this.tokens.clear();
 
     // Nettoyer storage extension
-    if (typeof browser !== 'undefined') {
-      await browser.storage.local.remove([
+    if (typeof window !== 'undefined' && (window as any).browser) {
+      await (window as any).browser.storage.local.remove([
         'cartae-o365-token-owa',
         'cartae-o365-token-owa-refresh',
         'cartae-o365-token-graph',
@@ -230,4 +234,3 @@ export class TokenInterceptorService implements IOffice365AuthService {
     console.log('[TokenInterceptor] 🧹 Tokens nettoyés');
   }
 }
-

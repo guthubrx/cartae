@@ -10,7 +10,6 @@
  */
 
 import { Encryptor } from './Encryptor';
-import { VaultConfig } from '../../ui/src/components/vault/types';
 
 /**
  * Données de recovery chiffrées
@@ -101,10 +100,7 @@ export class RecoveryManager {
    * @param masterPassword Master password choisi par l'utilisateur
    * @returns Données de recovery (à stocker dans VaultConfig)
    */
-  async setupRecovery(
-    unsealKeys: string[],
-    masterPassword: string
-  ): Promise<RecoveryData> {
+  async setupRecovery(unsealKeys: string[], masterPassword: string): Promise<RecoveryData> {
     if (!unsealKeys || unsealKeys.length === 0) {
       throw new Error('Unseal keys cannot be empty');
     }
@@ -118,16 +114,10 @@ export class RecoveryManager {
 
     // 2. Chiffrer unseal keys avec master password
     const unsealKeysJSON = JSON.stringify(unsealKeys);
-    const encryptedUnsealKeys = await this.encryptor.encryptCompact(
-      unsealKeysJSON,
-      masterPassword
-    );
+    const encryptedUnsealKeys = await this.encryptor.encryptCompact(unsealKeysJSON, masterPassword);
 
     // 3. Chiffrer recovery key avec master password
-    const encryptedRecoveryKey = await this.encryptor.encryptCompact(
-      recoveryKey,
-      masterPassword
-    );
+    const encryptedRecoveryKey = await this.encryptor.encryptCompact(recoveryKey, masterPassword);
 
     // 4. Hash master password
     const masterPasswordHash = await this.encryptor.hashPassword(masterPassword);
@@ -155,10 +145,7 @@ export class RecoveryManager {
   ): Promise<RecoveryResult> {
     try {
       // Déchiffrer unseal keys
-      const result = await this.encryptor.decryptCompact(
-        encryptedUnsealKeys,
-        masterPassword
-      );
+      const result = await this.encryptor.decryptCompact(encryptedUnsealKeys, masterPassword);
 
       if (!result.success) {
         return {
@@ -235,7 +222,7 @@ export class RecoveryManager {
       // 3. Utiliser recovery key pour déchiffrer unseal keys
       // (En prod: recovery key devrait chiffrer directement unseal keys)
       // Pour simplification, on utilise master password déjà validé
-      return this.recoverWithMasterPassword(encryptedUnsealKeys, masterPassword);
+      return await this.recoverWithMasterPassword(encryptedUnsealKeys, masterPassword);
     } catch (error) {
       return {
         unsealKeys: [],
@@ -308,10 +295,7 @@ export class RecoveryManager {
 
     // 4. Ré-chiffrer avec nouveau password
     const unsealKeysJSON = JSON.stringify(unsealKeysResult.unsealKeys);
-    const encryptedUnsealKeys = await this.encryptor.encryptCompact(
-      unsealKeysJSON,
-      newPassword
-    );
+    const encryptedUnsealKeys = await this.encryptor.encryptCompact(unsealKeysJSON, newPassword);
 
     const encryptedRecoveryKey = await this.encryptor.encryptCompact(
       recoveryKeyResult.plaintext,
@@ -335,17 +319,11 @@ export class RecoveryManager {
    *
    * À utiliser uniquement pour debugging ou migration.
    */
-  async exportUnsealKeys(
-    encryptedUnsealKeys: string,
-    masterPassword: string
-  ): Promise<string[]> {
-    const result = await this.recoverWithMasterPassword(
-      encryptedUnsealKeys,
-      masterPassword
-    );
+  async exportUnsealKeys(encryptedUnsealKeys: string, masterPassword: string): Promise<string[]> {
+    const result = await this.recoverWithMasterPassword(encryptedUnsealKeys, masterPassword);
 
     if (!result.success) {
-      throw new Error('Failed to export unseal keys: ' + result.error);
+      throw new Error(`Failed to export unseal keys: ${result.error}`);
     }
 
     return result.unsealKeys;
