@@ -68,16 +68,20 @@ function rowToCartaeItem(row: CartaeItemRow): CartaeItem {
  * INSERT - Crée un nouveau CartaeItem dans la DB
  *
  * @param item - CartaeItem à insérer
+ * @param userId - UUID de l'utilisateur propriétaire (tenant isolation)
  * @returns CartaeItem créé avec timestamps DB
  */
-export async function insertItem(item: Partial<CartaeItem>): Promise<CartaeItem> {
+export async function insertItem(
+  item: Partial<CartaeItem>,
+  userId?: string
+): Promise<CartaeItem> {
   const query = `
     INSERT INTO cartae_items (
       id, type, title, content, context, json_type,
       metadata, relationships, tags, categories, source,
-      archived, favorite
+      archived, favorite, user_id
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
     )
     RETURNING *
   `;
@@ -96,6 +100,7 @@ export async function insertItem(item: Partial<CartaeItem>): Promise<CartaeItem>
     JSON.stringify(item.source),
     item.archived || false,
     item.favorite || false,
+    userId || null, // Tenant isolation (required en production)
   ];
 
   const rows = await executeQuery<CartaeItemRow>(query, params);
