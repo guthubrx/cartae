@@ -59,16 +59,17 @@ services:
     image: hashicorp/vault:1.15
     container_name: cartae-vault
     profiles: ["standard", "full"]
+    # Production mode (file backend, pas dev mode)
+    command: vault server -config=/vault/config/vault-standalone.hcl
     environment:
       VAULT_ADDR: http://0.0.0.0:8200
-      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN}
-      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_API_ADDR: http://cartae-vault:8200
     cap_add:
       - IPC_LOCK
     volumes:
       - vault-data:/vault/data
       - vault-logs:/vault/logs
-      - ../infra/vault/config:/vault/config:ro
+      - ./infra/vault/config:/vault/config:ro
     ports:
       - "8200:8200"
     networks:
@@ -88,6 +89,13 @@ services:
     image: cartae/database-api:latest
     container_name: database-api
     profiles: ["minimal", "standard", "full"]
+    # Security: Run as non-root user
+    user: "node:node"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     environment:
       NODE_ENV: production
       API_PORT: 3001
@@ -139,6 +147,13 @@ services:
     image: cartae/frontend:latest
     container_name: cartae-frontend
     profiles: ["minimal", "standard", "full"]
+    # Security: Run as non-root user
+    user: "node:node"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     environment:
       VITE_API_URL: http://localhost:3001
       VITE_VAULT_ADDR: http://localhost:8200
