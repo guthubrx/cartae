@@ -81,3 +81,4 @@ supabase/.temp/
 
 # Serena memories (local only)
 .serena
+.env.local et test-email.json

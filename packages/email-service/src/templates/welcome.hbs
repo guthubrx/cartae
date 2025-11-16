@@ -1,0 +1,86 @@
+<!-- SUBJECT: Bienvenue sur Cartae {{userName}} ! -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bienvenue sur Cartae</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background-color: white;
+      border-radius: 8px;
+      padding: 40px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .logo {
+      font-size: 32px;
+      font-weight: bold;
+      color: #2563eb;
+    }
+    h1 {
+      color: #1f2937;
+      margin-bottom: 20px;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #2563eb;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">📇 Cartae</div>
+    </div>
+
+    <h1>Bienvenue {{userName}} !</h1>
+
+    <p>Votre compte Cartae a été créé avec succès. Nous sommes ravis de vous accueillir dans notre plateforme de gestion intelligente de l'information.</p>
+
+    <p>Avec Cartae, vous pouvez:</p>
+    <ul>
+      <li>📊 Visualiser vos données de manière interactive</li>
+      <li>🔌 Connecter vos sources de données (Office365, Gmail, etc.)</li>
+      <li>🤖 Utiliser l'IA pour enrichir votre contenu</li>
+      <li>🎨 Personnaliser vos vues et dashboards</li>
+    </ul>
+
+    <p>Pour commencer, cliquez sur le bouton ci-dessous:</p>
+
+    <center>
+      <a href="{{dashboardUrl}}" class="button">Accéder à mon tableau de bord</a>
+    </center>
+
+    <p>Si vous avez des questions, n'hésitez pas à consulter notre <a href="{{docsUrl}}">documentation</a> ou à contacter notre support.</p>
+
+    <div class="footer">
+      <p>Cartae - Votre gestionnaire intelligent de l'information</p>
+      <p>Vous recevez cet email car vous venez de créer un compte sur Cartae.</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!-- SUBJECT: 🚫 Quota dépassé - {{pluginName}} désactivé -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quota Exceeded</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background-color: white;
+      border-radius: 8px;
+      padding: 40px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .alert-error {
+      background-color: #fee2e2;
+      border: 2px solid #dc2626;
+      padding: 20px;
+      border-radius: 6px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .alert-icon {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 30px;
+      background-color: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+    .progress-fill {
+      height: 100%;
+      background-color: #dc2626;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+    }
+    .metrics {
+      background-color: #f3f4f6;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #dc2626;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="alert-error">
+      <div class="alert-icon">🚫</div>
+      <h1 style="color: #dc2626; margin: 0;">Quota dépassé</h1>
+      <p style="margin: 10px 0 0 0; font-size: 18px;">
+        Le plugin <strong>{{pluginName}}</strong> a été désactivé.
+      </p>
+    </div>
+
+    <p>Bonjour {{userName}},</p>
+
+    <p>Votre quota pour le plugin <strong>{{pluginName}}</strong> a atteint 100%. Le plugin a été automatiquement désactivé pour éviter des problèmes.</p>
+
+    <div class="progress-bar">
+      <div class="progress-fill" style="width: 100%;">
+        100% - QUOTA DÉPASSÉ
+      </div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric-row">
+        <span><strong>Quota autorisé:</strong></span>
+        <span>{{quotaLimit}}</span>
+      </div>
+      <div class="metric-row">
+        <span><strong>Utilisé:</strong></span>
+        <span style="color: #dc2626; font-weight: bold;">{{quotaUsed}}</span>
+      </div>
+      <div class="metric-row">
+        <span><strong>Dépassement:</strong></span>
+        <span style="color: #dc2626; font-weight: bold;">+{{overageAmount}}</span>
+      </div>
+      <div class="metric-row">
+        <span><strong>Plugin:</strong></span>
+        <span>{{pluginName}}</span>
+      </div>
+      <div class="metric-row">
+        <span><strong>Statut:</strong></span>
+        <span style="color: #dc2626; font-weight: bold;">DÉSACTIVÉ</span>
+      </div>
+    </div>
+
+    <p><strong>⚠️ Impact immédiat:</strong></p>
+    <ul>
+      <li>❌ Le plugin {{pluginName}} ne fonctionne plus</li>
+      <li>❌ Les nouvelles opérations sont bloquées</li>
+      <li>❌ Les données existantes restent accessibles en lecture seule</li>
+    </ul>
+
+    <p><strong>Pour réactiver le plugin:</strong></p>
+    <ol>
+      <li><strong>Option 1 (Immédiat):</strong> Nettoyer les anciennes données</li>
+      <li><strong>Option 2:</strong> Augmenter votre quota (contacter support)</li>
+      <li><strong>Option 3:</strong> Passer à un plan supérieur</li>
+    </ol>
+
+    <center>
+      <a href="{{settingsUrl}}" class="button">Gérer mes quotas</a>
+    </center>
+
+    <p style="text-align: center; margin-top: 30px;">
+      <strong>Besoin d'aide ?</strong><br>
+      Contactez notre support: <a href="mailto:support@cartae.dev">support@cartae.dev</a>
+    </p>
+
+    <div class="footer">
+      <p>Cartae - Gestion des quotas</p>
+      <p>Timestamp: {{formatDate timestamp}}</p>
+    </div>
+  </div>
+</body>
+</html>
