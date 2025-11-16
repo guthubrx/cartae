@@ -1,0 +1,156 @@
+<!-- SUBJECT: 🔒 Alerte sécurité - Tentative d'accès non autorisé -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Alert</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background-color: white;
+      border-radius: 8px;
+      padding: 40px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .alert-security {
+      background-color: #fef3c7;
+      border: 2px solid #f59e0b;
+      padding: 20px;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+    .alert-icon {
+      font-size: 48px;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    h1 {
+      color: #f59e0b;
+      text-align: center;
+    }
+    .metrics {
+      background-color: #f3f4f6;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .metric-row:last-child {
+      border-bottom: none;
+    }
+    .warning-box {
+      background-color: #fee2e2;
+      border-left: 4px solid #dc2626;
+      padding: 16px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #f59e0b;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="alert-security">
+      <div class="alert-icon">🔒</div>
+      <h1>ALERTE SÉCURITÉ</h1>
+      <p style="text-align: center; font-size: 18px; margin: 0;">
+        Une tentative d'accès non autorisé a été détectée sur votre compte.
+      </p>
+    </div>
+
+    <p>Bonjour {{userName}},</p>
+
+    <p>Nous avons détecté une activité suspecte sur votre compte Cartae. Par mesure de sécurité, nous vous en informons immédiatement.</p>
+
+    <div class="metrics">
+      <div class="metric-row">
+        <span><strong>Type d'alerte:</strong></span>
+        <span>{{alertType}}</span>
+      </div>
+      <div class="metric-row">
+        <span><strong>Timestamp:</strong></span>
+        <span>{{formatDate timestamp}}</span>
+      </div>
+      <div class="metric-row">
+        <span><strong>Adresse IP:</strong></span>
+        <span>{{ipAddress}}</span>
+      </div>
+      <div class="metric-row">
+        <span><strong>Localisation:</strong></span>
+        <span>{{location}}</span>
+      </div>
+      <div class="metric-row">
+        <span><strong>User-Agent:</strong></span>
+        <span>{{userAgent}}</span>
+      </div>
+      <div class="metric-row">
+        <span><strong>Action bloquée:</strong></span>
+        <span>{{blockedAction}}</span>
+      </div>
+    </div>
+
+    <div class="warning-box">
+      <strong>🛡️ Mesures prises automatiquement:</strong>
+      <ul style="margin: 10px 0 0 0;">
+        <li>Tentative bloquée</li>
+        <li>IP ajoutée à la watchlist (24h)</li>
+        <li>Logs conservés pour investigation</li>
+        <li>{{additionalMeasure}}</li>
+      </ul>
+    </div>
+
+    <p><strong>C'était vous ?</strong></p>
+    <p>Si cette tentative de connexion venait de vous, vous pouvez ignorer cet email. Sinon, nous vous recommandons de:</p>
+
+    <ol>
+      <li>Changer immédiatement votre mot de passe</li>
+      <li>Activer l'authentification à deux facteurs (2FA)</li>
+      <li>Vérifier vos sessions actives</li>
+      <li>Contacter le support si besoin</li>
+    </ol>
+
+    <center>
+      <a href="{{securitySettingsUrl}}" class="button">Sécuriser mon compte</a>
+    </center>
+
+    <p style="text-align: center; margin-top: 30px;">
+      <strong>Ce n'était pas vous ?</strong><br>
+      Contactez immédiatement le support: <a href="mailto:security@cartae.dev">security@cartae.dev</a>
+    </p>
+
+    <div class="footer">
+      <p><strong>Cartae Security Team</strong></p>
+      <p>Cette alerte ne peut pas être désactivée (sécurité critique).</p>
+      <p>Timestamp: {{formatDate timestamp}}</p>
+    </div>
+  </div>
+</body>
+</html>

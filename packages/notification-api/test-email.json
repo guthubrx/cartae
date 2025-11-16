@@ -1,0 +1,9 @@
+{
+  "to": "githubrx@runbox.com",
+  "template": "welcome",
+  "data": {
+    "userName": "Test User",
+    "dashboardUrl": "https://cartae.app/dashboard",
+    "docsUrl": "https://docs.cartae.app"
+  }
+}
