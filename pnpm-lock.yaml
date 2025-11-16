@@ -582,6 +582,115 @@ importers:
         specifier: ^1.0.0
         version: 1.6.1(@types/node@20.19.24)(@vitest/ui@4.0.5)(jsdom@27.0.1)
 
+  packages/office365-ai-enrichment:
+    dependencies:
+      '@cartae/core':
+        specifier: workspace:*
+        version: link:../core
+      '@cartae/office365-connector-core':
+        specifier: workspace:*
+        version: link:../office365-connector-core
+      '@cartae/office365-plugin':
+        specifier: workspace:*
+        version: link:../office365-plugin
+      chrono-node:
+        specifier: ^2.7.6
+        version: 2.9.0
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.24
+      '@types/uuid':
+        specifier: ^9.0.7
+        version: 9.0.8
+      typescript:
+        specifier: ^5.2.2
+        version: 5.9.3
+      vitest:
+        specifier: ^1.0.4
+        version: 1.6.1(@types/node@20.19.24)(@vitest/ui@4.0.5)(jsdom@27.0.1)
+
+  packages/office365-connector-core:
+    dependencies:
+      '@azure/msal-browser':
+        specifier: ^4.26.0
+        version: 4.26.1
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.24
+      '@types/uuid':
+        specifier: ^9.0.7
+        version: 9.0.8
+      typescript:
+        specifier: ^5.2.2
+        version: 5.9.3
+      vitest:
+        specifier: ^1.0.4
+        version: 1.6.1(@types/node@20.19.24)(@vitest/ui@4.0.5)(jsdom@27.0.1)
+
+  packages/office365-outlook:
+    dependencies:
+      '@cartae/core':
+        specifier: workspace:*
+        version: link:../core
+      '@cartae/office365-connector-core':
+        specifier: workspace:*
+        version: link:../office365-connector-core
+      '@cartae/office365-plugin':
+        specifier: workspace:*
+        version: link:../office365-plugin
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.24
+      '@types/uuid':
+        specifier: ^9.0.7
+        version: 9.0.8
+      typescript:
+        specifier: ^5.2.2
+        version: 5.9.3
+      vitest:
+        specifier: ^1.0.4
+        version: 1.6.1(@types/node@20.19.24)(@vitest/ui@4.0.5)(jsdom@27.0.1)
+
+  packages/office365-planner:
+    dependencies:
+      '@cartae/core':
+        specifier: workspace:*
+        version: link:../core
+      '@cartae/office365-connector-core':
+        specifier: workspace:*
+        version: link:../office365-connector-core
+      '@cartae/office365-plugin':
+        specifier: workspace:*
+        version: link:../office365-plugin
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.24
+      '@types/uuid':
+        specifier: ^9.0.7
+        version: 9.0.8
+      typescript:
+        specifier: ^5.2.2
+        version: 5.9.3
+      vitest:
+        specifier: ^1.0.4
+        version: 1.6.1(@types/node@20.19.24)(@vitest/ui@4.0.5)(jsdom@27.0.1)
+
   packages/office365-plugin:
     dependencies:
       '@cartae/core':
@@ -590,6 +699,62 @@ importers:
       '@cartae/plugin-system':
         specifier: workspace:*
         version: link:../plugin-system
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.24
+      '@types/uuid':
+        specifier: ^9.0.7
+        version: 9.0.8
+      typescript:
+        specifier: ^5.2.2
+        version: 5.9.3
+      vitest:
+        specifier: ^1.0.4
+        version: 1.6.1(@types/node@20.19.24)(@vitest/ui@4.0.5)(jsdom@27.0.1)
+
+  packages/office365-sharepoint:
+    dependencies:
+      '@cartae/core':
+        specifier: workspace:*
+        version: link:../core
+      '@cartae/office365-connector-core':
+        specifier: workspace:*
+        version: link:../office365-connector-core
+      '@cartae/office365-plugin':
+        specifier: workspace:*
+        version: link:../office365-plugin
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.24
+      '@types/uuid':
+        specifier: ^9.0.7
+        version: 9.0.8
+      typescript:
+        specifier: ^5.2.2
+        version: 5.9.3
+      vitest:
+        specifier: ^1.0.4
+        version: 1.6.1(@types/node@20.19.24)(@vitest/ui@4.0.5)(jsdom@27.0.1)
+
+  packages/office365-teams:
+    dependencies:
+      '@cartae/core':
+        specifier: workspace:*
+        version: link:../core
+      '@cartae/office365-connector-core':
+        specifier: workspace:*
+        version: link:../office365-connector-core
+      '@cartae/office365-plugin':
+        specifier: workspace:*
+        version: link:../office365-plugin
       uuid:
         specifier: ^9.0.1
         version: 9.0.1
@@ -905,6 +1070,14 @@ packages:
     resolution: {integrity: sha512-/2rThQ5zPi9OzVwes6U7lK1+Yvug0iXu25olp7S0XsYmOqnyMfxH7gdSQjn/+DSOHRg7wnotwGJSyL+fBKdnEA==}
     peerDependencies:
       zod: ^3.20.2
+
+  '@azure/msal-browser@4.26.1':
+    resolution: {integrity: sha512-GGCIsZXxyNm5QcQZ4maA9q+9UWmM+/87G+ybvPkrE32el1URSa9WYt0t67ks3/P0gspZX9RoEqyLqJ/X/JDnBQ==}
+    engines: {node: '>=0.8.0'}
+
+  '@azure/msal-common@15.13.1':
+    resolution: {integrity: sha512-vQYQcG4J43UWgo1lj7LcmdsGUKWYo28RfEvDQAEMmQIMjSFufvb+pS0FJ3KXmrPmnWlt1vHDl3oip6mIDUQ4uA==}
+    engines: {node: '>=0.8.0'}
 
   '@babel/code-frame@7.27.1':
     resolution: {integrity: sha512-cjQ7ZlQ0Mv3b47hABuTevyTuYN4i+loJKGeV9flcCgIK37cCXRh+L1bd3iBHlynerhQ7BhCkn2BPbQUL+rGqFg==}
@@ -3047,6 +3220,10 @@ packages:
   chokidar@4.0.3:
     resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
     engines: {node: '>= 14.16.0'}
+
+  chrono-node@2.9.0:
+    resolution: {integrity: sha512-glI4YY2Jy6JII5l3d5FN6rcrIbKSQqKPhWsIRYPK2IK8Mm4Q1ZZFdYIaDqglUNf7gNwG+kWIzTn0omzzE0VkvQ==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
   classcat@5.0.5:
     resolution: {integrity: sha512-JhZUT7JFcQy/EzW605k/ktHtncoo9vnyW/2GspNYwFlN1C/WmjuV/xtS04e9SOkL2sTdw0VAZ2UGCcQ9lR6p6w==}
@@ -7149,6 +7326,12 @@ snapshots:
       openapi3-ts: 4.5.0
       zod: 3.25.76
 
+  '@azure/msal-browser@4.26.1':
+    dependencies:
+      '@azure/msal-common': 15.13.1
+
+  '@azure/msal-common@15.13.1': {}
+
   '@babel/code-frame@7.27.1':
     dependencies:
       '@babel/helper-validator-identifier': 7.28.5
@@ -9313,6 +9496,8 @@ snapshots:
   chokidar@4.0.3:
     dependencies:
       readdirp: 4.1.2
+
+  chrono-node@2.9.0: {}
 
   classcat@5.0.5: {}
 
