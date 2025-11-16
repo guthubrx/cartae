@@ -1,0 +1,15 @@
+# Redis ACL Configuration for Cartae
+# Generated for Session 86 - Production Hardening
+# Format: user <name> on ><password> ~<key_pattern> &<channel_pattern> +@<category> -@<category>
+
+# Admin user - Full access to all commands and keys
+user admin on >${REDIS_ADMIN_PASSWORD} ~* &* +@all
+
+# Cartae API user - Read/write on cache keys only, restricted commands
+user cartae-api on >${REDIS_API_PASSWORD} ~cache:* &* +@read +@write +@string +@hash +@list +@set +@sorted_set -@dangerous -@admin -@keyspace -@connection
+
+# Monitoring user - Read-only access for metrics collection
+user monitoring on >${REDIS_MONITOR_PASSWORD} ~* &* +@read +info +ping +client +slowlog -@write -@dangerous -@admin
+
+# Disable default user for security
+user default off

@@ -1,9 +1,10 @@
 # Restic Backup Crontab Configuration
 # Session 81e - Backup & Disaster Recovery
+# Session 86 - Updated to 6-hour backup frequency
 # This file is mounted at /etc/crontabs/root in the container
 
-# Daily full backup at 02:00 UTC
-0 2 * * * /scripts/backup.sh all >> /var/log/restic/cron.log 2>&1
+# Full backup every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)
+0 */6 * * * /scripts/backup.sh all >> /var/log/restic/cron.log 2>&1
 
 # Weekly integrity check on Sundays at 03:00 UTC
 0 3 * * 0 restic check --read-data-subset=10% >> /var/log/restic/integrity-check.log 2>&1
