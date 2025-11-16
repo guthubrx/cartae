@@ -25,6 +25,8 @@ import { searchRouter } from './api/routes/search';
 import { semanticRouter } from './api/routes/semantic';
 import { hybridRouter } from './api/routes/hybrid';
 import { vaultRouter } from './api/routes/vault';
+import connectionsRouter from './api/routes/connections';
+import summariesRouter from './api/routes/summaries';
 
 // Middlewares
 import { errorHandler, notFoundHandler } from './api/middlewares/errorHandler';
@@ -150,6 +152,8 @@ async function createApp(): Promise<Application> {
   app.use('/api/semantic', semanticRouter);
   app.use('/api/hybrid', hybridRouter);
   app.use('/api/vault', vaultRouter);
+  app.use('/api/connections', connectionsRouter);
+  app.use('/api/summaries', summariesRouter);
 
   // ========== Error handlers (doivent être après les routes) ==========
 
