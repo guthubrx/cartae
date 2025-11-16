@@ -15,3 +15,8 @@ supabase/functions/
 !*.config.cjs
 !.eslintrc.cjs
 
+# Config TypeScript files (souvent hors tsconfig.json)
+# TypeScript config files (often outside tsconfig.json)
+**/tsup.config.ts
+**/vite.config.ts
+

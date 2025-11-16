@@ -64,6 +64,7 @@ export interface ItemMetadata {
  */
 export class SmartCache {
   private cacheManager: CacheManager;
+
   private config: CacheConfig;
 
   constructor(cacheManager: CacheManager) {
@@ -122,8 +123,8 @@ export class SmartCache {
     // 2. Age Score (pénalité pour items vieux)
     // ========================================================================
 
-    const createdAt = item.createdAt || now;
-    const ageInDays = (now - createdAt) / (1000 * 60 * 60 * 24);
+    const createdAtTimestamp = item.createdAt ? new Date(item.createdAt).getTime() : now;
+    const ageInDays = (now - createdAtTimestamp) / (1000 * 60 * 60 * 24);
     ageScore = Math.max(-100, -ageInDays * 2); // -2 points par jour (plafonné à -100)
 
     // ========================================================================
@@ -173,7 +174,7 @@ export class SmartCache {
    * Calculer scores pour plusieurs items
    */
   calculatePriorities(items: CartaeItem[]): PriorityScore[] {
-    return items.map((item) => this.calculatePriority(item));
+    return items.map(item => this.calculatePriority(item));
   }
 
   /**
@@ -191,7 +192,7 @@ export class SmartCache {
     // Trier par score décroissant
     itemsWithScores.sort((a, b) => b.score - a.score);
 
-    return itemsWithScores.map((x) => x.item);
+    return itemsWithScores.map(x => x.item);
   }
 
   // ==========================================================================
@@ -216,7 +217,11 @@ export class SmartCache {
       case 'minimal':
         // Charger seulement les N items les plus récents
         return allItems
-          .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+          .sort((a, b) => {
+            const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return bTime - aTime;
+          })
           .slice(0, maxItems);
 
       case 'smart':
@@ -247,7 +252,7 @@ export class SmartCache {
 
     // Récupérer métadonnées LRU depuis CacheManager
     const allMetadata = this.cacheManager.getAllMetadata();
-    const metadataMap = new Map(allMetadata.map((m) => [m.id, m]));
+    const metadataMap = new Map(allMetadata.map(m => [m.id, m]));
 
     // Combiner scores + LRU
     const itemsWithCombinedScore = items.map((item, index) => {
@@ -271,7 +276,7 @@ export class SmartCache {
     itemsWithCombinedScore.sort((a, b) => a.combinedScore - b.combinedScore);
 
     // Prendre les N premiers
-    return itemsWithCombinedScore.slice(0, count).map((x) => x.id);
+    return itemsWithCombinedScore.slice(0, count).map(x => x.id);
   }
 
   // ==========================================================================
@@ -334,7 +339,7 @@ export class SmartCache {
     const hotItems = this.identifyHotData(items);
     const coldItems = this.identifyColdData(items);
 
-    const totalScores = scores.map((s) => s.total);
+    const totalScores = scores.map(s => s.total);
 
     return {
       avgScore: totalScores.reduce((sum, s) => sum + s, 0) / totalScores.length || 0,

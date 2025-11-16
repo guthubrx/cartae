@@ -20,10 +20,15 @@ function createMockItem(overrides: Partial<CartaeItem> = {}): CartaeItem {
     title: 'Test Item',
     content: 'Test content',
     type: 'email',
-    connector: 'test',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
     metadata: {},
+    tags: [],
+    source: {
+      connector: 'test',
+      originalId: 'test-id',
+      lastSync: new Date(),
+    },
     ...overrides,
   };
 }
@@ -92,14 +97,14 @@ describe('CacheManager', () => {
       createMockItem({ id: 'item-5' }),
     ];
 
-    items.forEach((item) => cacheManager.add(item));
+    items.forEach(item => cacheManager.add(item));
 
     // Accéder à item-3 et item-5 (les rendre "récents")
     cacheManager.touch('item-3');
     cacheManager.touch('item-5');
 
     // Attendre 10ms pour que lastAccessedAt change
-    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     return wait(10).then(() => {
       // Accéder encore à item-3
       cacheManager.touch('item-3');
@@ -125,7 +130,7 @@ describe('CacheManager', () => {
     const sevenDaysAgo = Date.now() - 8 * 24 * 60 * 60 * 1000; // 8 jours
 
     // Ajouter item ancien
-    const oldItem = createMockItem({ id: 'old-item', createdAt: sevenDaysAgo });
+    const oldItem = createMockItem({ id: 'old-item', createdAt: new Date(sevenDaysAgo) });
     cacheManager.add(oldItem);
 
     // Simuler dernier accès il y a 8 jours
@@ -274,12 +279,12 @@ describe('SmartCache', () => {
 
     const oldItem = createMockItem({
       id: 'old',
-      createdAt: thirtyDaysAgo,
+      createdAt: new Date(thirtyDaysAgo),
     });
 
     const recentItem = createMockItem({
       id: 'recent',
-      createdAt: now,
+      createdAt: new Date(now),
     });
 
     const oldScore = smartCache.calculatePriority(oldItem);
@@ -333,7 +338,7 @@ describe('SmartCache', () => {
     const items = [
       createMockItem({
         id: 'cold',
-        createdAt: oldDate,
+        createdAt: new Date(oldDate),
         metadata: { archived: true, lastAccessedAt: oldDate },
       }),
       createMockItem({ id: 'hot', metadata: { unread: true } }),
