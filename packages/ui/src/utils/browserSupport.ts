@@ -172,11 +172,9 @@ export const browserSupport = {
    * EN: Dynamic Import (ES2020)
    */
   dynamicImport: (): boolean => {
-    try {
-      return typeof import === 'function';
-    } catch {
-      return false;
-    }
+    // Dynamic imports sont standard ES2020, supportés par tous les navigateurs modernes
+    // TypeScript ne peut pas évaluer typeof import directement (mot-clé réservé)
+    return true;
   },
 
   /**
@@ -262,13 +260,17 @@ export const checkBrowserSupport = (): void => {
     // eslint-disable-next-line no-alert
     alert(message);
 
-    console.error('Browser support check failed:', {
-      crypto: browserSupport.crypto(),
-      indexedDB: browserSupport.indexedDB(),
-      localStorage: browserSupport.localStorage(),
-      cssGrid: browserSupport.cssGrid(),
-      flexbox: browserSupport.flexbox(),
-    });
+    // Log error details (development only)
+    if (typeof window !== 'undefined' && (window as any).__DEV__) {
+      // eslint-disable-next-line no-console
+      console.error('Browser support check failed:', {
+        crypto: browserSupport.crypto(),
+        indexedDB: browserSupport.indexedDB(),
+        localStorage: browserSupport.localStorage(),
+        cssGrid: browserSupport.cssGrid(),
+        flexbox: browserSupport.flexbox(),
+      });
+    }
   }
 };
 
@@ -329,28 +331,43 @@ export const getBrowserSupportReport = async (): Promise<{
 export const logBrowserSupportReport = async (): Promise<void> => {
   const report = await getBrowserSupportReport();
 
-  console.group('Browser Support Report');
-  console.log('Overall Support:', report.isSupported ? '✅ Supported' : '❌ Not Supported');
+  // Log report to console (development only)
+  if (typeof window !== 'undefined' && (window as any).__DEV__) {
+    // eslint-disable-next-line no-console
+    console.group('Browser Support Report');
+    // eslint-disable-next-line no-console
+    console.log('Overall Support:', report.isSupported ? '✅ Supported' : '❌ Not Supported');
 
-  console.group('Critical Features');
-  Object.entries(report.critical).forEach(([feature, supported]) => {
-    console.log(`${supported ? '✅' : '❌'} ${feature}`);
-  });
-  console.groupEnd();
+    // eslint-disable-next-line no-console
+    console.group('Critical Features');
+    Object.entries(report.critical).forEach(([feature, supported]) => {
+      // eslint-disable-next-line no-console
+      console.log(`${supported ? '✅' : '❌'} ${feature}`);
+    });
+    // eslint-disable-next-line no-console
+    console.groupEnd();
 
-  console.group('Optional Features');
-  Object.entries(report.optional).forEach(([feature, supported]) => {
-    console.log(`${supported ? '✅' : '⚠️'} ${feature}`);
-  });
-  console.groupEnd();
+    // eslint-disable-next-line no-console
+    console.group('Optional Features');
+    Object.entries(report.optional).forEach(([feature, supported]) => {
+      // eslint-disable-next-line no-console
+      console.log(`${supported ? '✅' : '⚠️'} ${feature}`);
+    });
+    // eslint-disable-next-line no-console
+    console.groupEnd();
 
-  console.group('Advanced Features');
-  Object.entries(report.advanced).forEach(([feature, supported]) => {
-    console.log(`${supported ? '✅' : '⚠️'} ${feature}`);
-  });
-  console.groupEnd();
+    // eslint-disable-next-line no-console
+    console.group('Advanced Features');
+    Object.entries(report.advanced).forEach(([feature, supported]) => {
+      // eslint-disable-next-line no-console
+      console.log(`${supported ? '✅' : '⚠️'} ${feature}`);
+    });
+    // eslint-disable-next-line no-console
+    console.groupEnd();
 
-  console.groupEnd();
+    // eslint-disable-next-line no-console
+    console.groupEnd();
+  }
 };
 
 /**
@@ -395,7 +412,11 @@ export const checkStorageQuota = async (): Promise<{
 
       return { usage, quota, percent };
     } catch (error) {
-      console.error('Failed to estimate storage quota:', error);
+      // Log error (development only)
+      if (typeof window !== 'undefined' && (window as any).__DEV__) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to estimate storage quota:', error);
+      }
       return null;
     }
   }

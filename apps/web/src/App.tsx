@@ -9,6 +9,7 @@ import { useMindmap } from './hooks/useMindmap';
 import DockableLayoutV2 from './layouts/DockableLayoutV2';
 import SettingsPage from './pages/Settings';
 import { MarketplacePage } from './pages/MarketplacePage';
+import { CartaeDemoPage } from './pages/CartaeDemoPage';
 import { useAppSettings } from './hooks/useAppSettings';
 import { useOpenFiles } from './hooks/useOpenFiles';
 import { useTagGraphFileSync } from './hooks/useTagGraphFileSync';
@@ -82,6 +83,7 @@ function App() {
         <Route path="/map/:id" element={<DockableLayoutV2 />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/cartae" element={<CartaeDemoPage />} />
       </Routes>
     </div>
   );

@@ -23,7 +23,6 @@ export const UnsealKeyInput: React.FC<UnsealKeyInputProps> = ({
   masked = true,
   disabled = false,
   placeholder = 'Collez la clé d\'unseal ici...',
-  autoFocus = false,
 }) => {
   const [showKey, setShowKey] = useState(!masked);
   const [copied, setCopied] = useState(false);
@@ -62,7 +61,6 @@ export const UnsealKeyInput: React.FC<UnsealKeyInputProps> = ({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
-          autoFocus={autoFocus}
           className={`key-input ${!isValidFormat && value ? 'invalid' : ''}`}
         />
 
@@ -85,7 +83,6 @@ export const UnsealKeyInput: React.FC<UnsealKeyInputProps> = ({
             className="paste-btn"
             title="Coller depuis presse-papier"
             disabled={disabled}
-          }
           >
             📋 Coller
           </button>
