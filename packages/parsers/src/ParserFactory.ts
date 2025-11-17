@@ -27,6 +27,7 @@ import { IcsParser } from './parsers/calendar/IcsParser';
 import { VcfParser } from './parsers/calendar/VcfParser';
 import { ZipParser } from './parsers/archive/ZipParser';
 import { JsonParser } from './parsers/data/JsonParser';
+import { MarkdownAttachmentParser } from './parsers/markdown/MarkdownAttachmentParser';
 
 /**
  * Factory pour créer parsers
@@ -52,6 +53,7 @@ export class ParserFactory {
         new TxtParser(),
         new CsvParser(),
         new RtfParser(),
+        new MarkdownAttachmentParser(),
 
         // Images (P1)
         new ImageParser(),
