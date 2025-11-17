@@ -65,6 +65,8 @@ export default defineConfig({
   // FR: Configuration des projets (navigateurs)
   // EN: Configure projects for major browsers
   projects: [
+    // FR: Desktop browsers (Tier 1)
+    // EN: Desktop browsers (Tier 1)
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
@@ -76,6 +78,24 @@ export default defineConfig({
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
+    },
+    {
+      name: 'edge',
+      use: {
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
+      },
+    },
+
+    // FR: Mobile browsers (tests responsive)
+    // EN: Mobile browsers (responsive testing)
+    {
+      name: 'Mobile Chrome',
+      use: { ...devices['Pixel 5'] },
+    },
+    {
+      name: 'Mobile Safari',
+      use: { ...devices['iPhone 13'] },
     },
   ],
 

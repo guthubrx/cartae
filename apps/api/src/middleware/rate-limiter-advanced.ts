@@ -16,11 +16,8 @@
  */
 
 import type { Context, Next } from 'hono';
-
-/**
- * Rate limit storage backends
- */
-export type RateLimitBackend = 'memory' | 'kv' | 'redis';
+import { getClientIP, getTenantID } from '@cartae/network-utils';
+import type { RateLimitBackend, RateLimitEntry } from '@cartae/types';
 
 /**
  * Rate limit configuration
@@ -84,13 +81,6 @@ export interface RateLimitConfig {
   onLimitExceeded?: (c: Context, key: string) => void;
 }
 
-/**
- * Rate limit entry
- */
-interface RateLimitEntry {
-  count: number;
-  resetAt: number;
-}
 
 /**
  * Default configuration
@@ -287,32 +277,6 @@ function createStore(config: RateLimitConfig) {
   }
 }
 
-/**
- * Get client IP address
- */
-function getClientIP(c: Context): string {
-  // Cloudflare specific header
-  const cfIP = c.req.header('cf-connecting-ip');
-  if (cfIP) return cfIP;
-
-  // Standard proxy headers
-  const forwarded = c.req.header('x-forwarded-for');
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-
-  const realIP = c.req.header('x-real-ip');
-  if (realIP) return realIP;
-
-  return 'unknown';
-}
-
-/**
- * Get tenant ID from request
- */
-function getTenantID(c: Context): string | null {
-  return c.req.header('x-tenant-id') || null;
-}
 
 /**
  * Build rate limit key
@@ -325,7 +289,7 @@ function buildKey(config: RateLimitConfig, c: Context, ip: string): string {
 
   // Add tenant if enabled
   if (config.perTenant) {
-    const tenantID = getTenantID(c);
+    const tenantID = getTenantID(c.req);
     if (tenantID) {
       parts.push(`tenant:${tenantID}`);
     }
@@ -347,7 +311,7 @@ function buildKey(config: RateLimitConfig, c: Context, ip: string): string {
 function getLimit(config: RateLimitConfig, c: Context): number {
   // Check tenant-specific limits
   if (config.perTenant) {
-    const tenantID = getTenantID(c);
+    const tenantID = getTenantID(c.req);
     if (tenantID && config.tenantLimits?.[tenantID]) {
       return config.tenantLimits[tenantID];
     }
@@ -413,7 +377,7 @@ export const rateLimiterAdvanced = (userConfig: RateLimitConfig = {}) => {
   const store = createStore(config);
 
   return async (c: Context, next: Next) => {
-    const ip = getClientIP(c);
+    const ip = getClientIP(c.req);
 
     // Skip whitelisted IPs
     if (config.skipIPs?.includes(ip)) {

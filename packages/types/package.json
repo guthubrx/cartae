@@ -1,0 +1,16 @@
+{
+  "name": "@cartae/types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types for Cartae ecosystem",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": ["types", "typescript", "shared"],
+  "author": "Cartae Team",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

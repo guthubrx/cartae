@@ -21,6 +21,7 @@
  */
 
 import type { Context, Next } from 'hono';
+import { getClientIP, getTenantID, getUserAgent } from '@cartae/network-utils';
 
 /**
  * Audit log entry
@@ -208,30 +209,6 @@ const DEFAULT_CONFIG: Required<AuditLogConfig> = {
   enableStructured: true,
 };
 
-/**
- * Get client IP address
- */
-function getClientIP(c: Context): string {
-  const cfIP = c.req.header('cf-connecting-ip');
-  if (cfIP) return cfIP;
-
-  const forwarded = c.req.header('x-forwarded-for');
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-
-  const realIP = c.req.header('x-real-ip');
-  if (realIP) return realIP;
-
-  return 'unknown';
-}
-
-/**
- * Get tenant ID from request
- */
-function getTenantID(c: Context): string | null {
-  return c.req.header('x-tenant-id') || null;
-}
 
 /**
  * Check if request should be logged
@@ -388,9 +365,9 @@ export const auditLogger = (userConfig: AuditLogConfig = {}) => {
     // Capture request details
     const { method } = c.req;
     const { path } = c.req;
-    const ip = getClientIP(c);
-    const tenantId = getTenantID(c);
-    const userAgent = c.req.header('user-agent');
+    const ip = getClientIP(c.req);
+    const tenantId = getTenantID(c.req);
+    const userAgent = getUserAgent(c.req);
 
     // Parse request body (for POST/PUT)
     let requestBody: any;
