@@ -6,6 +6,13 @@
   "vars": {
     "ENVIRONMENT": "development"
   },
+  "kv_namespaces": [
+    {
+      "binding": "RATE_LIMIT_KV",
+      "id": "rate-limit-production",
+      "preview_id": "rate-limit-preview"
+    }
+  ],
   "build": {
     "command": "tsc"
   },
