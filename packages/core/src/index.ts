@@ -29,5 +29,8 @@ export * from './events';
 // Storage
 export * from './storage';
 
+// Sources (gestion des sources de données externes)
+export * from './sources';
+
 // Version
 export const VERSION = '0.1.0';

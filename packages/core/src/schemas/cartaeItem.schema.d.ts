@@ -421,7 +421,7 @@ export declare const CartaeRelationshipSchema: z.ZodObject<{
     }, z.ZodTypeAny, "passthrough">>>;
     bidirectional: z.ZodOptional<z.ZodBoolean>;
 }, "strip", z.ZodTypeAny, {
-    type: "parent" | "child" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
+    type: "child" | "parent" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
     targetId: string;
     metadata?: z.objectOutputType<{
         strength: z.ZodOptional<z.ZodNumber>;
@@ -432,7 +432,7 @@ export declare const CartaeRelationshipSchema: z.ZodObject<{
     }, z.ZodTypeAny, "passthrough"> | undefined;
     bidirectional?: boolean | undefined;
 }, {
-    type: "parent" | "child" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
+    type: "child" | "parent" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
     targetId: string;
     metadata?: z.objectInputType<{
         strength: z.ZodOptional<z.ZodNumber>;
@@ -761,7 +761,7 @@ export declare const CartaeItemSchema: z.ZodObject<{
         }, z.ZodTypeAny, "passthrough">>>;
         bidirectional: z.ZodOptional<z.ZodBoolean>;
     }, "strip", z.ZodTypeAny, {
-        type: "parent" | "child" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
+        type: "child" | "parent" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
         targetId: string;
         metadata?: z.objectOutputType<{
             strength: z.ZodOptional<z.ZodNumber>;
@@ -772,7 +772,7 @@ export declare const CartaeItemSchema: z.ZodObject<{
         }, z.ZodTypeAny, "passthrough"> | undefined;
         bidirectional?: boolean | undefined;
     }, {
-        type: "parent" | "child" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
+        type: "child" | "parent" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
         targetId: string;
         metadata?: z.objectInputType<{
             strength: z.ZodOptional<z.ZodNumber>;
@@ -809,21 +809,30 @@ export declare const CartaeItemSchema: z.ZodObject<{
     archived: z.ZodOptional<z.ZodBoolean>;
     favorite: z.ZodOptional<z.ZodBoolean>;
 }, "strip", z.ZodTypeAny, {
-    type: "email" | "file" | "document" | "note" | "message" | "event" | "task" | "contact";
     id: string;
-    title: string;
     createdAt: Date;
+    updatedAt: Date;
+    type: "email" | "file" | "document" | "note" | "message" | "task" | "event" | "contact";
+    title: string;
+    source: {
+        connector: string;
+        originalId: string;
+        lastSync: Date;
+        url?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
+    };
+    tags: string[];
     metadata: {
         author?: string | undefined;
         status?: "new" | "in_progress" | "pending" | "completed" | "cancelled" | "blocked" | undefined;
+        priority?: "low" | "medium" | "high" | "urgent" | undefined;
+        progress?: number | undefined;
         location?: string | undefined;
         participants?: string[] | undefined;
-        priority?: "low" | "medium" | "high" | "urgent" | undefined;
         dueDate?: Date | undefined;
         startDate?: Date | undefined;
         endDate?: Date | undefined;
         duration?: number | undefined;
-        progress?: number | undefined;
         aiInsights?: z.objectOutputType<{
             sentiment: z.ZodOptional<z.ZodNumber>;
             priorityScore: z.ZodOptional<z.ZodNumber>;
@@ -853,20 +862,11 @@ export declare const CartaeItemSchema: z.ZodObject<{
     } & {
         [k: string]: unknown;
     };
-    tags: string[];
-    source: {
-        connector: string;
-        originalId: string;
-        lastSync: Date;
-        url?: string | undefined;
-        metadata?: Record<string, unknown> | undefined;
-    };
-    updatedAt: Date;
     content?: string | undefined;
     '@context'?: string | string[] | Record<string, unknown> | undefined;
     '@type'?: string | string[] | undefined;
     relationships?: {
-        type: "parent" | "child" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
+        type: "child" | "parent" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
         targetId: string;
         metadata?: z.objectOutputType<{
             strength: z.ZodOptional<z.ZodNumber>;
@@ -881,21 +881,30 @@ export declare const CartaeItemSchema: z.ZodObject<{
     archived?: boolean | undefined;
     favorite?: boolean | undefined;
 }, {
-    type: "email" | "file" | "document" | "note" | "message" | "event" | "task" | "contact";
     id: string;
-    title: string;
     createdAt: Date;
+    updatedAt: Date;
+    type: "email" | "file" | "document" | "note" | "message" | "task" | "event" | "contact";
+    title: string;
+    source: {
+        connector: string;
+        originalId: string;
+        lastSync: Date;
+        url?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
+    };
+    tags: string[];
     metadata: {
         author?: string | undefined;
         status?: "new" | "in_progress" | "pending" | "completed" | "cancelled" | "blocked" | undefined;
+        priority?: "low" | "medium" | "high" | "urgent" | undefined;
+        progress?: number | undefined;
         location?: string | undefined;
         participants?: string[] | undefined;
-        priority?: "low" | "medium" | "high" | "urgent" | undefined;
         dueDate?: Date | undefined;
         startDate?: Date | undefined;
         endDate?: Date | undefined;
         duration?: number | undefined;
-        progress?: number | undefined;
         aiInsights?: z.objectInputType<{
             sentiment: z.ZodOptional<z.ZodNumber>;
             priorityScore: z.ZodOptional<z.ZodNumber>;
@@ -925,20 +934,11 @@ export declare const CartaeItemSchema: z.ZodObject<{
     } & {
         [k: string]: unknown;
     };
-    tags: string[];
-    source: {
-        connector: string;
-        originalId: string;
-        lastSync: Date;
-        url?: string | undefined;
-        metadata?: Record<string, unknown> | undefined;
-    };
-    updatedAt: Date;
     content?: string | undefined;
     '@context'?: string | string[] | Record<string, unknown> | undefined;
     '@type'?: string | string[] | undefined;
     relationships?: {
-        type: "parent" | "child" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
+        type: "child" | "parent" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
         targetId: string;
         metadata?: z.objectInputType<{
             strength: z.ZodOptional<z.ZodNumber>;
@@ -976,21 +976,30 @@ export type AIInsightsZod = z.infer<typeof AIInsightsSchema>;
  * }
  */
 export declare function validateCartaeItem(data: unknown): z.SafeParseReturnType<{
-    type: "email" | "file" | "document" | "note" | "message" | "event" | "task" | "contact";
     id: string;
-    title: string;
     createdAt: Date;
+    updatedAt: Date;
+    type: "email" | "file" | "document" | "note" | "message" | "task" | "event" | "contact";
+    title: string;
+    source: {
+        connector: string;
+        originalId: string;
+        lastSync: Date;
+        url?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
+    };
+    tags: string[];
     metadata: {
         author?: string | undefined;
         status?: "new" | "in_progress" | "pending" | "completed" | "cancelled" | "blocked" | undefined;
+        priority?: "low" | "medium" | "high" | "urgent" | undefined;
+        progress?: number | undefined;
         location?: string | undefined;
         participants?: string[] | undefined;
-        priority?: "low" | "medium" | "high" | "urgent" | undefined;
         dueDate?: Date | undefined;
         startDate?: Date | undefined;
         endDate?: Date | undefined;
         duration?: number | undefined;
-        progress?: number | undefined;
         aiInsights?: z.objectInputType<{
             sentiment: z.ZodOptional<z.ZodNumber>;
             priorityScore: z.ZodOptional<z.ZodNumber>;
@@ -1020,20 +1029,11 @@ export declare function validateCartaeItem(data: unknown): z.SafeParseReturnType
     } & {
         [k: string]: unknown;
     };
-    tags: string[];
-    source: {
-        connector: string;
-        originalId: string;
-        lastSync: Date;
-        url?: string | undefined;
-        metadata?: Record<string, unknown> | undefined;
-    };
-    updatedAt: Date;
     content?: string | undefined;
     '@context'?: string | string[] | Record<string, unknown> | undefined;
     '@type'?: string | string[] | undefined;
     relationships?: {
-        type: "parent" | "child" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
+        type: "child" | "parent" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
         targetId: string;
         metadata?: z.objectInputType<{
             strength: z.ZodOptional<z.ZodNumber>;
@@ -1048,21 +1048,30 @@ export declare function validateCartaeItem(data: unknown): z.SafeParseReturnType
     archived?: boolean | undefined;
     favorite?: boolean | undefined;
 }, {
-    type: "email" | "file" | "document" | "note" | "message" | "event" | "task" | "contact";
     id: string;
-    title: string;
     createdAt: Date;
+    updatedAt: Date;
+    type: "email" | "file" | "document" | "note" | "message" | "task" | "event" | "contact";
+    title: string;
+    source: {
+        connector: string;
+        originalId: string;
+        lastSync: Date;
+        url?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
+    };
+    tags: string[];
     metadata: {
         author?: string | undefined;
         status?: "new" | "in_progress" | "pending" | "completed" | "cancelled" | "blocked" | undefined;
+        priority?: "low" | "medium" | "high" | "urgent" | undefined;
+        progress?: number | undefined;
         location?: string | undefined;
         participants?: string[] | undefined;
-        priority?: "low" | "medium" | "high" | "urgent" | undefined;
         dueDate?: Date | undefined;
         startDate?: Date | undefined;
         endDate?: Date | undefined;
         duration?: number | undefined;
-        progress?: number | undefined;
         aiInsights?: z.objectOutputType<{
             sentiment: z.ZodOptional<z.ZodNumber>;
             priorityScore: z.ZodOptional<z.ZodNumber>;
@@ -1092,20 +1101,11 @@ export declare function validateCartaeItem(data: unknown): z.SafeParseReturnType
     } & {
         [k: string]: unknown;
     };
-    tags: string[];
-    source: {
-        connector: string;
-        originalId: string;
-        lastSync: Date;
-        url?: string | undefined;
-        metadata?: Record<string, unknown> | undefined;
-    };
-    updatedAt: Date;
     content?: string | undefined;
     '@context'?: string | string[] | Record<string, unknown> | undefined;
     '@type'?: string | string[] | undefined;
     relationships?: {
-        type: "parent" | "child" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
+        type: "child" | "parent" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
         targetId: string;
         metadata?: z.objectOutputType<{
             strength: z.ZodOptional<z.ZodNumber>;
@@ -1136,21 +1136,30 @@ export declare function validateCartaeItem(data: unknown): z.SafeParseReturnType
  * }
  */
 export declare function parseCartaeItem(data: unknown): {
-    type: "email" | "file" | "document" | "note" | "message" | "event" | "task" | "contact";
     id: string;
-    title: string;
     createdAt: Date;
+    updatedAt: Date;
+    type: "email" | "file" | "document" | "note" | "message" | "task" | "event" | "contact";
+    title: string;
+    source: {
+        connector: string;
+        originalId: string;
+        lastSync: Date;
+        url?: string | undefined;
+        metadata?: Record<string, unknown> | undefined;
+    };
+    tags: string[];
     metadata: {
         author?: string | undefined;
         status?: "new" | "in_progress" | "pending" | "completed" | "cancelled" | "blocked" | undefined;
+        priority?: "low" | "medium" | "high" | "urgent" | undefined;
+        progress?: number | undefined;
         location?: string | undefined;
         participants?: string[] | undefined;
-        priority?: "low" | "medium" | "high" | "urgent" | undefined;
         dueDate?: Date | undefined;
         startDate?: Date | undefined;
         endDate?: Date | undefined;
         duration?: number | undefined;
-        progress?: number | undefined;
         aiInsights?: z.objectOutputType<{
             sentiment: z.ZodOptional<z.ZodNumber>;
             priorityScore: z.ZodOptional<z.ZodNumber>;
@@ -1180,20 +1189,11 @@ export declare function parseCartaeItem(data: unknown): {
     } & {
         [k: string]: unknown;
     };
-    tags: string[];
-    source: {
-        connector: string;
-        originalId: string;
-        lastSync: Date;
-        url?: string | undefined;
-        metadata?: Record<string, unknown> | undefined;
-    };
-    updatedAt: Date;
     content?: string | undefined;
     '@context'?: string | string[] | Record<string, unknown> | undefined;
     '@type'?: string | string[] | undefined;
     relationships?: {
-        type: "parent" | "child" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
+        type: "child" | "parent" | "related" | "references" | "blocks" | "blockedBy" | "duplicates" | "duplicatedBy" | "replaces" | "replacedBy" | "dependsOn" | "requiredBy";
         targetId: string;
         metadata?: z.objectOutputType<{
             strength: z.ZodOptional<z.ZodNumber>;
