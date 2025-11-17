@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:analyze": "ANALYZE=true tsc && vite build",
+    "build:stats": "pnpm build && du -sh dist && du -sh dist/chunks/* 2>/dev/null | sort -h || echo 'No chunks dir yet'",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.tsx",
     "test": "vitest",
@@ -61,9 +63,12 @@
     "jsdom": "^27.0.1",
     "playwright": "^1.55.1",
     "postcss": "^8.4.32",
+    "rollup-plugin-visualizer": "^5.12.0",
     "tailwindcss": "^3.3.6",
+    "terser": "^5.36.0",
     "typescript": "^5.3.2",
     "vite": "^5.0.8",
+    "vite-plugin-compression": "^0.5.1",
     "vite-tsconfig-paths": "^4.2.1",
     "vitest": "^1.0.0"
   }

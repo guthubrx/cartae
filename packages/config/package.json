@@ -1,0 +1,20 @@
+{
+  "name": "@cartae/config",
+  "version": "1.0.0",
+  "description": "Centralized configuration for Cartae",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": ["config"],
+  "author": "Cartae Team",
+  "license": "MIT",
+  "dependencies": {
+    "@cartae/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.3"
+  }
+}

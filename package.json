@@ -80,6 +80,14 @@
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
   },
+  "browserslist": [
+    "chrome >= 100",
+    "firefox >= 100",
+    "safari >= 15",
+    "edge >= 100",
+    "not dead",
+    "not ie 11"
+  ],
   "dependencies": {
     "dotenv": "^17.2.3",
     "jszip": "^3.10.1"
