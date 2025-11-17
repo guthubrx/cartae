@@ -33,6 +33,9 @@ importers:
       '@semantic-release/npm':
         specifier: ^11.0.2
         version: 11.0.3(semantic-release@22.0.12(typescript@5.9.3))
+      '@types/uuid':
+        specifier: ^11.0.0
+        version: 11.0.0
       '@typescript-eslint/eslint-plugin':
         specifier: ^6.13.1
         version: 6.21.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1)(typescript@5.9.3)
@@ -1090,6 +1093,9 @@ importers:
 
   packages/parsers:
     dependencies:
+      '@cartae/core':
+        specifier: workspace:*
+        version: link:../core
       '@kenjiuno/msgreader':
         specifier: ^1.27.0-alpha.3
         version: 1.27.0-alpha.3
@@ -1111,6 +1117,9 @@ importers:
       pdfjs-dist:
         specifier: ^5.4.394
         version: 5.4.394
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
       vcf:
         specifier: ^2.1.2
         version: 2.1.2
