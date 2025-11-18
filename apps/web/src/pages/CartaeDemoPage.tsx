@@ -4,7 +4,7 @@
  * Affiche tous les composants UI créés avec des données mock
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   CartaeItemCard,
   CartaeItemList,
@@ -25,6 +25,9 @@ import {
 } from '@cartae/ui';
 import type { CartaeItem } from '@cartae/core/types/CartaeItem';
 import type { DataSource, SyncStatus, SyncHistoryEntry } from '@cartae/ui';
+import { SourceManager } from '@cartae/core/sources/SourceManager';
+import { IndexedDBSourceStorage } from '@cartae/core/sources/IndexedDBSourceStorage';
+import { Office365MailBackendConnector, Office365TeamsBackendConnector } from '@cartae/core/sources/connectors';
 
 // Mock data
 const mockItems: CartaeItem[] = [
@@ -149,6 +152,25 @@ const mockSources: DataSource[] = [
     createdAt: new Date('2025-01-12T00:00:00'),
     updatedAt: new Date('2025-01-19T10:00:00'),
   },
+  {
+    id: 'source-4',
+    name: 'Microsoft Teams',
+    connectorType: 'office365-teams-backend',
+    status: 'active',
+    config: {
+      tenantId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      clientId: 'yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy',
+      scopes: ['Chat.Read', 'Chat.ReadWrite'],
+    },
+    mappings: {
+      topic: 'title',
+      'lastMessagePreview.body.content': 'content',
+    },
+    lastSync: new Date('2025-01-19T10:20:00'),
+    itemsCount: 0,
+    createdAt: new Date('2025-01-01T00:00:00'),
+    updatedAt: new Date('2025-01-19T10:20:00'),
+  },
 ];
 
 const mockSyncStatus: SyncStatus = {
@@ -203,11 +225,462 @@ const mockSyncHistory: SyncHistoryEntry[] = [
 ];
 
 export const CartaeDemoPage: React.FC = () => {
-  const [selectedTab, setSelectedTab] = useState<'items' | 'sources'>('items');
+  const [selectedTab, setSelectedTab] = useState<'items' | 'sources' | 'office365'>('items');
   const [selectedItemSubTab, setSelectedItemSubTab] = useState<'list' | 'detail' | 'editor' | 'timeline' | 'search'>('list');
   const [selectedSourceSubTab, setSelectedSourceSubTab] = useState<'list' | 'detail' | 'config' | 'mapping' | 'sync'>('list');
   const [selectedItem, setSelectedItem] = useState<CartaeItem | null>(mockItems[0]);
   const [selectedSource, setSelectedSource] = useState<DataSource | null>(mockSources[0]);
+
+  // Office365 Sync State
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncResult, setSyncResult] = useState<{
+    success: boolean;
+    itemsImported?: number;
+    itemsSkipped?: number;
+    totalProcessed?: number;
+    errors?: string[];
+    error?: string;
+  } | null>(null);
+  const [currentToken, setCurrentToken] = useState<string | null>(null);
+
+  // Teams Sync State
+  const [teamsSyncLoading, setTeamsSyncLoading] = useState(false);
+  const [teamsSyncResult, setTeamsSyncResult] = useState<{
+    success: boolean;
+    itemsImported?: number;
+    itemsSkipped?: number;
+    totalProcessed?: number;
+    errors?: string[];
+    error?: string;
+  } | null>(null);
+
+  // Office365 Items State
+  const [office365Items, setOffice365Items] = useState<CartaeItem[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
+
+  // Unified View Filters/Sort State
+  const [unifiedSearchText, setUnifiedSearchText] = useState('');
+  const [unifiedSortMode, setUnifiedSortMode] = useState<'date-desc' | 'date-asc' | 'title-asc' | 'title-desc'>('date-desc');
+  const [unifiedTypeFilter, setUnifiedTypeFilter] = useState<'all' | 'email' | 'message'>('all');
+
+  // SourceManager State (Session 119 unified architecture)
+  const sourceManagerRef = useRef<SourceManager | null>(null);
+  const [sourceManagerReady, setSourceManagerReady] = useState(false);
+  const [allItems, setAllItems] = useState<CartaeItem[]>([]);
+
+  // Initialize SourceManager with Mail + Teams connectors
+  useEffect(() => {
+    const initSourceManager = async () => {
+      console.log('[SourceManager] Initialisation...');
+
+      // Create storage (IndexedDB)
+      const storage = new IndexedDBSourceStorage();
+
+      // Create SourceManager
+      const manager = new SourceManager({ storage });
+
+      // Register connectors
+      const mailConnector = new Office365MailBackendConnector();
+      const teamsConnector = new Office365TeamsBackendConnector();
+
+      manager.registerConnector(mailConnector);
+      manager.registerConnector(teamsConnector);
+
+      console.log('[SourceManager] ✅ Connecteurs enregistrés:', mailConnector.type, teamsConnector.type);
+
+      sourceManagerRef.current = manager;
+      setSourceManagerReady(true);
+    };
+
+    initSourceManager();
+  }, []);
+
+  // Charger les items de toutes les sources au démarrage
+  useEffect(() => {
+    if (sourceManagerReady) {
+      console.log('[AllSources] SourceManager ready, fetching all items...');
+      fetchAllSourcesItems();
+    }
+  }, [sourceManagerReady]);
+
+  // Charger le token depuis browser.storage au chargement (avec retry pour race condition)
+  React.useEffect(() => {
+    let retryCount = 0;
+    const MAX_RETRIES = 20; // 20 secondes max
+    let timeoutId: number | null = null;
+
+    const checkAndLoadToken = () => {
+      const browserStorage = (window as any).cartaeBrowserStorage;
+
+      if (!browserStorage) {
+        retryCount++;
+        if (retryCount < MAX_RETRIES) {
+          console.log(`[Office365] Extension pas encore prête, retry ${retryCount}/${MAX_RETRIES}...`);
+          timeoutId = window.setTimeout(checkAndLoadToken, 1000); // Retry après 1 sec
+          return;
+        }
+        console.warn('[Office365] Extension non disponible après 20s (window.cartaeBrowserStorage manquant)');
+        return;
+      }
+
+      console.log('[Office365] Extension détectée, lecture token...');
+
+      // Lire le token OWA depuis browser.storage.local
+      browserStorage.get(['cartae-o365-token-owa', 'cartae-o365-token-owa-captured-at'])
+        .then((result: any) => {
+          const token = result['cartae-o365-token-owa'];
+          const capturedAt = result['cartae-o365-token-owa-captured-at'];
+
+          if (token) {
+            console.log('[Office365] ✅ Token OWA trouvé (capturé à ' + capturedAt + ')');
+            console.log('[Office365] Token (début):', token.substring(0, 50) + '...');
+            setCurrentToken(token);
+          } else {
+            console.log('[Office365] ℹ️ Pas de token OWA dans storage - allez sur outlook.office.com pour vous connecter');
+          }
+        })
+        .catch((error: any) => {
+          console.error('[Office365] Erreur lecture token:', error);
+        });
+    };
+
+    // Démarrer la vérification
+    checkAndLoadToken();
+
+    // Cleanup : annuler le timeout si le composant unmount
+    return () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, []);
+
+  // Fetch Office365 Items from Database
+  const fetchOffice365Items = async () => {
+    setItemsLoading(true);
+    try {
+      console.log('[Office365] Récupération des items depuis PostgreSQL...');
+
+      const response = await fetch(
+        'http://localhost:3001/api/office365/items?userId=4397e804-31e5-44c4-b89e-82058fa8502b&limit=100'
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Erreur HTTP ${response.status}`);
+      }
+
+      console.log(`[Office365] ✅ ${data.count} items récupérés:`, data.items);
+      setOffice365Items(data.items);
+    } catch (error) {
+      console.error('[Office365] ❌ Erreur récupération items:', error);
+      setOffice365Items([]);
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+
+  // Fetch All Sources Items (Unified Architecture Session 119)
+  const fetchAllSourcesItems = async () => {
+    console.log('[AllSources] 🔄 Récupération items de toutes les sources...');
+
+    const userId = '4397e804-31e5-44c4-b89e-82058fa8502b'; // Demo user UUID
+    const allFetchedItems: CartaeItem[] = [];
+
+    // 1. Récupérer items Mail (Office365)
+    try {
+      console.log('[AllSources] → Récupération Mail...');
+      const mailResponse = await fetch(
+        `http://localhost:3001/api/office365/items?userId=${userId}&limit=100`
+      );
+      if (mailResponse.ok) {
+        const mailData = await mailResponse.json();
+        const mailItems = mailData.items || [];
+        console.log(`[AllSources] ✅ Mail: ${mailItems.length} items`);
+        allFetchedItems.push(...mailItems);
+      } else {
+        console.warn('[AllSources] ⚠️ Mail API erreur:', mailResponse.status);
+      }
+    } catch (error) {
+      console.error('[AllSources] ❌ Mail fetch error:', error);
+    }
+
+    // 2. Récupérer items Teams (Office365)
+    try {
+      console.log('[AllSources] → Récupération Teams...');
+      const teamsResponse = await fetch(
+        `http://localhost:3001/api/office365/teams/items?userId=${userId}&limit=100`
+      );
+      if (teamsResponse.ok) {
+        const teamsData = await teamsResponse.json();
+        const teamsItems = teamsData.items || [];
+        console.log(`[AllSources] ✅ Teams: ${teamsItems.length} items`);
+        allFetchedItems.push(...teamsItems);
+      } else {
+        console.warn('[AllSources] ⚠️ Teams API erreur:', teamsResponse.status);
+      }
+    } catch (error) {
+      console.error('[AllSources] ❌ Teams fetch error:', error);
+    }
+
+    // 3. Trier par date DESC (mélanger tous les types)
+    allFetchedItems.sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.created_at || 0).getTime();
+      const dateB = new Date(b.createdAt || b.created_at || 0).getTime();
+      return dateB - dateA; // DESC (plus récent en premier)
+    });
+
+    console.log(`[AllSources] 🎯 Total items réels: ${allFetchedItems.length} (Mail + Teams, triés par date DESC)`);
+    setAllItems(allFetchedItems);
+  };
+
+  // Office365 Sync Function
+  const handleOffice365Sync = async () => {
+    setSyncLoading(true);
+    setSyncResult(null);
+
+    try {
+      // Vérifier que l'extension est présente
+      const browserStorage = (window as any).cartaeBrowserStorage;
+      if (!browserStorage) {
+        throw new Error('Extension Cartae non détectée. Installez l\'extension Firefox pour synchroniser Office365.');
+      }
+
+      console.log('[Office365] Lecture token depuis browser.storage...');
+
+      // Récupérer le token depuis browser.storage.local
+      const result = await browserStorage.get(['cartae-o365-token-owa']);
+      const token = result['cartae-o365-token-owa'];
+
+      console.log('[Office365] Token récupéré:', token ? `${token.substring(0, 20)}...` : 'null');
+
+      if (!token) {
+        throw new Error(
+          '🔑 Token Outlook non disponible.\n\n' +
+          '📍 Visitez Outlook Web pour obtenir un token :\n' +
+          '   • https://outlook.office.com/mail\n\n' +
+          '⚠️ L\'extension va capturer automatiquement le token lors de votre connexion.'
+        );
+      }
+
+      // Appeler l'API backend
+      console.log('[Office365] Appel API backend /api/office365/sync...');
+      const response = await fetch('http://localhost:3001/api/office365/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Office365-Token': token,
+        },
+        body: JSON.stringify({
+          userId: '4397e804-31e5-44c4-b89e-82058fa8502b', // Demo user UUID
+          maxEmails: 50,
+          folder: 'Inbox',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Erreur HTTP ${response.status}`);
+      }
+
+      console.log('[Office365] ✅ Synchronisation réussie:', data);
+      setSyncResult(data);
+
+      // Récupérer les items après synchronisation réussie
+      if (data.success) {
+        await fetchOffice365Items(); // Pour l'onglet Office365 (legacy)
+        await fetchAllSourcesItems(); // Pour l'affichage unifié (Session 119)
+      }
+    } catch (error) {
+      console.error('[Office365] ❌ Erreur synchronisation:', error);
+      setSyncResult({
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur inconnue',
+      });
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
+  // Teams Sync Function
+  const handleTeamsSync = async () => {
+    setTeamsSyncLoading(true);
+    setTeamsSyncResult(null);
+
+    try {
+      // Vérifier que l'extension est présente
+      const browserStorage = (window as any).cartaeBrowserStorage;
+      if (!browserStorage) {
+        throw new Error('Extension Cartae non détectée. Installez l\'extension Firefox pour synchroniser Teams.');
+      }
+
+      console.log('[Teams] Lecture tokens depuis browser.storage...');
+
+      // ✅ Utiliser token Graph (Session 70 qui marchait !)
+      // Après reconnexion à Teams, token Graph aura Chat.Read
+      const result = await browserStorage.get([
+        'cartae-o365-token-graph',
+        'cartae-o365-token-teams'
+      ]);
+
+      let token = result['cartae-o365-token-graph'];
+      let tokenSource = 'graph';
+
+      if (!token) {
+        token = result['cartae-o365-token-teams'];
+        tokenSource = 'teams-legacy';
+      }
+
+      console.log('[Teams] Token récupéré:', token ? `${token.substring(0, 20)}... (source: ${tokenSource})` : 'null');
+
+      if (!token) {
+        throw new Error(
+          '🔑 Aucun token Microsoft disponible.\n\n' +
+          '📍 ÉTAPES POUR RÉSOUDRE:\n' +
+          '1. Rechargez l\'extension Firefox (about:debugging)\n' +
+          '2. Ouvrez https://teams.microsoft.com\n' +
+          '3. Reconnectez-vous si nécessaire\n' +
+          '4. L\'extension capturera automatiquement les tokens\n' +
+          '5. Rechargez cette page et retestez\n\n' +
+          'ℹ️  L\'extension a été mise à jour pour mieux distinguer les tokens Teams.'
+        );
+      }
+
+      // Appeler l'API backend Teams
+      console.log('[Teams] Appel API backend /api/office365/teams/sync...');
+      const response = await fetch('http://localhost:3001/api/office365/teams/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Office365-Token': token,
+        },
+        body: JSON.stringify({
+          userId: '4397e804-31e5-44c4-b89e-82058fa8502b', // Demo user UUID
+          maxChats: 50,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Erreur HTTP ${response.status}`);
+      }
+
+      console.log('[Teams] ✅ Synchronisation réussie:', data);
+      setTeamsSyncResult(data);
+
+      // Récupérer les items après synchronisation réussie
+      if (data.success) {
+        await fetchAllSourcesItems(); // Recharger l'affichage unifié (Session 119)
+      }
+    } catch (error) {
+      console.error('[Teams] ❌ Erreur synchronisation:', error);
+      setTeamsSyncResult({
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur inconnue',
+      });
+    } finally {
+      setTeamsSyncLoading(false);
+    }
+  };
+
+  // Debug Tokens Function - Affiche tous les tokens capturés et leurs scopes
+  const debugTokens = async () => {
+    try {
+      const browserStorage = (window as any).cartaeBrowserStorage;
+      if (!browserStorage) {
+        console.error('❌ Extension non détectée');
+        return;
+      }
+
+      console.log('🔍 ====== DEBUG TOKENS O365 ======');
+
+      // Liste de tous les tokens à vérifier
+      const tokenKeys = [
+        'cartae-o365-token-owa',
+        'cartae-o365-token-graph',
+        'cartae-o365-token-sharepoint',
+        'cartae-o365-token-teams',
+      ];
+
+      for (const key of tokenKeys) {
+        console.log(`\n📋 ${key}:`);
+        const result = await browserStorage.get([key, `${key}-captured-at`]);
+        const token = result[key];
+        const capturedAt = result[`${key}-captured-at`];
+
+        if (!token) {
+          console.log('  ⚪ Aucun token disponible');
+          continue;
+        }
+
+        console.log(`  ✅ Token présent (capturé: ${capturedAt || 'inconnu'})`);
+        console.log(`  📝 Preview: ${token.substring(0, 30)}...`);
+
+        // Décoder le JWT pour afficher les scopes
+        try {
+          const parts = token.split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1]));
+            console.log('  🔐 Scopes:', payload.scp || payload.scope || 'Aucun scope trouvé');
+            console.log('  👤 Audience:', payload.aud || 'Inconnu');
+            console.log('  ⏰ Expire:', payload.exp ? new Date(payload.exp * 1000).toISOString() : 'Inconnu');
+          }
+        } catch (decodeError) {
+          console.log('  ⚠️  Impossible de décoder le token JWT');
+        }
+      }
+
+      console.log('\n🔍 ====== FIN DEBUG TOKENS ======');
+    } catch (error) {
+      console.error('❌ Erreur debug tokens:', error);
+    }
+  };
+
+  // Filtrer et trier les items pour la vue unifiée
+  const filteredUnifiedItems = useMemo(() => {
+    let filtered = [...allItems];
+
+    // 1. Filtre par type
+    if (unifiedTypeFilter !== 'all') {
+      filtered = filtered.filter(item => item.type === unifiedTypeFilter);
+    }
+
+    // 2. Filtre par recherche (titre + contenu)
+    if (unifiedSearchText.trim()) {
+      const search = unifiedSearchText.toLowerCase();
+      filtered = filtered.filter(item =>
+        item.title.toLowerCase().includes(search) ||
+        item.content?.toLowerCase().includes(search)
+      );
+    }
+
+    // 3. Tri
+    filtered.sort((a, b) => {
+      switch (unifiedSortMode) {
+        case 'date-desc': {
+          const dateA = new Date(a.createdAt || a.created_at || 0).getTime();
+          const dateB = new Date(b.createdAt || b.created_at || 0).getTime();
+          return dateB - dateA;
+        }
+        case 'date-asc': {
+          const dateA = new Date(a.createdAt || a.created_at || 0).getTime();
+          const dateB = new Date(b.createdAt || b.created_at || 0).getTime();
+          return dateA - dateB;
+        }
+        case 'title-asc':
+          return a.title.localeCompare(b.title);
+        case 'title-desc':
+          return b.title.localeCompare(a.title);
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [allItems, unifiedTypeFilter, unifiedSearchText, unifiedSortMode]);
 
   return (
     <div style={{
@@ -239,24 +712,28 @@ export const CartaeDemoPage: React.FC = () => {
         padding: '0 32px',
       }}>
         <div style={{ display: 'flex', gap: '32px' }}>
-          {['items', 'sources'].map((tab) => (
+          {[
+            { key: 'items', label: 'CartaeItem Components' },
+            { key: 'sources', label: 'Source Management Components' },
+            { key: 'office365', label: 'Office365 Sync (Live)' },
+          ].map((tab) => (
             <button
-              key={tab}
+              key={tab.key}
               type="button"
-              onClick={() => setSelectedTab(tab as any)}
+              onClick={() => setSelectedTab(tab.key as any)}
               style={{
                 padding: '16px 0',
                 fontSize: '15px',
                 fontWeight: 600,
-                color: selectedTab === tab ? '#3b82f6' : '#6b7280',
+                color: selectedTab === tab.key ? '#3b82f6' : '#6b7280',
                 background: 'transparent',
                 border: 'none',
-                borderBottom: selectedTab === tab ? '3px solid #3b82f6' : '3px solid transparent',
+                borderBottom: selectedTab === tab.key ? '3px solid #3b82f6' : '3px solid transparent',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
               }}
             >
-              {tab === 'items' ? 'CartaeItem Components' : 'Source Management Components'}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -306,26 +783,137 @@ export const CartaeDemoPage: React.FC = () => {
             {selectedItemSubTab === 'list' && (
               <div style={{ display: 'grid', gap: '24px' }}>
                 <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>CartaeItemList</h3>
-                  <CartaeItemList
-                    items={mockItems}
-                    onItemClick={(item) => setSelectedItem(item)}
-                    showFilters={true}
-                    showSearch={true}
-                  />
-                </div>
+                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                    Vue Unifiée - Toutes les sources (Mail + Teams)
+                  </h3>
 
-                <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>CartaeItemCard (individual)</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '16px' }}>
-                    {mockItems.map((_item) => (
-                      <CartaeItemCard
-                        key={_item.id}
-                        item={_item}
-                        onClick={(item) => setSelectedItem(item)}
-                        showActions={true}
+                  {/* Info box avec compteur */}
+                  <div style={{ marginBottom: '16px', padding: '12px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#1e40af' }}>
+                      📊 <strong>{filteredUnifiedItems.length}</strong> item{filteredUnifiedItems.length > 1 ? 's' : ''} affiché{filteredUnifiedItems.length > 1 ? 's' : ''} sur <strong>{allItems.length}</strong> total
+                    </p>
+                  </div>
+
+                    {/* Contrôles : Recherche + Tri + Filtre Type */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr auto auto',
+                      gap: '12px',
+                      marginBottom: '16px',
+                      alignItems: 'center',
+                    }}>
+                      {/* Recherche */}
+                      <input
+                        type="text"
+                        placeholder="🔍 Rechercher dans titre ou contenu..."
+                        value={unifiedSearchText}
+                        onChange={(e) => setUnifiedSearchText(e.target.value)}
+                        style={{
+                          padding: '10px 14px',
+                          fontSize: '14px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          outline: 'none',
+                        }}
                       />
-                    ))}
+
+                      {/* Sélecteur de tri */}
+                      <select
+                        value={unifiedSortMode}
+                        onChange={(e) => setUnifiedSortMode(e.target.value as any)}
+                        style={{
+                          padding: '10px 14px',
+                          fontSize: '14px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          background: '#ffffff',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value="date-desc">📅 Date ↓ (récent)</option>
+                        <option value="date-asc">📅 Date ↑ (ancien)</option>
+                        <option value="title-asc">🔤 Titre A→Z</option>
+                        <option value="title-desc">🔤 Titre Z→A</option>
+                      </select>
+
+                      {/* Filtre par type */}
+                      <select
+                        value={unifiedTypeFilter}
+                        onChange={(e) => setUnifiedTypeFilter(e.target.value as any)}
+                        style={{
+                          padding: '10px 14px',
+                          fontSize: '14px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          background: '#ffffff',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value="all">📋 Tous les types</option>
+                        <option value="email">📧 Emails uniquement</option>
+                        <option value="message">💬 Teams uniquement</option>
+                      </select>
+                    </div>
+
+                  {/* Liste dépliante de TOUS les items (pattern Office365 Sync) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {filteredUnifiedItems.length === 0 ? (
+                      <div style={{
+                        padding: '40px',
+                        textAlign: 'center',
+                        background: '#f9fafb',
+                        borderRadius: '8px',
+                        color: '#6b7280',
+                      }}>
+                        <p style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 500 }}>
+                          {allItems.length === 0 ? 'Aucun item à afficher' : 'Aucun résultat'}
+                        </p>
+                        <p style={{ margin: 0, fontSize: '14px' }}>
+                          {allItems.length === 0
+                            ? 'Synchronisez Office365 depuis l\'onglet correspondant'
+                            : 'Modifiez les filtres ou la recherche'
+                          }
+                        </p>
+                      </div>
+                    ) : (
+                      filteredUnifiedItems.map((item) => (
+                        <div key={item.id}>
+                          {/* Carte item */}
+                          <CartaeItemCard
+                            item={item}
+                            onClick={() => {
+                              // Toggle : si déjà sélectionné, on ferme, sinon on ouvre
+                              setSelectedItem(selectedItem?.id === item.id ? null : item);
+                            }}
+                            showActions={true}
+                            style={{
+                              cursor: 'pointer',
+                              border: selectedItem?.id === item.id ? '2px solid #3b82f6' : '1px solid #e5e7eb',
+                              background: selectedItem?.id === item.id ? '#eff6ff' : '#ffffff',
+                            }}
+                          />
+
+                          {/* Détail déplié */}
+                          {selectedItem?.id === item.id && (
+                            <div style={{
+                              marginTop: '8px',
+                              marginLeft: '16px',
+                              padding: '20px',
+                              background: '#f9fafb',
+                              borderLeft: '3px solid #3b82f6',
+                              borderRadius: '0 8px 8px 0',
+                            }}>
+                              <CartaeItemDetail
+                                item={item}
+                                mode="inline"
+                                showRelationships={false}
+                                showAIInsights={false}
+                              />
+                            </div>
+                          )}
+                      </div>
+                    ))
+                  )}
                   </div>
                 </div>
               </div>
@@ -613,6 +1201,354 @@ export const CartaeDemoPage: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Office365 Sync Tab */}
+        {selectedTab === 'office365' && (
+          <div>
+            <div style={{
+              maxWidth: '800px',
+              margin: '0 auto',
+              background: '#ffffff',
+              borderRadius: '12px',
+              padding: '32px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            }}>
+              <h2 style={{ margin: '0 0 16px', fontSize: '24px', fontWeight: 600 }}>
+                Synchronisation Office365 → PostgreSQL
+              </h2>
+
+              <p style={{ margin: '0 0 24px', color: '#6b7280', lineHeight: 1.6 }}>
+                Synchronise vos emails Office365 directement dans PostgreSQL en utilisant le token fourni par l'extension Firefox.
+              </p>
+
+              <div style={{
+                padding: '16px',
+                background: '#f3f4f6',
+                borderRadius: '8px',
+                marginBottom: '24px',
+                fontSize: '14px',
+                lineHeight: 1.6,
+              }}>
+                <strong>Prérequis :</strong>
+                <ul style={{ margin: '8px 0 0', paddingLeft: '20px' }}>
+                  <li>Extension Firefox Cartae installée et connectée à Office365</li>
+                  <li>Backend database-api en cours d'exécution (port 3001)</li>
+                  <li>PostgreSQL avec table cartae_items créée</li>
+                </ul>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <button
+                  type="button"
+                  onClick={handleOffice365Sync}
+                  disabled={syncLoading}
+                  style={{
+                    padding: '16px 24px',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    color: '#ffffff',
+                    background: syncLoading ? '#9ca3af' : '#3b82f6',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: syncLoading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: syncLoading ? 'none' : '0 2px 4px rgba(59, 130, 246, 0.3)',
+                  }}
+                >
+                  {syncLoading ? '⏳ Synchronisation...' : '📧 Synchroniser Emails'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTeamsSync}
+                  disabled={teamsSyncLoading}
+                  style={{
+                    padding: '16px 24px',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    color: '#ffffff',
+                    background: teamsSyncLoading ? '#9ca3af' : '#8b5cf6',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: teamsSyncLoading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: teamsSyncLoading ? 'none' : '0 2px 4px rgba(139, 92, 246, 0.3)',
+                  }}
+                >
+                  {teamsSyncLoading ? '⏳ Synchronisation...' : '💬 Synchroniser Teams'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={debugTokens}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    color: '#6b7280',
+                    background: '#ffffff',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  🔍 Debug Tokens
+                </button>
+              </div>
+
+              {/* Résultats de la synchronisation Emails */}
+              {syncResult && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '20px',
+                  background: syncResult.success ? '#f0fdf4' : '#fef2f2',
+                  border: `2px solid ${syncResult.success ? '#86efac' : '#fca5a5'}`,
+                  borderRadius: '8px',
+                }}>
+                  <h3 style={{
+                    margin: '0 0 12px',
+                    fontSize: '18px',
+                    fontWeight: 600,
+                    color: syncResult.success ? '#166534' : '#991b1b',
+                  }}>
+                    {syncResult.success ? '✅ Synchronisation Emails réussie' : '❌ Erreur synchronisation Emails'}
+                  </h3>
+
+                  {syncResult.success ? (
+                    <div style={{ color: '#166534', fontSize: '14px', lineHeight: 1.6 }}>
+                      <p style={{ margin: '0 0 8px' }}>
+                        <strong>Emails importés :</strong> {syncResult.itemsImported || 0}
+                      </p>
+                      <p style={{ margin: '0 0 8px' }}>
+                        <strong>Emails ignorés (déjà existants) :</strong> {syncResult.itemsSkipped || 0}
+                      </p>
+                      <p style={{ margin: '0 0 8px' }}>
+                        <strong>Total traité :</strong> {syncResult.totalProcessed || 0}
+                      </p>
+
+                      {syncResult.errors && syncResult.errors.length > 0 && (
+                        <div style={{ marginTop: '16px' }}>
+                          <p style={{ margin: '0 0 8px', fontWeight: 600 }}>
+                            ⚠️ Erreurs partielles ({syncResult.errors.length}) :
+                          </p>
+                          <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px' }}>
+                            {syncResult.errors.map((err, idx) => (
+                              <li key={idx} style={{ marginBottom: '4px' }}>{err}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p style={{ margin: 0, color: '#991b1b', fontSize: '14px' }}>
+                      {syncResult.error || 'Une erreur inconnue est survenue'}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Résultats de la synchronisation Teams */}
+              {teamsSyncResult && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '20px',
+                  background: teamsSyncResult.success ? '#f5f3ff' : '#fef2f2',
+                  border: `2px solid ${teamsSyncResult.success ? '#c4b5fd' : '#fca5a5'}`,
+                  borderRadius: '8px',
+                }}>
+                  <h3 style={{
+                    margin: '0 0 12px',
+                    fontSize: '18px',
+                    fontWeight: 600,
+                    color: teamsSyncResult.success ? '#5b21b6' : '#991b1b',
+                  }}>
+                    {teamsSyncResult.success ? '✅ Synchronisation Teams réussie' : '❌ Erreur synchronisation Teams'}
+                  </h3>
+
+                  {teamsSyncResult.success ? (
+                    <div style={{ color: '#5b21b6', fontSize: '14px', lineHeight: 1.6 }}>
+                      <p style={{ margin: '0 0 8px' }}>
+                        <strong>Chats importés :</strong> {teamsSyncResult.itemsImported || 0}
+                      </p>
+                      <p style={{ margin: '0 0 8px' }}>
+                        <strong>Chats ignorés (déjà existants) :</strong> {teamsSyncResult.itemsSkipped || 0}
+                      </p>
+                      <p style={{ margin: '0 0 8px' }}>
+                        <strong>Total traité :</strong> {teamsSyncResult.totalProcessed || 0}
+                      </p>
+
+                      {teamsSyncResult.errors && teamsSyncResult.errors.length > 0 && (
+                        <div style={{ marginTop: '16px' }}>
+                          <p style={{ margin: '0 0 8px', fontWeight: 600 }}>
+                            ⚠️ Erreurs partielles ({teamsSyncResult.errors.length}) :
+                          </p>
+                          <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px' }}>
+                            {teamsSyncResult.errors.map((err, idx) => (
+                              <li key={idx} style={{ marginBottom: '4px' }}>{err}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p style={{ margin: 0, color: '#991b1b', fontSize: '14px' }}>
+                      {teamsSyncResult.error || 'Une erreur inconnue est survenue'}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Affichage des emails importés */}
+              {office365Items.length > 0 && (
+                <div style={{ marginTop: '32px' }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '16px',
+                  }}>
+                    <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>
+                      📧 Emails importés ({office365Items.length})
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={fetchOffice365Items}
+                      disabled={itemsLoading}
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        color: '#3b82f6',
+                        background: '#ffffff',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '6px',
+                        cursor: itemsLoading ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {itemsLoading ? '⏳ Chargement...' : '🔄 Actualiser'}
+                    </button>
+                  </div>
+
+                  {/* Liste dépliante d'emails */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {office365Items.map((item) => (
+                      <div key={item.id}>
+                        {/* Carte email */}
+                        <CartaeItemCard
+                          item={item}
+                          onClick={() => {
+                            // Toggle : si déjà sélectionné, on ferme, sinon on ouvre
+                            setSelectedItem(selectedItem?.id === item.id ? null : item);
+                          }}
+                          showActions={true}
+                          style={{
+                            cursor: 'pointer',
+                            border: selectedItem?.id === item.id ? '2px solid #3b82f6' : '1px solid #e5e7eb',
+                            background: selectedItem?.id === item.id ? '#eff6ff' : '#ffffff',
+                          }}
+                        />
+
+                        {/* Détail déplié */}
+                        {selectedItem?.id === item.id && (
+                          <div style={{
+                            marginTop: '8px',
+                            marginLeft: '16px',
+                            padding: '20px',
+                            background: '#f9fafb',
+                            borderLeft: '3px solid #3b82f6',
+                            borderRadius: '0 8px 8px 0',
+                          }}>
+                            <CartaeItemDetail
+                              item={item}
+                              mode="inline"
+                              showRelationships={false}
+                              showAIInsights={false}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bouton pour charger les emails si liste vide */}
+              {office365Items.length === 0 && !itemsLoading && !syncResult && (
+                <div style={{
+                  marginTop: '32px',
+                  padding: '24px',
+                  background: '#f9fafb',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                }}>
+                  <p style={{ margin: '0 0 16px', color: '#6b7280' }}>
+                    Aucun email importé pour le moment.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={fetchOffice365Items}
+                    style={{
+                      padding: '12px 24px',
+                      fontSize: '15px',
+                      fontWeight: 500,
+                      color: '#ffffff',
+                      background: '#10b981',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    📥 Charger les emails existants
+                  </button>
+                </div>
+              )}
+
+              {/* Indicateur de chargement */}
+              {itemsLoading && (
+                <div style={{
+                  marginTop: '32px',
+                  textAlign: 'center',
+                  padding: '40px',
+                  color: '#6b7280',
+                }}>
+                  <div style={{
+                    fontSize: '48px',
+                    marginBottom: '16px',
+                  }}>⏳</div>
+                  <p style={{ margin: 0, fontSize: '16px', fontWeight: 500 }}>
+                    Chargement des emails...
+                  </p>
+                </div>
+              )}
+
+              {/* Informations techniques */}
+              <div style={{
+                marginTop: '24px',
+                padding: '16px',
+                background: '#f9fafb',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#6b7280',
+                lineHeight: 1.6,
+              }}>
+                <p style={{ margin: '0 0 8px', fontWeight: 600 }}>ℹ️ Informations techniques</p>
+                <p style={{ margin: '0 0 4px' }}>
+                  • <strong>Backend API :</strong> http://localhost:3001/api/office365/sync
+                </p>
+                <p style={{ margin: '0 0 4px' }}>
+                  • <strong>User ID :</strong> 4397e804-31e5-44c4-b89e-82058fa8502b (demo@cartae.local)
+                </p>
+                <p style={{ margin: '0 0 4px' }}>
+                  • <strong>Limite :</strong> 50 emails maximum par synchronisation
+                </p>
+                <p style={{ margin: '0' }}>
+                  • <strong>Dossier :</strong> Inbox
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>

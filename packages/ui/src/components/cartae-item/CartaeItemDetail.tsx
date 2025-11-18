@@ -690,6 +690,138 @@ export const CartaeItemDetail: React.FC<CartaeItemDetailProps> = ({
             </div>
           </div>
 
+          {/* Office365 Enriched Data */}
+          {(item.metadata as any).office365 && (
+            <details open style={{
+              background: '#F0F9FF',
+              border: '1px solid #BFDBFE',
+              borderRadius: '8px',
+              padding: '16px',
+            }}>
+              <summary style={{
+                fontSize: '16px',
+                fontWeight: 600,
+                color: '#1E40AF',
+                cursor: 'pointer',
+                marginBottom: '12px',
+                listStyle: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                <span>📧 Données Office365 enrichies</span>
+              </summary>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '12px',
+                marginTop: '12px',
+              }}>
+                {/* Render all Office365 fields */}
+                {Object.entries((item.metadata as any).office365).map(([key, value]: [string, any]) => {
+                  // Skip empty, null, undefined, or empty arrays
+                  if (value === null || value === undefined || value === '' ||
+                      (Array.isArray(value) && value.length === 0)) {
+                    return null;
+                  }
+
+                  // Format value based on type
+                  let displayValue: React.ReactNode = null;
+
+                  if (typeof value === 'string') {
+                    // Truncate long strings
+                    displayValue = value.length > 100
+                      ? value.substring(0, 100) + '...'
+                      : value;
+                  } else if (typeof value === 'number') {
+                    // Format numbers (especially sizes in bytes)
+                    if (key.includes('Size') || key.includes('size')) {
+                      const kb = value / 1024;
+                      const mb = kb / 1024;
+                      displayValue = mb > 1
+                        ? `${mb.toFixed(2)} MB`
+                        : `${kb.toFixed(2)} KB`;
+                    } else {
+                      displayValue = value.toString();
+                    }
+                  } else if (typeof value === 'boolean') {
+                    displayValue = value ? '✅ Oui' : '❌ Non';
+                  } else if (Array.isArray(value)) {
+                    // Display arrays
+                    if (key === 'attachments') {
+                      displayValue = (
+                        <div style={{ fontSize: '12px' }}>
+                          {value.map((att: any, idx: number) => (
+                            <div key={idx} style={{
+                              padding: '4px 0',
+                              borderBottom: idx < value.length - 1 ? '1px solid #DBEAFE' : 'none'
+                            }}>
+                              📎 {att.name} ({(att.size / 1024).toFixed(1)} KB)
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    } else if (key === 'messages') {
+                      displayValue = `${value.length} messages (cliquer pour voir)`;
+                    } else if (key === 'members') {
+                      displayValue = (
+                        <div style={{ fontSize: '12px' }}>
+                          {value.slice(0, 5).map((member: any, idx: number) => (
+                            <div key={idx}>{member.displayName || member.email}</div>
+                          ))}
+                          {value.length > 5 && <div>+ {value.length - 5} autres</div>}
+                        </div>
+                      );
+                    } else {
+                      displayValue = `${value.length} élément(s)`;
+                    }
+                  } else if (typeof value === 'object') {
+                    // Display objects
+                    if (key === 'lastMessagePreview') {
+                      displayValue = value.content?.substring(0, 50) + '...';
+                    } else {
+                      displayValue = JSON.stringify(value, null, 2).substring(0, 100) + '...';
+                    }
+                  }
+
+                  // Convert camelCase to readable label
+                  const label = key
+                    .replace(/([A-Z])/g, ' $1')
+                    .replace(/^./, (str) => str.toUpperCase())
+                    .trim();
+
+                  return displayValue ? (
+                    <div key={key} style={{
+                      padding: '8px',
+                      background: '#FFFFFF',
+                      borderRadius: '6px',
+                      border: '1px solid #DBEAFE',
+                    }}>
+                      <div style={{
+                        fontSize: '11px',
+                        color: '#6B7280',
+                        marginBottom: '4px',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                      }}>
+                        {label}
+                      </div>
+                      <div style={{
+                        fontSize: '13px',
+                        color: '#1F2937',
+                        wordBreak: 'break-word',
+                      }}>
+                        {displayValue}
+                      </div>
+                    </div>
+                  ) : null;
+                })}
+              </div>
+            </details>
+          )}
+
           {/* Tags */}
           {item.tags.length > 0 && (
             <div>

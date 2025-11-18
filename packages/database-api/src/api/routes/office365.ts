@@ -1,0 +1,426 @@
+/**
+ * Routes API Office365 - Synchronisation emails
+ *
+ * POST /api/office365/sync - Synchronise emails Office365 → PostgreSQL
+ */
+
+import { Router, Request, Response } from 'express';
+import { pool } from '../../db/client';
+import { z } from 'zod';
+
+const router = Router();
+
+/**
+ * Schema Zod pour la requête de synchronisation
+ */
+const SyncRequestSchema = z.object({
+  maxEmails: z.number().min(1).max(1000).optional().default(50),
+  folder: z.string().optional().default('Inbox'),
+  userId: z.string().uuid(), // ID du user authentifié
+});
+
+/**
+ * Interface Email OWA REST API v2.0 - VERSION ENRICHIE
+ * Note: OWA API retourne des champs en PascalCase (pas camelCase)
+ * Docs: https://learn.microsoft.com/en-us/previous-versions/office/office-365-api/api/version-2.0/mail-rest-operations
+ */
+interface GraphEmail {
+  // Champs de base
+  Id: string;
+  Subject: string;
+  BodyPreview: string;
+
+  // Corps complet
+  Body?: {
+    Content: string;
+    ContentType: 'Text' | 'HTML';
+  };
+
+  // Expéditeur et destinataires
+  From: {
+    EmailAddress: {
+      Address: string;
+      Name?: string;
+    };
+  };
+  Sender?: {
+    EmailAddress: {
+      Address: string;
+      Name?: string;
+    };
+  };
+  ToRecipients: Array<{
+    EmailAddress: {
+      Address: string;
+      Name?: string;
+    };
+  }>;
+  CcRecipients?: Array<{
+    EmailAddress: {
+      Address: string;
+      Name?: string;
+    };
+  }>;
+  BccRecipients?: Array<{
+    EmailAddress: {
+      Address: string;
+      Name?: string;
+    };
+  }>;
+  ReplyTo?: Array<{
+    EmailAddress: {
+      Address: string;
+      Name?: string;
+    };
+  }>;
+
+  // Dates
+  ReceivedDateTime: string;
+  SentDateTime?: string;
+  CreatedDateTime?: string;
+  LastModifiedDateTime?: string;
+
+  // Statuts et propriétés
+  HasAttachments: boolean;
+  Importance: 'low' | 'normal' | 'high';
+  IsRead: boolean;
+  IsDraft?: boolean;
+  Categories: string[];
+
+  // Conversation et organisation
+  ConversationId?: string;
+  ParentFolderId?: string;
+
+  // Pièces jointes
+  Attachments?: Array<{
+    '@odata.type': string;
+    Id: string;
+    Name: string;
+    ContentType: string;
+    Size: number;
+    IsInline: boolean;
+  }>;
+
+  // Liens et identifiants
+  WebLink?: string;
+  InternetMessageId?: string;
+  ChangeKey?: string;
+
+  // Flag/Suivi
+  Flag?: {
+    FlagStatus: 'notFlagged' | 'complete' | 'flagged';
+    StartDateTime?: string;
+    DueDateTime?: string;
+  };
+}
+
+/**
+ * Appelle OWA (Outlook Web Access) API pour récupérer emails
+ * Note: Utilise exactement le même endpoint que Session 64 qui fonctionnait
+ */
+async function fetchEmailsFromGraph(
+  token: string,
+  maxEmails: number
+): Promise<GraphEmail[]> {
+  // OWA API endpoint - identique à Session 64 OwaEmailService.ts
+  const OWA_BASE_URL = 'https://outlook.office365.com/api';
+
+  // Demander les pièces jointes et le corps complet
+  const endpoint = `${OWA_BASE_URL}/v2.0/me/mailfolders/inbox/messages?$top=${Math.min(maxEmails, 200)}&$orderby=receivedDateTime desc&$expand=Attachments`;
+
+  const response = await fetch(endpoint, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `OWA API error: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  const data = await response.json();
+  return data.value || [];
+}
+
+/**
+ * Transforme un email OWA en CartaeItem pour PostgreSQL - VERSION ENRICHIE
+ * Note: Utilise les champs PascalCase de l'API OWA
+ */
+function emailToCartaeItem(email: GraphEmail, userId: string) {
+  // Date du message (pas de l'import)
+  const receivedDate = new Date(email.ReceivedDateTime);
+
+  // Extraire les pièces jointes (nom, type, taille)
+  const attachments = email.Attachments?.map(att => ({
+    id: att.Id,
+    name: att.Name,
+    contentType: att.ContentType,
+    size: att.Size,
+    isInline: att.IsInline,
+  })) || [];
+
+  // Construire metadata enrichie avec TOUS les champs disponibles
+  const metadata: any = {
+    // Champs standards CartaeMetadata
+    author: email.From?.EmailAddress?.Address || 'unknown',
+    participants: email.ToRecipients?.map(r => r.EmailAddress.Address) || [],
+    startDate: email.ReceivedDateTime,
+    priority: email.Importance === 'high' ? 'high' : email.Importance === 'low' ? 'low' : 'medium',
+    status: email.IsRead ? 'read' : 'unread',
+
+    // Champs extensibles spécifiques Office365
+    office365: {
+      // Corps complet
+      bodyContent: email.Body?.Content || email.BodyPreview,
+      bodyContentType: email.Body?.ContentType || 'Text',
+
+      // Expéditeur enrichi
+      fromName: email.From?.EmailAddress?.Name,
+      senderEmail: email.Sender?.EmailAddress?.Address,
+      senderName: email.Sender?.EmailAddress?.Name,
+
+      // Destinataires en copie
+      ccRecipients: email.CcRecipients?.map(r => ({
+        email: r.EmailAddress.Address,
+        name: r.EmailAddress.Name,
+      })) || [],
+      bccRecipients: email.BccRecipients?.map(r => ({
+        email: r.EmailAddress.Address,
+        name: r.EmailAddress.Name,
+      })) || [],
+      replyTo: email.ReplyTo?.map(r => ({
+        email: r.EmailAddress.Address,
+        name: r.EmailAddress.Name,
+      })) || [],
+
+      // Participants enrichis (avec noms)
+      toRecipients: email.ToRecipients?.map(r => ({
+        email: r.EmailAddress.Address,
+        name: r.EmailAddress.Name,
+      })) || [],
+
+      // Dates supplémentaires
+      sentDateTime: email.SentDateTime,
+      createdDateTime: email.CreatedDateTime,
+      lastModifiedDateTime: email.LastModifiedDateTime,
+
+      // Pièces jointes
+      hasAttachments: email.HasAttachments,
+      attachments,
+      attachmentsCount: attachments.length,
+      attachmentsTotalSize: attachments.reduce((sum, att) => sum + att.size, 0),
+
+      // Organisation et conversation
+      conversationId: email.ConversationId,
+      parentFolderId: email.ParentFolderId,
+      isDraft: email.IsDraft || false,
+
+      // Identifiants et liens
+      webLink: email.WebLink,
+      internetMessageId: email.InternetMessageId,
+      changeKey: email.ChangeKey,
+
+      // Flag/Suivi
+      flagStatus: email.Flag?.FlagStatus,
+      flagStartDate: email.Flag?.StartDateTime,
+      flagDueDate: email.Flag?.DueDateTime,
+
+      // Importance
+      importance: email.Importance,
+    },
+  };
+
+  return {
+    user_id: userId,
+    type: 'email',
+    title: email.Subject || '(Sans sujet)',
+    content: email.Body?.Content || email.BodyPreview || '',
+    tags: email.Categories || [],
+    categories: ['work', 'email'],
+    source: {
+      connector: 'office365-mail-simple',
+      sourceId: email.Id,
+    },
+    metadata,
+    archived: false,
+    favorite: false,
+    // ✅ Dates réelles du message (pas de l'import)
+    created_at: receivedDate.toISOString(),
+    updated_at: receivedDate.toISOString(),
+  };
+}
+
+/**
+ * POST /api/office365/sync
+ * Synchronise emails Office365 → PostgreSQL
+ *
+ * Headers:
+ * - X-Office365-Token: Token Microsoft Graph API
+ *
+ * Body:
+ * - maxEmails: Nombre max d'emails à synchroniser (défaut: 50)
+ * - folder: Dossier à synchroniser (défaut: Inbox)
+ * - userId: ID du user authentifié (UUID)
+ *
+ * Response:
+ * - success: boolean
+ * - itemsImported: number
+ * - itemsSkipped: number
+ * - errors: string[] (optionnel)
+ */
+router.post('/sync', async (req: Request, res: Response) => {
+  try {
+    // 1. Valider la requête
+    const data = SyncRequestSchema.parse(req.body);
+
+    // 2. Récupérer le token Office365 depuis le header
+    const graphToken = req.headers['x-office365-token'] as string;
+
+    if (!graphToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing X-Office365-Token header',
+      });
+    }
+
+    // 3. Appeler Microsoft Graph API
+    console.log(`[Office365] Fetching ${data.maxEmails} emails for user ${data.userId}`);
+    const emails = await fetchEmailsFromGraph(graphToken, data.maxEmails);
+
+    console.log(`[Office365] Received ${emails.length} emails from Graph API`);
+
+    // 4. Transformer et insérer chaque email dans PostgreSQL
+    let itemsImported = 0;
+    let itemsSkipped = 0;
+    const errors: string[] = [];
+
+    for (const email of emails) {
+      try {
+        const item = emailToCartaeItem(email, data.userId);
+
+        // INSERT avec ON CONFLICT pour éviter duplicates (based on source.sourceId)
+        const result = await pool.query(
+          `INSERT INTO cartae_items (
+            user_id, type, title, content, tags, categories, source, metadata, archived, favorite, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          ON CONFLICT ((source->>'sourceId'), user_id)
+          WHERE source->>'connector' = 'office365-mail-simple'
+          DO NOTHING
+          RETURNING id`,
+          [
+            item.user_id,
+            item.type,
+            item.title,
+            item.content,
+            item.tags,
+            item.categories,
+            JSON.stringify(item.source),
+            JSON.stringify(item.metadata),
+            item.archived,
+            item.favorite,
+            item.created_at,
+            item.updated_at,
+          ]
+        );
+
+        if (result.rowCount && result.rowCount > 0) {
+          itemsImported++;
+        } else {
+          itemsSkipped++; // Déjà existant
+        }
+      } catch (emailError) {
+        const errorMsg = emailError instanceof Error ? emailError.message : 'Unknown error';
+        console.error(`[Office365] Error importing email ${email.id}:`, errorMsg);
+        errors.push(`Email ${email.id}: ${errorMsg}`);
+      }
+    }
+
+    // 5. Retourner le résumé
+    console.log(
+      `[Office365] Sync complete: ${itemsImported} imported, ${itemsSkipped} skipped, ${errors.length} errors`
+    );
+
+    return res.json({
+      success: true,
+      itemsImported,
+      itemsSkipped,
+      totalProcessed: emails.length,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+  } catch (error) {
+    console.error('[Office365] Sync error:', error);
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    return res.status(500).json({
+      success: false,
+      error: errorMessage,
+    });
+  }
+});
+
+/**
+ * GET /api/office365/items
+ * Récupère les emails importés depuis Office365 pour un user
+ *
+ * Query params:
+ * - userId: ID du user (UUID)
+ * - limit: Nombre max d'items (défaut: 50)
+ *
+ * Response:
+ * - success: boolean
+ * - items: CartaeItem[]
+ */
+router.get('/items', async (req: Request, res: Response) => {
+  try {
+    const { userId, limit = '50' } = req.query;
+
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing userId query parameter',
+      });
+    }
+
+    const itemLimit = Math.min(parseInt(limit as string, 10), 1000);
+
+    const result = await pool.query(
+      `SELECT * FROM cartae_items
+       WHERE user_id = $1
+       AND source->>'connector' = 'office365-mail-simple'
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [userId, itemLimit]
+    );
+
+    // Convertir snake_case (PostgreSQL) vers camelCase (frontend)
+    const items = result.rows.map((row: any) => ({
+      ...row,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      userId: row.user_id,
+    }));
+
+    return res.json({
+      success: true,
+      items,
+      count: items.length,
+    });
+  } catch (error) {
+    console.error('[Office365] Error fetching items:', error);
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    return res.status(500).json({
+      success: false,
+      error: errorMessage,
+    });
+  }
+});
+
+export default router;
