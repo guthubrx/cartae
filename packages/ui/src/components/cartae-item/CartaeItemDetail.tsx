@@ -12,6 +12,7 @@
 import React, { useState } from 'react';
 import type { CartaeItem } from '@cartae/core/types/CartaeItem';
 import type { PriorityLevel } from '@cartae/core/types/CartaeMetadata';
+import sanitizeHtml from 'sanitize-html';
 import {
   X,
   Edit,
@@ -37,6 +38,9 @@ import {
   File,
   AlertCircle,
   TrendingUp,
+  Code,
+  Eye,
+  ChevronDown,
 } from 'lucide-react';
 
 /**
@@ -161,19 +165,20 @@ export const CartaeItemDetail: React.FC<CartaeItemDetailProps> = ({
   className = '',
 }) => {
   const [copied, setCopied] = useState(false);
+  const [showHtmlSource, setShowHtmlSource] = useState(false);
+  const [office365Expanded, setOffice365Expanded] = useState(false);
   const TypeIcon = TYPE_ICONS[item.type] || FileText;
   const typeColor = TYPE_COLORS[item.type] || '#64748B';
 
   // Formatage dates
-  const formatDate = (date: Date): string => {
-    return new Date(date).toLocaleDateString('fr-FR', {
+  const formatDate = (date: Date): string =>
+    new Date(date).toLocaleDateString('fr-FR', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     });
-  };
 
   const formatRelativeTime = (date: Date): string => {
     const now = Date.now();
@@ -211,6 +216,76 @@ export const CartaeItemDetail: React.FC<CartaeItemDetailProps> = ({
   const handleArchive = () => onToggleArchive?.(item);
   const handleShare = () => onShare?.(item);
   const handleFavorite = () => onToggleFavorite?.(item);
+
+  // Nettoyer le HTML d'Outlook (retirer styles, simplifier)
+  const cleanHtml = (html: string): string =>
+    sanitizeHtml(html, {
+      allowedTags: [
+        'p',
+        'br',
+        'strong',
+        'b',
+        'em',
+        'i',
+        'u',
+        'a',
+        'ul',
+        'ol',
+        'li',
+        'blockquote',
+        'div',
+        'span',
+        'h1',
+        'h2',
+        'h3',
+        'h4',
+        'h5',
+        'h6',
+        'table',
+        'thead',
+        'tbody',
+        'tr',
+        'td',
+        'th',
+      ],
+      allowedAttributes: {
+        a: ['href'],
+        '*': ['style'], // Garder quelques styles basiques
+      },
+      allowedStyles: {
+        '*': {
+          // Autoriser seulement les styles de texte basiques
+          color: [/^#[0-9a-fA-F]{3,6}$/],
+          'background-color': [/^#[0-9a-fA-F]{3,6}$/],
+          'font-weight': [/^bold$/, /^normal$/],
+          'text-align': [/^left$/, /^right$/, /^center$/],
+        },
+      },
+      // Simplifier les tableaux Outlook
+      transformTags: {
+        table(tagName, attribs) {
+          return {
+            tagName: 'table',
+            attribs: { style: 'max-width: 100%; border-collapse: collapse;' },
+          };
+        },
+      },
+    });
+
+  // Extraire texte brut du HTML
+  const getPlainText = (htmlOrText: string): string => {
+    if (htmlOrText.trim().startsWith('<')) {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = cleanHtml(htmlOrText);
+      const text = tempDiv.textContent || tempDiv.innerText || '';
+      // Nettoyer : enlever espaces multiples
+      return text.replace(/\s+/g, ' ').trim();
+    }
+    return htmlOrText;
+  };
+
+  // Détecter si HTML
+  const isHtmlContent = (content: string): boolean => content.trim().startsWith('<');
 
   // Container styles selon mode
   const containerStyles: React.CSSProperties =
@@ -257,6 +332,7 @@ export const CartaeItemDetail: React.FC<CartaeItemDetailProps> = ({
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 20px 50px rgba(0, 0, 0, 0.2)',
+          overflowX: 'hidden',
         }
       : {};
 
@@ -268,7 +344,7 @@ export const CartaeItemDetail: React.FC<CartaeItemDetailProps> = ({
     >
       <div
         style={contentStyles}
-        onClick={(e) => {
+        onClick={e => {
           if (mode === 'modal') e.stopPropagation();
         }}
       >
@@ -544,9 +620,7 @@ export const CartaeItemDetail: React.FC<CartaeItemDetailProps> = ({
                     <div style={{ fontSize: '12px', color: '#9CA3AF', marginBottom: '4px' }}>
                       Auteur
                     </div>
-                    <div style={{ fontSize: '14px', color: '#1F2937' }}>
-                      {item.metadata.author}
-                    </div>
+                    <div style={{ fontSize: '14px', color: '#1F2937' }}>{item.metadata.author}</div>
                   </div>
                 </div>
               )}
@@ -554,10 +628,7 @@ export const CartaeItemDetail: React.FC<CartaeItemDetailProps> = ({
               {/* Participants */}
               {item.metadata.participants && item.metadata.participants.length > 0 && (
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                  <Users
-                    size={16}
-                    style={{ color: '#6B7280', marginTop: '2px', flexShrink: 0 }}
-                  />
+                  <Users size={16} style={{ color: '#6B7280', marginTop: '2px', flexShrink: 0 }} />
                   <div>
                     <div style={{ fontSize: '12px', color: '#9CA3AF', marginBottom: '4px' }}>
                       Participants
@@ -610,7 +681,9 @@ export const CartaeItemDetail: React.FC<CartaeItemDetailProps> = ({
                     <div style={{ fontSize: '12px', color: '#9CA3AF', marginBottom: '4px' }}>
                       Status
                     </div>
-                    <div style={{ fontSize: '14px', color: '#1F2937', textTransform: 'capitalize' }}>
+                    <div
+                      style={{ fontSize: '14px', color: '#1F2937', textTransform: 'capitalize' }}
+                    >
                       {item.metadata.status.replace('_', ' ')}
                     </div>
                   </div>
@@ -692,132 +765,160 @@ export const CartaeItemDetail: React.FC<CartaeItemDetailProps> = ({
 
           {/* Office365 Enriched Data */}
           {(item.metadata as any).office365 && (
-            <details open style={{
-              background: '#F0F9FF',
-              border: '1px solid #BFDBFE',
-              borderRadius: '8px',
-              padding: '16px',
-            }}>
-              <summary style={{
-                fontSize: '16px',
-                fontWeight: 600,
-                color: '#1E40AF',
-                cursor: 'pointer',
-                marginBottom: '12px',
-                listStyle: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}>
+            <details
+              onToggle={e => setOffice365Expanded((e.target as HTMLDetailsElement).open)}
+              style={{
+                background: '#F0F9FF',
+                border: '1px solid #BFDBFE',
+                borderRadius: '8px',
+                padding: '16px',
+              }}
+            >
+              <summary
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: '#1E40AF',
+                  cursor: 'pointer',
+                  marginBottom: office365Expanded ? '12px' : '0',
+                  listStyle: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'margin-bottom 0.2s ease',
+                }}
+              >
+                <ChevronDown
+                  size={20}
+                  style={{
+                    transform: office365Expanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                    transition: 'transform 0.2s ease',
+                  }}
+                />
                 <span>📧 Données Office365 enrichies</span>
               </summary>
 
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                gap: '12px',
-                marginTop: '12px',
-              }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                  gap: '12px',
+                  marginTop: '12px',
+                }}
+              >
                 {/* Render all Office365 fields */}
-                {Object.entries((item.metadata as any).office365).map(([key, value]: [string, any]) => {
-                  // Skip empty, null, undefined, or empty arrays
-                  if (value === null || value === undefined || value === '' ||
-                      (Array.isArray(value) && value.length === 0)) {
-                    return null;
-                  }
-
-                  // Format value based on type
-                  let displayValue: React.ReactNode = null;
-
-                  if (typeof value === 'string') {
-                    // Truncate long strings
-                    displayValue = value.length > 100
-                      ? value.substring(0, 100) + '...'
-                      : value;
-                  } else if (typeof value === 'number') {
-                    // Format numbers (especially sizes in bytes)
-                    if (key.includes('Size') || key.includes('size')) {
-                      const kb = value / 1024;
-                      const mb = kb / 1024;
-                      displayValue = mb > 1
-                        ? `${mb.toFixed(2)} MB`
-                        : `${kb.toFixed(2)} KB`;
-                    } else {
-                      displayValue = value.toString();
+                {Object.entries((item.metadata as any).office365).map(
+                  ([key, value]: [string, any]) => {
+                    // Skip empty, null, undefined, or empty arrays
+                    if (
+                      value === null ||
+                      value === undefined ||
+                      value === '' ||
+                      (Array.isArray(value) && value.length === 0)
+                    ) {
+                      return null;
                     }
-                  } else if (typeof value === 'boolean') {
-                    displayValue = value ? '✅ Oui' : '❌ Non';
-                  } else if (Array.isArray(value)) {
-                    // Display arrays
-                    if (key === 'attachments') {
-                      displayValue = (
-                        <div style={{ fontSize: '12px' }}>
-                          {value.map((att: any, idx: number) => (
-                            <div key={idx} style={{
-                              padding: '4px 0',
-                              borderBottom: idx < value.length - 1 ? '1px solid #DBEAFE' : 'none'
-                            }}>
-                              📎 {att.name} ({(att.size / 1024).toFixed(1)} KB)
-                            </div>
-                          ))}
+
+                    // Format value based on type
+                    let displayValue: React.ReactNode = null;
+
+                    if (typeof value === 'string') {
+                      // Truncate long strings
+                      displayValue = value.length > 100 ? `${value.substring(0, 100)}...` : value;
+                    } else if (typeof value === 'number') {
+                      // Format numbers (especially sizes in bytes)
+                      if (key.includes('Size') || key.includes('size')) {
+                        const kb = value / 1024;
+                        const mb = kb / 1024;
+                        displayValue = mb > 1 ? `${mb.toFixed(2)} MB` : `${kb.toFixed(2)} KB`;
+                      } else {
+                        displayValue = value.toString();
+                      }
+                    } else if (typeof value === 'boolean') {
+                      displayValue = value ? '✅ Oui' : '❌ Non';
+                    } else if (Array.isArray(value)) {
+                      // Display arrays
+                      if (key === 'attachments') {
+                        displayValue = (
+                          <div style={{ fontSize: '12px' }}>
+                            {value.map((att: any, idx: number) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  padding: '4px 0',
+                                  borderBottom:
+                                    idx < value.length - 1 ? '1px solid #DBEAFE' : 'none',
+                                }}
+                              >
+                                📎 {att.name} ({(att.size / 1024).toFixed(1)} KB)
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      } else if (key === 'messages') {
+                        displayValue = `${value.length} messages (cliquer pour voir)`;
+                      } else if (key === 'members') {
+                        displayValue = (
+                          <div style={{ fontSize: '12px' }}>
+                            {value.slice(0, 5).map((member: any, idx: number) => (
+                              <div key={idx}>{member.displayName || member.email}</div>
+                            ))}
+                            {value.length > 5 && <div>+ {value.length - 5} autres</div>}
+                          </div>
+                        );
+                      } else {
+                        displayValue = `${value.length} élément(s)`;
+                      }
+                    } else if (typeof value === 'object') {
+                      // Display objects
+                      if (key === 'lastMessagePreview') {
+                        displayValue = `${value.content?.substring(0, 50)}...`;
+                      } else {
+                        displayValue = `${JSON.stringify(value, null, 2).substring(0, 100)}...`;
+                      }
+                    }
+
+                    // Convert camelCase to readable label
+                    const label = key
+                      .replace(/([A-Z])/g, ' $1')
+                      .replace(/^./, str => str.toUpperCase())
+                      .trim();
+
+                    return displayValue ? (
+                      <div
+                        key={key}
+                        style={{
+                          padding: '8px',
+                          background: '#FFFFFF',
+                          borderRadius: '6px',
+                          border: '1px solid #DBEAFE',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            color: '#6B7280',
+                            marginBottom: '4px',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                          }}
+                        >
+                          {label}
                         </div>
-                      );
-                    } else if (key === 'messages') {
-                      displayValue = `${value.length} messages (cliquer pour voir)`;
-                    } else if (key === 'members') {
-                      displayValue = (
-                        <div style={{ fontSize: '12px' }}>
-                          {value.slice(0, 5).map((member: any, idx: number) => (
-                            <div key={idx}>{member.displayName || member.email}</div>
-                          ))}
-                          {value.length > 5 && <div>+ {value.length - 5} autres</div>}
+                        <div
+                          style={{
+                            fontSize: '13px',
+                            color: '#1F2937',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {displayValue}
                         </div>
-                      );
-                    } else {
-                      displayValue = `${value.length} élément(s)`;
-                    }
-                  } else if (typeof value === 'object') {
-                    // Display objects
-                    if (key === 'lastMessagePreview') {
-                      displayValue = value.content?.substring(0, 50) + '...';
-                    } else {
-                      displayValue = JSON.stringify(value, null, 2).substring(0, 100) + '...';
-                    }
+                      </div>
+                    ) : null;
                   }
-
-                  // Convert camelCase to readable label
-                  const label = key
-                    .replace(/([A-Z])/g, ' $1')
-                    .replace(/^./, (str) => str.toUpperCase())
-                    .trim();
-
-                  return displayValue ? (
-                    <div key={key} style={{
-                      padding: '8px',
-                      background: '#FFFFFF',
-                      borderRadius: '6px',
-                      border: '1px solid #DBEAFE',
-                    }}>
-                      <div style={{
-                        fontSize: '11px',
-                        color: '#6B7280',
-                        marginBottom: '4px',
-                        fontWeight: 600,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                      }}>
-                        {label}
-                      </div>
-                      <div style={{
-                        fontSize: '13px',
-                        color: '#1F2937',
-                        wordBreak: 'break-word',
-                      }}>
-                        {displayValue}
-                      </div>
-                    </div>
-                  ) : null;
-                })}
+                )}
               </div>
             </details>
           )}
@@ -837,7 +938,7 @@ export const CartaeItemDetail: React.FC<CartaeItemDetailProps> = ({
                 Tags
               </h3>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {item.tags.map((tag) => (
+                {item.tags.map(tag => (
                   <div
                     key={tag}
                     style={{
@@ -862,17 +963,66 @@ export const CartaeItemDetail: React.FC<CartaeItemDetailProps> = ({
           {/* Content */}
           {item.content && (
             <div>
-              <h3
+              <div
                 style={{
-                  margin: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   marginBottom: '12px',
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  color: 'var(--color-text-primary, #1f2937)',
                 }}
               >
-                Contenu
-              </h3>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    color: 'var(--color-text-primary, #1f2937)',
+                  }}
+                >
+                  Contenu
+                </h3>
+
+                {/* Toggle seulement si HTML */}
+                {isHtmlContent(item.content) && (
+                  <button
+                    onClick={() => setShowHtmlSource(!showHtmlSource)}
+                    title={showHtmlSource ? 'Afficher le texte brut' : 'Afficher le code source'}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      background: 'transparent',
+                      border: '1px solid var(--color-border, #e5e7eb)',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      color: 'var(--color-text-secondary, #6b7280)',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background =
+                        'var(--color-background-secondary, #f9fafb)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    {showHtmlSource ? (
+                      <>
+                        <Eye size={14} />
+                        <span>Texte</span>
+                      </>
+                    ) : (
+                      <>
+                        <Code size={14} />
+                        <span>Source</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
               <div
                 style={{
                   padding: '16px',
@@ -882,12 +1032,66 @@ export const CartaeItemDetail: React.FC<CartaeItemDetailProps> = ({
                   fontSize: '14px',
                   lineHeight: 1.6,
                   color: 'var(--color-text-secondary, #6b7280)',
-                  whiteSpace: 'pre-wrap',
-                  maxHeight: '400px',
-                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  whiteSpace: showHtmlSource ? 'pre-wrap' : 'normal',
                 }}
               >
-                {item.content}
+                {showHtmlSource ? (
+                  // Code source HTML
+                  <pre
+                    style={{
+                      margin: 0,
+                      whiteSpace: 'pre-wrap',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    {item.content}
+                  </pre>
+                ) : (
+                  // HTML nettoyé par défaut (mieux que texte brut)
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: isHtmlContent(item.content) ? cleanHtml(item.content) : item.content,
+                    }}
+                    className="cartae-email-clean"
+                    style={{
+                      width: '100%',
+                      maxWidth: '100%',
+                      overflow: 'hidden',
+                      lineHeight: 1.6,
+                    }}
+                  />
+                )}
+                <style>
+                  {`
+                    .cartae-email-clean {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+                      font-size: 14px;
+                    }
+                    .cartae-email-clean table {
+                      max-width: 100% !important;
+                      border-collapse: collapse;
+                    }
+                    .cartae-email-clean td,
+                    .cartae-email-clean th {
+                      padding: 8px;
+                      border: 1px solid #e5e7eb;
+                    }
+                    .cartae-email-clean img {
+                      max-width: 100% !important;
+                      height: auto !important;
+                    }
+                    .cartae-email-clean a {
+                      color: #3B82F6;
+                      text-decoration: underline;
+                    }
+                  `}
+                </style>
               </div>
             </div>
           )}
@@ -1002,7 +1206,7 @@ export const CartaeItemDetail: React.FC<CartaeItemDetailProps> = ({
                       Thèmes détectés
                     </div>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {item.metadata.aiInsights.topics.map((topic) => (
+                      {item.metadata.aiInsights.topics.map(topic => (
                         <span
                           key={topic}
                           style={{

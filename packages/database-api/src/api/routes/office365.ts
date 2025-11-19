@@ -2,11 +2,13 @@
  * Routes API Office365 - Synchronisation emails
  *
  * POST /api/office365/sync - Synchronise emails Office365 → PostgreSQL
+ * POST /api/office365/refresh - Rafraîchit un token expiré
  */
 
 import { Router, Request, Response } from 'express';
 import { pool } from '../../db/client';
 import { z } from 'zod';
+import { graphTokenService, owaTokenService } from '../../services/TokenRefreshService';
 
 const router = Router();
 
@@ -20,7 +22,7 @@ const SyncRequestSchema = z.object({
 });
 
 /**
- * Interface Email OWA REST API v2.0 - VERSION ENRICHIE
+ * Interface Email OWA REST API v2.0 - VERSION COMPLETE
  * Note: OWA REST API v2.0 retourne des champs en PascalCase
  * Docs: https://learn.microsoft.com/en-us/previous-versions/office/office-365-api/api/version-2.0/mail-rest-operations
  */
@@ -32,6 +34,10 @@ interface GraphEmail {
 
   // Corps complet
   Body?: {
+    Content: string;
+    ContentType: 'Text' | 'HTML';
+  };
+  UniqueBody?: {
     Content: string;
     ContentType: 'Text' | 'HTML';
   };
@@ -85,11 +91,15 @@ interface GraphEmail {
   Importance: 'Low' | 'Normal' | 'High';
   IsRead: boolean;
   IsDraft?: boolean;
+  IsDeliveryReceiptRequested?: boolean;
+  IsReadReceiptRequested?: boolean;
   Categories: string[];
 
   // Conversation et organisation
   ConversationId?: string;
+  ConversationIndex?: string;
   ParentFolderId?: string;
+  IsFromMe?: boolean;
 
   // Pièces jointes
   Attachments?: Array<{
@@ -99,19 +109,50 @@ interface GraphEmail {
     ContentType: string;
     Size: number;
     IsInline: boolean;
+    LastModifiedDateTime?: string;
+    ContentId?: string;
+    ContentLocation?: string;
   }>;
 
   // Liens et identifiants
   WebLink?: string;
   InternetMessageId?: string;
   ChangeKey?: string;
+  ItemClass?: string;
 
   // Flag/Suivi
   Flag?: {
     FlagStatus: 'NotFlagged' | 'Complete' | 'Flagged';
     StartDateTime?: string;
     DueDateTime?: string;
+    CompletedDateTime?: string;
   };
+
+  // Mentions et @
+  MentionsPreview?: {
+    IsMentioned: boolean;
+  };
+  Mentions?: Array<{
+    Mentioned: {
+      Name?: string;
+      Address?: string;
+    };
+    CreatedDateTime?: string;
+  }>;
+
+  // Sensibilité et classification
+  Sensitivity?: 'Normal' | 'Personal' | 'Private' | 'Confidential';
+  InferenceClassification?: 'Focused' | 'Other';
+
+  // Propriétés étendues
+  SingleValueExtendedProperties?: Array<{
+    Id: string;
+    Value: string;
+  }>;
+  MultiValueExtendedProperties?: Array<{
+    Id: string;
+    Value: string[];
+  }>;
 }
 
 /**
@@ -151,7 +192,7 @@ function emailToCartaeItem(email: GraphEmail, userId: string) {
   // Date du message (pas de l'import)
   const receivedDate = new Date(email.ReceivedDateTime);
 
-  // Extraire les pièces jointes (nom, type, taille)
+  // Extraire les pièces jointes (nom, type, taille) - TOUS les champs
   const attachments =
     email.Attachments?.map(att => ({
       id: att.Id,
@@ -159,6 +200,9 @@ function emailToCartaeItem(email: GraphEmail, userId: string) {
       contentType: att.ContentType,
       size: att.Size,
       isInline: att.IsInline,
+      lastModifiedDateTime: att.LastModifiedDateTime,
+      contentId: att.ContentId,
+      contentLocation: att.ContentLocation,
     })) || [];
 
   // Construire metadata enrichie avec TOUS les champs disponibles
@@ -170,14 +214,20 @@ function emailToCartaeItem(email: GraphEmail, userId: string) {
     priority: email.Importance === 'High' ? 'high' : email.Importance === 'Low' ? 'low' : 'medium',
     status: email.IsRead ? 'read' : 'unread',
 
-    // Champs extensibles spécifiques Office365
+    // Champs extensibles spécifiques Office365 - VERSION COMPLETE
     office365: {
       // Corps complet
       bodyContent: email.Body?.Content || email.BodyPreview,
       bodyContentType: email.Body?.ContentType || 'text',
+      uniqueBody: email.UniqueBody?.Content,
+      uniqueBodyType: email.UniqueBody?.ContentType,
+
+      // Preview court pour liste
+      bodyPreview: email.BodyPreview,
 
       // Expéditeur enrichi
       fromName: email.From?.EmailAddress?.Name,
+      fromEmail: email.From?.EmailAddress?.Address,
       senderEmail: email.Sender?.EmailAddress?.Address,
       senderName: email.Sender?.EmailAddress?.Name,
 
@@ -210,7 +260,7 @@ function emailToCartaeItem(email: GraphEmail, userId: string) {
       createdDateTime: email.CreatedDateTime,
       lastModifiedDateTime: email.LastModifiedDateTime,
 
-      // Pièces jointes
+      // Pièces jointes - TOUS les champs
       hasAttachments: email.HasAttachments,
       attachments,
       attachmentsCount: attachments.length,
@@ -218,21 +268,44 @@ function emailToCartaeItem(email: GraphEmail, userId: string) {
 
       // Organisation et conversation
       conversationId: email.ConversationId,
+      conversationIndex: email.ConversationIndex,
       parentFolderId: email.ParentFolderId,
       isDraft: email.IsDraft || false,
+      isFromMe: email.IsFromMe,
 
       // Identifiants et liens
       webLink: email.WebLink,
       internetMessageId: email.InternetMessageId,
       changeKey: email.ChangeKey,
+      itemClass: email.ItemClass,
 
-      // Flag/Suivi
+      // Flag/Suivi - TOUS les champs
       flagStatus: email.Flag?.FlagStatus,
       flagStartDate: email.Flag?.StartDateTime,
       flagDueDate: email.Flag?.DueDateTime,
+      flagCompletedDate: email.Flag?.CompletedDateTime,
 
-      // Importance
+      // Importance et classification
       importance: email.Importance,
+      sensitivity: email.Sensitivity,
+      inferenceClassification: email.InferenceClassification,
+
+      // Accusés de réception
+      isDeliveryReceiptRequested: email.IsDeliveryReceiptRequested,
+      isReadReceiptRequested: email.IsReadReceiptRequested,
+
+      // Mentions et @
+      isMentioned: email.MentionsPreview?.IsMentioned,
+      mentions:
+        email.Mentions?.map(m => ({
+          name: m.Mentioned?.Name,
+          email: m.Mentioned?.Address,
+          createdDateTime: m.CreatedDateTime,
+        })) || [],
+
+      // Propriétés étendues
+      singleValueExtendedProperties: email.SingleValueExtendedProperties || [],
+      multiValueExtendedProperties: email.MultiValueExtendedProperties || [],
     },
   };
 
@@ -416,6 +489,68 @@ router.get('/items', async (req: Request, res: Response) => {
     console.error('[Office365] Error fetching items:', error);
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    return res.status(500).json({
+      success: false,
+      error: errorMessage,
+    });
+  }
+});
+
+/**
+ * POST /api/office365/refresh
+ * Rafraîchit un token Office365 expiré en utilisant le refresh token
+ *
+ * Body:
+ * - refreshToken: Refresh token obtenu lors du login
+ * - tokenType: 'graph' ou 'owa'
+ * - scope: Scopes OAuth requis (optionnel)
+ *
+ * Response:
+ * - success: boolean
+ * - accessToken: string (nouveau access token)
+ * - refreshToken: string (nouveau refresh token, ou ancien si inchangé)
+ * - expiresAt: number (timestamp Unix en ms)
+ */
+router.post('/refresh', async (req: Request, res: Response) => {
+  try {
+    const { refreshToken, tokenType = 'graph', scope } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing refreshToken in request body',
+      });
+    }
+
+    // Sélectionner le service approprié
+    const service = tokenType === 'owa' ? owaTokenService : graphTokenService;
+
+    // Rafraîchir le token
+    console.log(`[Office365] Rafraîchissement token ${tokenType}...`);
+    const newTokenData = await service.refreshToken(refreshToken, scope);
+
+    console.log(`[Office365] ✅ Token ${tokenType} rafraîchi avec succès`);
+
+    return res.json({
+      success: true,
+      accessToken: newTokenData.accessToken,
+      refreshToken: newTokenData.refreshToken,
+      expiresAt: newTokenData.expiresAt,
+    });
+  } catch (error) {
+    console.error('[Office365] Erreur refresh token:', error);
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Erreur 401 = refresh token invalide/expiré → re-login requis
+    if (errorMessage.includes('401') || errorMessage.includes('invalid_grant')) {
+      return res.status(401).json({
+        success: false,
+        error: 'Refresh token invalide ou expiré. Re-connexion requise.',
+        requiresReauth: true,
+      });
+    }
 
     return res.status(500).json({
       success: false,

@@ -22,22 +22,48 @@ const SyncRequestSchema = z.object({
 });
 
 /**
- * Interface Chat Microsoft Graph API v1.0
- * Docs: https://learn.microsoft.com/en-us/graph/api/chat-list
+ * Interface Chat Microsoft Graph API v1.0 - VERSION COMPLETE
+ * Docs: https://learn.microsoft.com/en-us/graph/api/chat-get
  */
 interface GraphChat {
+  // Champs de base
   id: string;
   topic: string | null;
   createdDateTime: string;
   lastUpdatedDateTime: string;
   chatType: 'oneOnOne' | 'group' | 'meeting';
   webUrl?: string;
+  tenantId?: string;
+
+  // Online meeting info
+  onlineMeetingInfo?: {
+    calendarEventId?: string;
+    joinWebUrl?: string;
+    organizer?: {
+      id?: string;
+      displayName?: string;
+      tenantId?: string;
+    };
+  };
+
+  // Point de vue de l'utilisateur
+  viewpoint?: {
+    isHidden?: boolean;
+    lastMessageReadDateTime?: string;
+  };
+
+  // Membres du chat - VERSION ENRICHIE
   members?: Array<{
     '@odata.type': string;
     id: string;
+    roles?: string[];
     displayName?: string;
+    userId?: string;
     email?: string;
+    visibleHistoryStartDateTime?: string;
   }>;
+
+  // Dernier message preview
   lastMessagePreview?: {
     id: string;
     createdDateTime: string;
@@ -55,12 +81,147 @@ interface GraphChat {
 }
 
 /**
+ * Interface Message Microsoft Graph API v1.0 - VERSION COMPLETE
+ * Docs: https://learn.microsoft.com/en-us/graph/api/chatmessage-get
+ */
+interface GraphMessage {
+  // Identifiants
+  id: string;
+  etag?: string;
+  messageType: 'message' | 'chatEvent' | 'typing' | 'unknownFutureValue';
+  createdDateTime: string;
+  lastModifiedDateTime?: string;
+  lastEditedDateTime?: string;
+  deletedDateTime?: string;
+
+  // Contenu
+  subject?: string;
+  summary?: string;
+  chatId?: string;
+  importance: 'normal' | 'high' | 'urgent';
+  locale?: string;
+
+  // Corps du message
+  body?: {
+    content: string;
+    contentType: 'text' | 'html';
+  };
+
+  // Expéditeur
+  from?: {
+    user?: {
+      id: string;
+      displayName?: string;
+      userIdentityType?: string;
+    };
+    application?: {
+      id: string;
+      displayName?: string;
+      applicationIdentityType?: string;
+    };
+  };
+
+  // Pièces jointes
+  attachments?: Array<{
+    id: string;
+    contentType: string;
+    contentUrl?: string;
+    content?: string;
+    name?: string;
+    thumbnailUrl?: string;
+    teamsAppId?: string;
+  }>;
+
+  // Mentions
+  mentions?: Array<{
+    id: number;
+    mentionText: string;
+    mentioned: {
+      user?: {
+        id: string;
+        displayName?: string;
+        userIdentityType?: string;
+      };
+      application?: {
+        id: string;
+        displayName?: string;
+        applicationIdentityType?: string;
+      };
+      conversation?: {
+        id: string;
+        displayName?: string;
+        conversationIdentityType?: string;
+      };
+    };
+  }>;
+
+  // Réactions
+  reactions?: Array<{
+    reactionType: 'like' | 'angry' | 'sad' | 'laugh' | 'heart' | 'surprised';
+    createdDateTime: string;
+    user: {
+      user?: {
+        id: string;
+        displayName?: string;
+        userIdentityType?: string;
+      };
+    };
+  }>;
+
+  // Violation de politique
+  policyViolation?: {
+    dlpAction?: 'NotifySender' | 'BlockAccess' | 'BlockAccessExternal';
+    justificationText?: string;
+    policyTip?: {
+      generalText?: string;
+      complianceUrl?: string;
+      matchedConditionDescriptions?: string[];
+    };
+    userAction?: 'None' | 'Override' | 'Report';
+    verdictDetails?:
+      | 'None'
+      | 'AllowFalsePositiveOverride'
+      | 'AllowOverrideWithoutJustification'
+      | 'AllowOverrideWithJustification';
+  };
+
+  // Event detail (pour chatEvent)
+  eventDetail?: {
+    '@odata.type': string;
+    [key: string]: any;
+  };
+
+  // Métadonnées
+  webUrl?: string;
+  channelIdentity?: {
+    teamId?: string;
+    channelId?: string;
+  };
+  messageHistory?: Array<{
+    modifiedDateTime: string;
+    actions: string;
+    reaction?: {
+      reactionType: string;
+      user: {
+        id: string;
+        displayName?: string;
+      };
+    };
+  }>;
+
+  // Hosted contents (images inline)
+  hostedContents?: Array<{
+    id: string;
+    '@microsoft.graph.temporaryId'?: string;
+    contentBytes?: string;
+    contentType?: string;
+  }>;
+}
+
+/**
  * Récupère chats Teams via TeamsService Session 70 (qui marchait !)
  */
-async function fetchChatsFromGraph(
-  token: string,
-  maxChats: number
-): Promise<any[]> {
+async function fetchChatsFromGraph(token: string, maxChats: number): Promise<any[]> {
   // Utiliser le TeamsService Session 70 qui marchait
   const authAdapter = new SimpleAuthAdapter(token);
   const teamsService = new TeamsService(authAdapter);
@@ -80,14 +241,16 @@ async function fetchChatsFromGraph(
       displayName: m.displayName,
       email: m.email,
     })),
-    lastMessagePreview: chat.lastMessagePreview ? {
-      id: '',
-      createdDateTime: chat.lastMessageDateTime.toISOString(),
-      body: {
-        content: chat.lastMessagePreview,
-        contentType: 'text' as const,
-      },
-    } : undefined,
+    lastMessagePreview: chat.lastMessagePreview
+      ? {
+          id: '',
+          createdDateTime: chat.lastMessageDateTime.toISOString(),
+          body: {
+            content: chat.lastMessagePreview,
+            contentType: 'text' as const,
+          },
+        }
+      : undefined,
   }));
 }
 
@@ -99,22 +262,24 @@ async function fetchChatMessages(
   token: string,
   chatId: string,
   maxMessages: number = 50
-): Promise<any[]> {
+): Promise<GraphMessage[]> {
   const GRAPH_BASE_URL = 'https://graph.microsoft.com/v1.0';
   const endpoint = `${GRAPH_BASE_URL}/chats/${chatId}/messages?$top=${maxMessages}&$orderby=createdDateTime desc`;
 
   try {
     const response = await fetch(endpoint, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        Accept: 'application/json',
       },
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.warn(`[Teams Messages] Failed to fetch messages for chat ${chatId}: ${response.status} - ${errorText}`);
+      console.warn(
+        `[Teams Messages] Failed to fetch messages for chat ${chatId}: ${response.status} - ${errorText}`
+      );
       return []; // Retourner tableau vide en cas d'erreur (pas bloquer la synchro)
     }
 
@@ -127,29 +292,37 @@ async function fetchChatMessages(
 }
 
 /**
- * Transforme un chat Teams en CartaeItem pour PostgreSQL - VERSION ENRICHIE
+ * Transforme un chat Teams en CartaeItem pour PostgreSQL - VERSION COMPLETE
  */
-function chatToCartaeItem(chat: GraphChat, userId: string, messages?: any[]) {
+function chatToCartaeItem(chat: GraphChat, userId: string, messages?: GraphMessage[]) {
   // Extraire les participants (membres du chat)
-  const participantsRaw = chat.members
-    ?.map(m => m.email || m.displayName || m.id)
-    .filter(Boolean) || [];
+  const participantsRaw =
+    chat.members?.map(m => m.email || m.displayName || m.id).filter(Boolean) || [];
 
-  // Participants enrichis (avec noms et emails)
-  const participantsEnriched = chat.members?.map(m => ({
-    id: m.id,
-    displayName: m.displayName,
-    email: m.email,
-    type: m['@odata.type'],
-  })) || [];
+  // Participants enrichis (avec TOUS les champs)
+  const participantsEnriched =
+    chat.members?.map(m => ({
+      id: m.id,
+      displayName: m.displayName,
+      email: m.email,
+      type: m['@odata.type'],
+      roles: m.roles,
+      userId: m.userId,
+      visibleHistoryStartDateTime: m.visibleHistoryStartDateTime,
+    })) || [];
 
   // Extraire le contenu du dernier message (complet si on a les messages, sinon preview)
-  const lastMessageContent = messages && messages.length > 0
-    ? messages[0].body?.content || chat.lastMessagePreview?.body?.content || ''
-    : chat.lastMessagePreview?.body?.content || '';
-  const lastMessageAuthor = messages && messages.length > 0
-    ? messages[0].from?.user?.displayName || chat.lastMessagePreview?.from?.user?.displayName || participantsRaw[0] || 'Teams'
-    : chat.lastMessagePreview?.from?.user?.displayName || participantsRaw[0] || 'Teams';
+  const lastMessageContent =
+    messages && messages.length > 0
+      ? messages[0].body?.content || chat.lastMessagePreview?.body?.content || ''
+      : chat.lastMessagePreview?.body?.content || '';
+  const lastMessageAuthor =
+    messages && messages.length > 0
+      ? messages[0].from?.user?.displayName ||
+        chat.lastMessagePreview?.from?.user?.displayName ||
+        participantsRaw[0] ||
+        'Teams'
+      : chat.lastMessagePreview?.from?.user?.displayName || participantsRaw[0] || 'Teams';
 
   // Titre du chat (topic ou liste participants)
   const chatTitle =
@@ -160,9 +333,9 @@ function chatToCartaeItem(chat: GraphChat, userId: string, messages?: any[]) {
 
   // Tags lisibles selon chatType
   const chatTypeTags = {
-    'oneOnOne': 'Chat 1:1',
-    'group': 'Groupe',
-    'meeting': 'Réunion'
+    oneOnOne: 'Chat 1:1',
+    group: 'Groupe',
+    meeting: 'Réunion',
   };
   const readableTag = chatTypeTags[chat.chatType] || chat.chatType;
 
@@ -170,20 +343,38 @@ function chatToCartaeItem(chat: GraphChat, userId: string, messages?: any[]) {
   const createdDate = new Date(chat.createdDateTime);
   const lastUpdatedDate = new Date(chat.lastUpdatedDateTime);
 
-  // Construire metadata enrichie
+  // Construire metadata enrichie avec TOUS les champs disponibles
   const metadata: any = {
     // Champs standards CartaeMetadata
     author: lastMessageAuthor,
     participants: participantsRaw,
 
-    // Champs extensibles spécifiques Office365/Teams
+    // Champs extensibles spécifiques Office365/Teams - VERSION COMPLETE
     office365: {
-      // Info du chat
+      // Info du chat - TOUS les champs
       chatType: chat.chatType,
       chatTopic: chat.topic,
       webUrl: chat.webUrl,
+      tenantId: chat.tenantId,
 
-      // Membres enrichis
+      // Online meeting info (si réunion Teams)
+      onlineMeetingInfo: chat.onlineMeetingInfo
+        ? {
+            calendarEventId: chat.onlineMeetingInfo.calendarEventId,
+            joinWebUrl: chat.onlineMeetingInfo.joinWebUrl,
+            organizer: chat.onlineMeetingInfo.organizer,
+          }
+        : undefined,
+
+      // Point de vue utilisateur (masqué, dernier message lu)
+      viewpoint: chat.viewpoint
+        ? {
+            isHidden: chat.viewpoint.isHidden,
+            lastMessageReadDateTime: chat.viewpoint.lastMessageReadDateTime,
+          }
+        : undefined,
+
+      // Membres enrichis - TOUS les champs
       members: participantsEnriched,
       membersCount: participantsEnriched.length,
 
@@ -192,42 +383,114 @@ function chatToCartaeItem(chat: GraphChat, userId: string, messages?: any[]) {
       lastUpdatedDateTime: chat.lastUpdatedDateTime,
 
       // Dernier message (preview)
-      lastMessagePreview: chat.lastMessagePreview ? {
-        id: chat.lastMessagePreview.id,
-        createdDateTime: chat.lastMessagePreview.createdDateTime,
-        content: chat.lastMessagePreview.body?.content,
-        contentType: chat.lastMessagePreview.body?.contentType,
-        fromUserId: chat.lastMessagePreview.from?.user?.id,
-        fromUserDisplayName: chat.lastMessagePreview.from?.user?.displayName,
-      } : undefined,
+      lastMessagePreview: chat.lastMessagePreview
+        ? {
+            id: chat.lastMessagePreview.id,
+            createdDateTime: chat.lastMessagePreview.createdDateTime,
+            content: chat.lastMessagePreview.body?.content,
+            contentType: chat.lastMessagePreview.body?.contentType,
+            fromUserId: chat.lastMessagePreview.from?.user?.id,
+            fromUserDisplayName: chat.lastMessagePreview.from?.user?.displayName,
+          }
+        : undefined,
 
-      // TOUS les messages du chat (si récupérés)
-      messages: messages?.map(msg => ({
-        id: msg.id,
-        createdDateTime: msg.createdDateTime,
-        lastModifiedDateTime: msg.lastModifiedDateTime,
-        deletedDateTime: msg.deletedDateTime,
-        content: msg.body?.content,
-        contentType: msg.body?.contentType,
-        importance: msg.importance,
-        fromUserId: msg.from?.user?.id,
-        fromUserDisplayName: msg.from?.user?.displayName,
-        attachments: msg.attachments?.map((att: any) => ({
-          id: att.id,
-          name: att.name,
-          contentType: att.contentType,
+      // TOUS les messages du chat (si récupérés) - VERSION COMPLETE
+      messages:
+        messages?.map(msg => ({
+          // Identifiants
+          id: msg.id,
+          etag: msg.etag,
+          messageType: msg.messageType,
+
+          // Dates
+          createdDateTime: msg.createdDateTime,
+          lastModifiedDateTime: msg.lastModifiedDateTime,
+          lastEditedDateTime: msg.lastEditedDateTime,
+          deletedDateTime: msg.deletedDateTime,
+
+          // Contenu
+          subject: msg.subject,
+          summary: msg.summary,
+          chatId: msg.chatId,
+          importance: msg.importance,
+          locale: msg.locale,
+          content: msg.body?.content,
+          contentType: msg.body?.contentType,
+
+          // Expéditeur (user ou application)
+          fromUser: msg.from?.user
+            ? {
+                id: msg.from.user.id,
+                displayName: msg.from.user.displayName,
+                userIdentityType: msg.from.user.userIdentityType,
+              }
+            : undefined,
+          fromApplication: msg.from?.application
+            ? {
+                id: msg.from.application.id,
+                displayName: msg.from.application.displayName,
+                applicationIdentityType: msg.from.application.applicationIdentityType,
+              }
+            : undefined,
+
+          // Pièces jointes - TOUS les champs
+          attachments:
+            msg.attachments?.map(att => ({
+              id: att.id,
+              contentType: att.contentType,
+              contentUrl: att.contentUrl,
+              content: att.content,
+              name: att.name,
+              thumbnailUrl: att.thumbnailUrl,
+              teamsAppId: att.teamsAppId,
+            })) || [],
+
+          // Mentions - TOUS les champs
+          mentions:
+            msg.mentions?.map(mention => ({
+              id: mention.id,
+              mentionText: mention.mentionText,
+              mentionedUser: mention.mentioned.user,
+              mentionedApplication: mention.mentioned.application,
+              mentionedConversation: mention.mentioned.conversation,
+            })) || [],
+
+          // Réactions - TOUS les champs
+          reactions:
+            msg.reactions?.map(reaction => ({
+              reactionType: reaction.reactionType,
+              createdDateTime: reaction.createdDateTime,
+              user: reaction.user,
+            })) || [],
+
+          // Violation de politique (DLP)
+          policyViolation: msg.policyViolation
+            ? {
+                dlpAction: msg.policyViolation.dlpAction,
+                justificationText: msg.policyViolation.justificationText,
+                policyTip: msg.policyViolation.policyTip,
+                userAction: msg.policyViolation.userAction,
+                verdictDetails: msg.policyViolation.verdictDetails,
+              }
+            : undefined,
+
+          // Event detail (pour chatEvent)
+          eventDetail: msg.eventDetail,
+
+          // Métadonnées
+          webUrl: msg.webUrl,
+          channelIdentity: msg.channelIdentity,
+          messageHistory: msg.messageHistory,
+
+          // Hosted contents (images inline)
+          hostedContents:
+            msg.hostedContents?.map(hc => ({
+              id: hc.id,
+              temporaryId: hc['@microsoft.graph.temporaryId'],
+              contentBytes: hc.contentBytes,
+              contentType: hc.contentType,
+            })) || [],
         })) || [],
-        mentions: msg.mentions?.map((mention: any) => ({
-          id: mention.id,
-          mentionText: mention.mentionText,
-          mentioned: mention.mentioned,
-        })) || [],
-        reactions: msg.reactions?.map((reaction: any) => ({
-          reactionType: reaction.reactionType,
-          createdDateTime: reaction.createdDateTime,
-          user: reaction.user,
-        })) || [],
-      })) || [],
       messagesCount: messages?.length || 0,
     },
   };

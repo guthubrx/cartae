@@ -33,6 +33,7 @@ import usersRouter from './api/routes/users';
 import auditRouter from './api/routes/audit';
 import office365Router from './api/routes/office365';
 import teamsRouter from './api/routes/teams';
+import plannerRouter from './api/routes/planner';
 
 // Middlewares
 import { errorHandler, notFoundHandler } from './api/middlewares/errorHandler';
@@ -105,7 +106,7 @@ async function createApp(): Promise<Application> {
   // CORS - Configure les origines autorisées
   app.use(
     cors({
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+      origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
       credentials: true,
     })
   );
@@ -166,6 +167,7 @@ async function createApp(): Promise<Application> {
   app.use('/api/audit', auditRouter);
   app.use('/api/office365', office365Router);
   app.use('/api/office365/teams', teamsRouter);
+  app.use('/api/office365/planner', plannerRouter);
 
   // ========== Error handlers (doivent être après les routes) ==========
 

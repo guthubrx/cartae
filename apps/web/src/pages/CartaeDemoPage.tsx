@@ -31,6 +31,8 @@ import {
   Office365MailBackendConnector,
   Office365TeamsBackendConnector,
 } from '@cartae/core/sources/connectors';
+import { office365TokenRefresher } from '@cartae/ui';
+import Office365SyncTab from './Office365SyncTab';
 
 // Mock data
 const mockItems: CartaeItem[] = [
@@ -238,39 +240,14 @@ export const CartaeDemoPage: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<CartaeItem | null>(mockItems[0]);
   const [selectedSource, setSelectedSource] = useState<DataSource | null>(mockSources[0]);
 
-  // Office365 Sync State
-  const [syncLoading, setSyncLoading] = useState(false);
-  const [syncResult, setSyncResult] = useState<{
-    success: boolean;
-    itemsImported?: number;
-    itemsSkipped?: number;
-    totalProcessed?: number;
-    errors?: string[];
-    error?: string;
-  } | null>(null);
-  const [currentToken, setCurrentToken] = useState<string | null>(null);
-
-  // Teams Sync State
-  const [teamsSyncLoading, setTeamsSyncLoading] = useState(false);
-  const [teamsSyncResult, setTeamsSyncResult] = useState<{
-    success: boolean;
-    itemsImported?: number;
-    itemsSkipped?: number;
-    totalProcessed?: number;
-    errors?: string[];
-    error?: string;
-  } | null>(null);
-
-  // Office365 Items State
-  const [office365Items, setOffice365Items] = useState<CartaeItem[]>([]);
-  const [itemsLoading, setItemsLoading] = useState(false);
-
   // Unified View Filters/Sort State
   const [unifiedSearchText, setUnifiedSearchText] = useState('');
   const [unifiedSortMode, setUnifiedSortMode] = useState<
     'date-desc' | 'date-asc' | 'title-asc' | 'title-desc'
   >('date-desc');
-  const [unifiedTypeFilter, setUnifiedTypeFilter] = useState<'all' | 'email' | 'message'>('all');
+  const [unifiedTypeFilter, setUnifiedTypeFilter] = useState<'all' | 'email' | 'message' | 'task'>(
+    'all'
+  );
 
   // SourceManager State (Session 119 unified architecture)
   const sourceManagerRef = useRef<SourceManager | null>(null);
@@ -316,90 +293,19 @@ export const CartaeDemoPage: React.FC = () => {
     }
   }, [sourceManagerReady]);
 
-  // Charger le token depuis browser.storage au chargement (avec retry pour race condition)
-  React.useEffect(() => {
-    let retryCount = 0;
-    const MAX_RETRIES = 20; // 20 secondes max
-    let timeoutId: number | null = null;
+  // Démarrer le rafraîchissement automatique des tokens Office365
+  useEffect(() => {
+    console.log(
+      '[CartaeDemoPage] 🚀 Démarrage du rafraîchissement automatique des tokens Office365'
+    );
+    office365TokenRefresher.start();
 
-    const checkAndLoadToken = () => {
-      const browserStorage = (window as any).cartaeBrowserStorage;
-
-      if (!browserStorage) {
-        retryCount++;
-        if (retryCount < MAX_RETRIES) {
-          console.log(
-            `[Office365] Extension pas encore prête, retry ${retryCount}/${MAX_RETRIES}...`
-          );
-          timeoutId = window.setTimeout(checkAndLoadToken, 1000); // Retry après 1 sec
-          return;
-        }
-        console.warn(
-          '[Office365] Extension non disponible après 20s (window.cartaeBrowserStorage manquant)'
-        );
-        return;
-      }
-
-      console.log('[Office365] Extension détectée, lecture token...');
-
-      // Lire le token OWA depuis browser.storage.local
-      browserStorage
-        .get(['cartae-o365-token-owa', 'cartae-o365-token-owa-captured-at'])
-        .then((result: any) => {
-          const token = result['cartae-o365-token-owa'];
-          const capturedAt = result['cartae-o365-token-owa-captured-at'];
-
-          if (token) {
-            console.log(`[Office365] ✅ Token OWA trouvé (capturé à ${capturedAt})`);
-            console.log('[Office365] Token (début):', `${token.substring(0, 50)}...`);
-            setCurrentToken(token);
-          } else {
-            console.log(
-              '[Office365] ℹ️ Pas de token OWA dans storage - allez sur outlook.office.com pour vous connecter'
-            );
-          }
-        })
-        .catch((error: any) => {
-          console.error('[Office365] Erreur lecture token:', error);
-        });
-    };
-
-    // Démarrer la vérification
-    checkAndLoadToken();
-
-    // Cleanup : annuler le timeout si le composant unmount
+    // Cleanup : arrêter le refresher au démontage du composant
     return () => {
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
+      console.log('[CartaeDemoPage] ⏹️ Arrêt du rafraîchissement automatique des tokens');
+      office365TokenRefresher.stop();
     };
   }, []);
-
-  // Fetch Office365 Items from Database
-  const fetchOffice365Items = async () => {
-    setItemsLoading(true);
-    try {
-      console.log('[Office365] Récupération des items depuis PostgreSQL...');
-
-      const response = await fetch(
-        'http://localhost:3001/api/office365/items?userId=4397e804-31e5-44c4-b89e-82058fa8502b&limit=100'
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || `Erreur HTTP ${response.status}`);
-      }
-
-      console.log(`[Office365] ✅ ${data.count} items récupérés:`, data.items);
-      setOffice365Items(data.items);
-    } catch (error) {
-      console.error('[Office365] ❌ Erreur récupération items:', error);
-      setOffice365Items([]);
-    } finally {
-      setItemsLoading(false);
-    }
-  };
 
   // Fetch All Sources Items (Unified Architecture Session 119)
   const fetchAllSourcesItems = async () => {
@@ -444,7 +350,25 @@ export const CartaeDemoPage: React.FC = () => {
       console.error('[AllSources] ❌ Teams fetch error:', error);
     }
 
-    // 3. Trier par date DESC (mélanger tous les types)
+    // 3. Récupérer items Planner (Office365)
+    try {
+      console.log('[AllSources] → Récupération Planner...');
+      const plannerResponse = await fetch(
+        `http://localhost:3001/api/office365/planner/items?userId=${userId}&limit=100`
+      );
+      if (plannerResponse.ok) {
+        const plannerData = await plannerResponse.json();
+        const plannerItems = plannerData.items || [];
+        console.log(`[AllSources] ✅ Planner: ${plannerItems.length} items`);
+        allFetchedItems.push(...plannerItems);
+      } else {
+        console.warn('[AllSources] ⚠️ Planner API erreur:', plannerResponse.status);
+      }
+    } catch (error) {
+      console.error('[AllSources] ❌ Planner fetch error:', error);
+    }
+
+    // 4. Trier par date DESC (mélanger tous les types)
     allFetchedItems.sort((a, b) => {
       const dateA = new Date(a.createdAt || a.created_at || 0).getTime();
       const dateB = new Date(b.createdAt || b.created_at || 0).getTime();
@@ -452,224 +376,9 @@ export const CartaeDemoPage: React.FC = () => {
     });
 
     console.log(
-      `[AllSources] 🎯 Total items réels: ${allFetchedItems.length} (Mail + Teams, triés par date DESC)`
+      `[AllSources] 🎯 Total items réels: ${allFetchedItems.length} (Mail + Teams + Planner, triés par date DESC)`
     );
     setAllItems(allFetchedItems);
-  };
-
-  // Office365 Sync Function
-  const handleOffice365Sync = async () => {
-    setSyncLoading(true);
-    setSyncResult(null);
-
-    try {
-      // Vérifier que l'extension est présente
-      const browserStorage = (window as any).cartaeBrowserStorage;
-      if (!browserStorage) {
-        throw new Error(
-          "Extension Cartae non détectée. Installez l'extension Firefox pour synchroniser Office365."
-        );
-      }
-
-      console.log('[Office365] Lecture token depuis browser.storage...');
-
-      // Récupérer le token OWA (a Mail.Read) au lieu de Graph (n'a que Chat.Read)
-      const result = await browserStorage.get(['cartae-o365-token-owa', 'cartae-o365-token-graph']);
-      // Préférer OWA pour les emails (a Mail.Read), fallback sur Graph
-      const token = result['cartae-o365-token-owa'] || result['cartae-o365-token-graph'];
-
-      console.log('[Office365] Token récupéré:', token ? `${token.substring(0, 20)}...` : 'null');
-
-      if (!token) {
-        throw new Error(
-          '🔑 Token Outlook non disponible.\n\n' +
-            '📍 Visitez Outlook pour obtenir un token :\n' +
-            '   • https://outlook.office.com/mail\n\n' +
-            "⚠️ L'extension va capturer automatiquement le token lors de votre connexion."
-        );
-      }
-
-      // Appeler l'API backend
-      console.log('[Office365] Appel API backend /api/office365/sync...');
-      const response = await fetch('http://localhost:3001/api/office365/sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Office365-Token': token,
-        },
-        body: JSON.stringify({
-          userId: '4397e804-31e5-44c4-b89e-82058fa8502b', // Demo user UUID
-          maxEmails: 50,
-          folder: 'Inbox',
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || `Erreur HTTP ${response.status}`);
-      }
-
-      console.log('[Office365] ✅ Synchronisation réussie:', data);
-      setSyncResult(data);
-
-      // Récupérer les items après synchronisation réussie
-      if (data.success) {
-        await fetchOffice365Items(); // Pour l'onglet Office365 (legacy)
-        await fetchAllSourcesItems(); // Pour l'affichage unifié (Session 119)
-      }
-    } catch (error) {
-      console.error('[Office365] ❌ Erreur synchronisation:', error);
-      setSyncResult({
-        success: false,
-        error: error instanceof Error ? error.message : 'Erreur inconnue',
-      });
-    } finally {
-      setSyncLoading(false);
-    }
-  };
-
-  // Teams Sync Function
-  const handleTeamsSync = async () => {
-    setTeamsSyncLoading(true);
-    setTeamsSyncResult(null);
-
-    try {
-      // Vérifier que l'extension est présente
-      const browserStorage = (window as any).cartaeBrowserStorage;
-      if (!browserStorage) {
-        throw new Error(
-          "Extension Cartae non détectée. Installez l'extension Firefox pour synchroniser Teams."
-        );
-      }
-
-      console.log('[Teams] Lecture tokens depuis browser.storage...');
-
-      // ✅ Utiliser token Graph (Session 70 qui marchait !)
-      // Après reconnexion à Teams, token Graph aura Chat.Read
-      const result = await browserStorage.get([
-        'cartae-o365-token-graph',
-        'cartae-o365-token-teams',
-      ]);
-
-      let token = result['cartae-o365-token-graph'];
-      let tokenSource = 'graph';
-
-      if (!token) {
-        token = result['cartae-o365-token-teams'];
-        tokenSource = 'teams-legacy';
-      }
-
-      console.log(
-        '[Teams] Token récupéré:',
-        token ? `${token.substring(0, 20)}... (source: ${tokenSource})` : 'null'
-      );
-
-      if (!token) {
-        throw new Error(
-          '🔑 Aucun token Microsoft disponible.\n\n' +
-            '📍 ÉTAPES POUR RÉSOUDRE:\n' +
-            "1. Rechargez l'extension Firefox (about:debugging)\n" +
-            '2. Ouvrez https://teams.microsoft.com\n' +
-            '3. Reconnectez-vous si nécessaire\n' +
-            "4. L'extension capturera automatiquement les tokens\n" +
-            '5. Rechargez cette page et retestez\n\n' +
-            "ℹ️  L'extension a été mise à jour pour mieux distinguer les tokens Teams."
-        );
-      }
-
-      // Appeler l'API backend Teams
-      console.log('[Teams] Appel API backend /api/office365/teams/sync...');
-      const response = await fetch('http://localhost:3001/api/office365/teams/sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Office365-Token': token,
-        },
-        body: JSON.stringify({
-          userId: '4397e804-31e5-44c4-b89e-82058fa8502b', // Demo user UUID
-          maxChats: 50,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || `Erreur HTTP ${response.status}`);
-      }
-
-      console.log('[Teams] ✅ Synchronisation réussie:', data);
-      setTeamsSyncResult(data);
-
-      // Récupérer les items après synchronisation réussie
-      if (data.success) {
-        await fetchAllSourcesItems(); // Recharger l'affichage unifié (Session 119)
-      }
-    } catch (error) {
-      console.error('[Teams] ❌ Erreur synchronisation:', error);
-      setTeamsSyncResult({
-        success: false,
-        error: error instanceof Error ? error.message : 'Erreur inconnue',
-      });
-    } finally {
-      setTeamsSyncLoading(false);
-    }
-  };
-
-  // Debug Tokens Function - Affiche tous les tokens capturés et leurs scopes
-  const debugTokens = async () => {
-    try {
-      const browserStorage = (window as any).cartaeBrowserStorage;
-      if (!browserStorage) {
-        console.error('❌ Extension non détectée');
-        return;
-      }
-
-      console.log('🔍 ====== DEBUG TOKENS O365 ======');
-
-      // Liste de tous les tokens à vérifier
-      const tokenKeys = [
-        'cartae-o365-token-owa',
-        'cartae-o365-token-graph',
-        'cartae-o365-token-sharepoint',
-        'cartae-o365-token-teams',
-      ];
-
-      for (const key of tokenKeys) {
-        console.log(`\n📋 ${key}:`);
-        const result = await browserStorage.get([key, `${key}-captured-at`]);
-        const token = result[key];
-        const capturedAt = result[`${key}-captured-at`];
-
-        if (!token) {
-          console.log('  ⚪ Aucun token disponible');
-          continue;
-        }
-
-        console.log(`  ✅ Token présent (capturé: ${capturedAt || 'inconnu'})`);
-        console.log(`  📝 Preview: ${token.substring(0, 30)}...`);
-
-        // Décoder le JWT pour afficher les scopes
-        try {
-          const parts = token.split('.');
-          if (parts.length === 3) {
-            const payload = JSON.parse(atob(parts[1]));
-            console.log('  🔐 Scopes:', payload.scp || payload.scope || 'Aucun scope trouvé');
-            console.log('  👤 Audience:', payload.aud || 'Inconnu');
-            console.log(
-              '  ⏰ Expire:',
-              payload.exp ? new Date(payload.exp * 1000).toISOString() : 'Inconnu'
-            );
-          }
-        } catch (decodeError) {
-          console.log('  ⚠️  Impossible de décoder le token JWT');
-        }
-      }
-
-      console.log('\n🔍 ====== FIN DEBUG TOKENS ======');
-    } catch (error) {
-      console.error('❌ Erreur debug tokens:', error);
-    }
   };
 
   // Filtrer et trier les items pour la vue unifiée
@@ -716,1036 +425,658 @@ export const CartaeDemoPage: React.FC = () => {
   }, [allItems, unifiedTypeFilter, unifiedSearchText, unifiedSortMode]);
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#f9fafb',
-        fontFamily: 'system-ui, sans-serif',
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          background: '#ffffff',
-          borderBottom: '2px solid #e5e7eb',
-          padding: '20px 32px',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 600, color: '#1f2937' }}>
-          Session 119 - UI Components Demo
-        </h1>
-        <p style={{ margin: '8px 0 0', fontSize: '14px', color: '#6b7280' }}>
-          Exploration interactive des 18 composants créés (~11,900 LOC)
-        </p>
-      </div>
+    <>
+      {/* Animation CSS pour les progress bars */}
+      <style>{`
+        @keyframes progress-slide {
+          0% {
+            left: -30%;
+          }
+          100% {
+            left: 100%;
+          }
+        }
+      `}</style>
 
-      {/* Main Tabs */}
       <div
         style={{
-          background: '#ffffff',
-          borderBottom: '1px solid #e5e7eb',
-          padding: '0 32px',
+          minHeight: '100vh',
+          background: '#f9fafb',
+          fontFamily: 'system-ui, sans-serif',
         }}
       >
-        <div style={{ display: 'flex', gap: '32px' }}>
-          {[
-            { key: 'items', label: 'CartaeItem Components' },
-            { key: 'sources', label: 'Source Management Components' },
-            { key: 'office365', label: 'Office365 Sync (Live)' },
-          ].map(tab => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setSelectedTab(tab.key as any)}
-              style={{
-                padding: '16px 0',
-                fontSize: '15px',
-                fontWeight: 600,
-                color: selectedTab === tab.key ? '#3b82f6' : '#6b7280',
-                background: 'transparent',
-                border: 'none',
-                borderBottom:
-                  selectedTab === tab.key ? '3px solid #3b82f6' : '3px solid transparent',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Header */}
+        <div
+          style={{
+            background: '#ffffff',
+            borderBottom: '2px solid #e5e7eb',
+            padding: '20px 32px',
+            position: 'sticky',
+            top: 0,
+            zIndex: 100,
+          }}
+        >
+          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 600, color: '#1f2937' }}>
+            Session 119 - UI Components Demo
+          </h1>
+          <p style={{ margin: '8px 0 0', fontSize: '14px', color: '#6b7280' }}>
+            Exploration interactive des 18 composants créés (~11,900 LOC)
+          </p>
         </div>
-      </div>
 
-      {/* Content */}
-      <div style={{ padding: '32px' }}>
-        {/* CartaeItem Tab */}
-        {selectedTab === 'items' && (
-          <div>
-            {/* Sub Tabs */}
-            <div
-              style={{
-                display: 'flex',
-                gap: '12px',
-                marginBottom: '24px',
-                flexWrap: 'wrap',
-              }}
-            >
-              {[
-                { key: 'list', label: 'List & Cards' },
-                { key: 'detail', label: 'Detail & Preview' },
-                { key: 'editor', label: 'Editor & Form' },
-                { key: 'timeline', label: 'Timeline & Relations' },
-                { key: 'search', label: 'Search & Filter' },
-              ].map(subTab => (
-                <button
-                  key={subTab.key}
-                  type="button"
-                  onClick={() => setSelectedItemSubTab(subTab.key as any)}
-                  style={{
-                    padding: '10px 18px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    color: selectedItemSubTab === subTab.key ? '#ffffff' : '#6b7280',
-                    background: selectedItemSubTab === subTab.key ? '#3b82f6' : '#ffffff',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  {subTab.label}
-                </button>
-              ))}
-            </div>
+        {/* Main Tabs */}
+        <div
+          style={{
+            background: '#ffffff',
+            borderBottom: '1px solid #e5e7eb',
+            padding: '0 32px',
+          }}
+        >
+          <div style={{ display: 'flex', gap: '32px' }}>
+            {[
+              { key: 'items', label: 'CartaeItem Components' },
+              { key: 'sources', label: 'Source Management Components' },
+              { key: 'office365', label: 'Office365 Sync (Live)' },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setSelectedTab(tab.key as any)}
+                style={{
+                  padding: '16px 0',
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  color: selectedTab === tab.key ? '#3b82f6' : '#6b7280',
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom:
+                    selectedTab === tab.key ? '3px solid #3b82f6' : '3px solid transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-            {/* List & Cards */}
-            {selectedItemSubTab === 'list' && (
-              <div style={{ display: 'grid', gap: '24px' }}>
-                <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                    Vue Unifiée - Toutes les sources (Mail + Teams)
-                  </h3>
-
-                  {/* Info box avec compteur */}
-                  <div
+        {/* Content */}
+        <div style={{ padding: '32px' }}>
+          {/* CartaeItem Tab */}
+          {selectedTab === 'items' && (
+            <div>
+              {/* Sub Tabs */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '12px',
+                  marginBottom: '24px',
+                  flexWrap: 'wrap',
+                }}
+              >
+                {[
+                  { key: 'list', label: 'List & Cards' },
+                  { key: 'detail', label: 'Detail & Preview' },
+                  { key: 'editor', label: 'Editor & Form' },
+                  { key: 'timeline', label: 'Timeline & Relations' },
+                  { key: 'search', label: 'Search & Filter' },
+                ].map(subTab => (
+                  <button
+                    key={subTab.key}
+                    type="button"
+                    onClick={() => setSelectedItemSubTab(subTab.key as any)}
                     style={{
-                      marginBottom: '16px',
-                      padding: '12px',
-                      background: '#f0f9ff',
+                      padding: '10px 18px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: selectedItemSubTab === subTab.key ? '#ffffff' : '#6b7280',
+                      background: selectedItemSubTab === subTab.key ? '#3b82f6' : '#ffffff',
+                      border: '1px solid #d1d5db',
                       borderRadius: '8px',
-                      border: '1px solid #bfdbfe',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
                     }}
                   >
-                    <p style={{ margin: 0, fontSize: '14px', color: '#1e40af' }}>
-                      📊 <strong>{filteredUnifiedItems.length}</strong> item
-                      {filteredUnifiedItems.length > 1 ? 's' : ''} affiché
-                      {filteredUnifiedItems.length > 1 ? 's' : ''} sur{' '}
-                      <strong>{allItems.length}</strong> total
-                    </p>
-                  </div>
+                    {subTab.label}
+                  </button>
+                ))}
+              </div>
 
-                  {/* Contrôles : Recherche + Tri + Filtre Type */}
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr auto auto',
-                      gap: '12px',
-                      marginBottom: '16px',
-                      alignItems: 'center',
-                    }}
-                  >
-                    {/* Recherche */}
-                    <input
-                      type="text"
-                      placeholder="🔍 Rechercher dans titre ou contenu..."
-                      value={unifiedSearchText}
-                      onChange={e => setUnifiedSearchText(e.target.value)}
-                      style={{
-                        padding: '10px 14px',
-                        fontSize: '14px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        outline: 'none',
-                      }}
-                    />
+              {/* List & Cards */}
+              {selectedItemSubTab === 'list' && (
+                <div style={{ display: 'grid', gap: '24px' }}>
+                  <div>
+                    <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                      Vue Unifiée - Toutes les sources (Mail + Teams)
+                    </h3>
 
-                    {/* Sélecteur de tri */}
-                    <select
-                      value={unifiedSortMode}
-                      onChange={e => setUnifiedSortMode(e.target.value as any)}
+                    {/* Info box avec compteur */}
+                    <div
                       style={{
-                        padding: '10px 14px',
-                        fontSize: '14px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        background: '#ffffff',
-                        cursor: 'pointer',
+                        marginBottom: '16px',
+                        padding: '12px',
+                        background: '#f0f9ff',
+                        borderRadius: '8px',
+                        border: '1px solid #bfdbfe',
                       }}
                     >
-                      <option value="date-desc">📅 Date ↓ (récent)</option>
-                      <option value="date-asc">📅 Date ↑ (ancien)</option>
-                      <option value="title-asc">🔤 Titre A→Z</option>
-                      <option value="title-desc">🔤 Titre Z→A</option>
-                    </select>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#1e40af' }}>
+                        📊 <strong>{filteredUnifiedItems.length}</strong> item
+                        {filteredUnifiedItems.length > 1 ? 's' : ''} affiché
+                        {filteredUnifiedItems.length > 1 ? 's' : ''} sur{' '}
+                        <strong>{allItems.length}</strong> total
+                      </p>
+                    </div>
 
-                    {/* Filtre par type */}
-                    <select
-                      value={unifiedTypeFilter}
-                      onChange={e => setUnifiedTypeFilter(e.target.value as any)}
+                    {/* Contrôles : Recherche + Tri + Filtre Type */}
+                    <div
                       style={{
-                        padding: '10px 14px',
-                        fontSize: '14px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        background: '#ffffff',
-                        cursor: 'pointer',
+                        display: 'grid',
+                        gridTemplateColumns: '1fr auto auto',
+                        gap: '12px',
+                        marginBottom: '16px',
+                        alignItems: 'center',
                       }}
                     >
-                      <option value="all">📋 Tous les types</option>
-                      <option value="email">📧 Emails uniquement</option>
-                      <option value="message">💬 Teams uniquement</option>
-                    </select>
-                  </div>
-
-                  {/* Liste dépliante de TOUS les items (pattern Office365 Sync) */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {filteredUnifiedItems.length === 0 ? (
-                      <div
+                      {/* Recherche */}
+                      <input
+                        type="text"
+                        placeholder="🔍 Rechercher dans titre ou contenu..."
+                        value={unifiedSearchText}
+                        onChange={e => setUnifiedSearchText(e.target.value)}
                         style={{
-                          padding: '40px',
-                          textAlign: 'center',
-                          background: '#f9fafb',
-                          borderRadius: '8px',
-                          color: '#6b7280',
+                          padding: '10px 14px',
+                          fontSize: '14px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          outline: 'none',
+                        }}
+                      />
+
+                      {/* Sélecteur de tri */}
+                      <select
+                        value={unifiedSortMode}
+                        onChange={e => setUnifiedSortMode(e.target.value as any)}
+                        style={{
+                          padding: '10px 14px',
+                          fontSize: '14px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          background: '#ffffff',
+                          cursor: 'pointer',
                         }}
                       >
-                        <p style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 500 }}>
-                          {allItems.length === 0 ? 'Aucun item à afficher' : 'Aucun résultat'}
-                        </p>
-                        <p style={{ margin: 0, fontSize: '14px' }}>
-                          {allItems.length === 0
-                            ? "Synchronisez Office365 depuis l'onglet correspondant"
-                            : 'Modifiez les filtres ou la recherche'}
-                        </p>
-                      </div>
-                    ) : (
-                      filteredUnifiedItems.map(item => (
-                        <div key={item.id}>
-                          {/* Carte item */}
-                          <CartaeItemCard
-                            item={item}
-                            onClick={() => {
-                              // Toggle : si déjà sélectionné, on ferme, sinon on ouvre
-                              setSelectedItem(selectedItem?.id === item.id ? null : item);
-                            }}
-                            showActions
-                            style={{
-                              cursor: 'pointer',
-                              border:
-                                selectedItem?.id === item.id
-                                  ? '2px solid #3b82f6'
-                                  : '1px solid #e5e7eb',
-                              background: selectedItem?.id === item.id ? '#eff6ff' : '#ffffff',
-                            }}
-                          />
+                        <option value="date-desc">📅 Date ↓ (récent)</option>
+                        <option value="date-asc">📅 Date ↑ (ancien)</option>
+                        <option value="title-asc">🔤 Titre A→Z</option>
+                        <option value="title-desc">🔤 Titre Z→A</option>
+                      </select>
 
-                          {/* Détail déplié */}
-                          {selectedItem?.id === item.id && (
-                            <div
-                              style={{
-                                marginTop: '8px',
-                                marginLeft: '16px',
-                                padding: '20px',
-                                background: '#f9fafb',
-                                borderLeft: '3px solid #3b82f6',
-                                borderRadius: '0 8px 8px 0',
-                              }}
-                            >
-                              <CartaeItemDetail
-                                item={item}
-                                mode="inline"
-                                showRelationships={false}
-                                showAIInsights={false}
-                              />
-                            </div>
-                          )}
+                      {/* Filtre par type */}
+                      <select
+                        value={unifiedTypeFilter}
+                        onChange={e => setUnifiedTypeFilter(e.target.value as any)}
+                        style={{
+                          padding: '10px 14px',
+                          fontSize: '14px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          background: '#ffffff',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value="all">📋 Tous les types</option>
+                        <option value="email">📧 Emails uniquement</option>
+                        <option value="message">💬 Teams uniquement</option>
+                        <option value="task">✅ Tâches Planner uniquement</option>
+                      </select>
+                    </div>
+
+                    {/* Liste dépliante de TOUS les items (pattern Office365 Sync) */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {filteredUnifiedItems.length === 0 ? (
+                        <div
+                          style={{
+                            padding: '40px',
+                            textAlign: 'center',
+                            background: '#f9fafb',
+                            borderRadius: '8px',
+                            color: '#6b7280',
+                          }}
+                        >
+                          <p style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 500 }}>
+                            {allItems.length === 0 ? 'Aucun item à afficher' : 'Aucun résultat'}
+                          </p>
+                          <p style={{ margin: 0, fontSize: '14px' }}>
+                            {allItems.length === 0
+                              ? "Synchronisez Office365 depuis l'onglet correspondant"
+                              : 'Modifiez les filtres ou la recherche'}
+                          </p>
                         </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
+                      ) : (
+                        filteredUnifiedItems.map(item => (
+                          <div key={item.id}>
+                            {/* Carte item */}
+                            <CartaeItemCard
+                              item={item}
+                              onClick={() => {
+                                // Toggle : si déjà sélectionné, on ferme, sinon on ouvre
+                                setSelectedItem(selectedItem?.id === item.id ? null : item);
+                              }}
+                              showActions
+                              style={{
+                                cursor: 'pointer',
+                                border:
+                                  selectedItem?.id === item.id
+                                    ? '2px solid #3b82f6'
+                                    : '1px solid #e5e7eb',
+                                background: selectedItem?.id === item.id ? '#eff6ff' : '#ffffff',
+                              }}
+                            />
 
-            {/* Detail & Preview */}
-            {selectedItemSubTab === 'detail' && selectedItem && (
-              <div style={{ display: 'grid', gap: '24px' }}>
-                <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                    CartaeItemDetail
-                  </h3>
-                  <CartaeItemDetail
-                    item={selectedItem}
-                    mode="inline"
-                    showRelationships
-                    showAIInsights
-                  />
-                </div>
-
-                <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                    CartaeItemPreview
-                  </h3>
-                  <div style={{ padding: '40px', background: '#ffffff', borderRadius: '8px' }}>
-                    <p style={{ marginBottom: '20px', color: '#6b7280' }}>
-                      Survolez la carte ci-dessous pour voir le preview:
-                    </p>
-                    <div style={{ maxWidth: '400px' }}>
-                      <CartaeItemCard item={selectedItem} onClick={() => {}} />
+                            {/* Détail déplié */}
+                            {selectedItem?.id === item.id && (
+                              <div
+                                style={{
+                                  marginTop: '8px',
+                                  marginLeft: '16px',
+                                  padding: '20px',
+                                  background: '#f9fafb',
+                                  borderLeft: '3px solid #3b82f6',
+                                  borderRadius: '0 8px 8px 0',
+                                }}
+                              >
+                                <CartaeItemDetail
+                                  item={item}
+                                  mode="inline"
+                                  showRelationships={false}
+                                  showAIInsights={false}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Editor & Form */}
-            {selectedItemSubTab === 'editor' && (
-              <div style={{ display: 'grid', gap: '24px' }}>
-                <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                    CartaeItemEditor (mode inline)
-                  </h3>
-                  <CartaeItemEditor
-                    item={selectedItem || undefined}
-                    onSave={() => {
-                      /* Item saved */
-                    }}
-                    onCancel={() => {
-                      /* Editing cancelled */
-                    }}
-                    mode="inline"
-                    showDelete
-                  />
+              {/* Detail & Preview */}
+              {selectedItemSubTab === 'detail' && selectedItem && (
+                <div style={{ display: 'grid', gap: '24px' }}>
+                  <div>
+                    <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                      CartaeItemDetail
+                    </h3>
+                    <CartaeItemDetail
+                      item={selectedItem}
+                      mode="inline"
+                      showRelationships
+                      showAIInsights
+                    />
+                  </div>
+
+                  <div>
+                    <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                      CartaeItemPreview
+                    </h3>
+                    <div style={{ padding: '40px', background: '#ffffff', borderRadius: '8px' }}>
+                      <p style={{ marginBottom: '20px', color: '#6b7280' }}>
+                        Survolez la carte ci-dessous pour voir le preview:
+                      </p>
+                      <div style={{ maxWidth: '400px' }}>
+                        <CartaeItemCard item={selectedItem} onClick={() => {}} />
+                      </div>
+                    </div>
+                  </div>
                 </div>
+              )}
 
-                <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                    CartaeItemForm (simplifié)
-                  </h3>
-                  <CartaeItemForm
-                    onSave={() => {
-                      /* Item saved */
-                    }}
-                    onCancel={() => {
-                      /* Form cancelled */
-                    }}
-                    showMetadata
-                  />
+              {/* Editor & Form */}
+              {selectedItemSubTab === 'editor' && (
+                <div style={{ display: 'grid', gap: '24px' }}>
+                  <div>
+                    <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                      CartaeItemEditor (mode inline)
+                    </h3>
+                    <CartaeItemEditor
+                      item={selectedItem || undefined}
+                      onSave={() => {
+                        /* Item saved */
+                      }}
+                      onCancel={() => {
+                        /* Editing cancelled */
+                      }}
+                      mode="inline"
+                      showDelete
+                    />
+                  </div>
+
+                  <div>
+                    <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                      CartaeItemForm (simplifié)
+                    </h3>
+                    <CartaeItemForm
+                      onSave={() => {
+                        /* Item saved */
+                      }}
+                      onCancel={() => {
+                        /* Form cancelled */
+                      }}
+                      showMetadata
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Timeline & Relations */}
-            {selectedItemSubTab === 'timeline' && selectedItem && (
-              <div style={{ display: 'grid', gap: '24px' }}>
-                <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                    CartaeItemTimeline
-                  </h3>
-                  <CartaeItemTimeline item={selectedItem} relativeTime />
+              {/* Timeline & Relations */}
+              {selectedItemSubTab === 'timeline' && selectedItem && (
+                <div style={{ display: 'grid', gap: '24px' }}>
+                  <div>
+                    <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                      CartaeItemTimeline
+                    </h3>
+                    <CartaeItemTimeline item={selectedItem} relativeTime />
+                  </div>
+
+                  <div>
+                    <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                      CartaeItemRelationships
+                    </h3>
+                    <CartaeItemRelationships
+                      item={selectedItem}
+                      relations={[
+                        {
+                          id: 'rel-1',
+                          type: 'wikilink',
+                          direction: 'bidirectional',
+                          targetItem: mockItems[1],
+                          strength: 0.8,
+                        },
+                        {
+                          id: 'rel-2',
+                          type: 'tag',
+                          direction: 'outgoing',
+                          targetItem: mockItems[2],
+                          strength: 0.6,
+                        },
+                      ]}
+                      view="list"
+                      groupByType
+                    />
+                  </div>
                 </div>
+              )}
 
-                <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                    CartaeItemRelationships
-                  </h3>
-                  <CartaeItemRelationships
-                    item={selectedItem}
-                    relations={[
-                      {
-                        id: 'rel-1',
-                        type: 'wikilink',
-                        direction: 'bidirectional',
-                        targetItem: mockItems[1],
-                        strength: 0.8,
-                      },
-                      {
-                        id: 'rel-2',
-                        type: 'tag',
-                        direction: 'outgoing',
-                        targetItem: mockItems[2],
-                        strength: 0.6,
-                      },
-                    ]}
-                    view="list"
-                    groupByType
-                  />
+              {/* Search & Filter */}
+              {selectedItemSubTab === 'search' && (
+                <div style={{ display: 'grid', gap: '24px' }}>
+                  <div>
+                    <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                      CartaeItemSearch
+                    </h3>
+                    <CartaeItemSearch
+                      items={mockItems}
+                      showSuggestions
+                      showHistory
+                      onItemClick={item => setSelectedItem(item)}
+                    />
+                  </div>
+
+                  <div>
+                    <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                      CartaeItemFilter
+                    </h3>
+                    <CartaeItemFilter
+                      filters={{}}
+                      onFiltersChange={() => {
+                        /* Filters changed */
+                      }}
+                      availableTags={['projet', 'cartae', 'urgent', 'client', 'dev']}
+                      availableSources={['office365-mail', 'office365-calendar', 'obsidian']}
+                      showResetButton
+                      showActiveCount
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Search & Filter */}
-            {selectedItemSubTab === 'search' && (
-              <div style={{ display: 'grid', gap: '24px' }}>
-                <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                    CartaeItemSearch
-                  </h3>
-                  <CartaeItemSearch
-                    items={mockItems}
-                    showSuggestions
-                    showHistory
-                    onItemClick={item => setSelectedItem(item)}
-                  />
-                </div>
-
-                <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                    CartaeItemFilter
-                  </h3>
-                  <CartaeItemFilter
-                    filters={{}}
-                    onFiltersChange={() => {
-                      /* Filters changed */
-                    }}
-                    availableTags={['projet', 'cartae', 'urgent', 'client', 'dev']}
-                    availableSources={['office365-mail', 'office365-calendar', 'obsidian']}
-                    showResetButton
-                    showActiveCount
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Source Management Tab */}
-        {selectedTab === 'sources' && (
-          <div>
-            {/* Sub Tabs */}
-            <div
-              style={{
-                display: 'flex',
-                gap: '12px',
-                marginBottom: '24px',
-                flexWrap: 'wrap',
-              }}
-            >
-              {[
-                { key: 'list', label: 'Source List' },
-                { key: 'detail', label: 'Source Detail' },
-                { key: 'config', label: 'Config Form' },
-                { key: 'mapping', label: 'Mapping Editor' },
-                { key: 'sync', label: 'Sync Monitoring' },
-              ].map(subTab => (
-                <button
-                  key={subTab.key}
-                  type="button"
-                  onClick={() => setSelectedSourceSubTab(subTab.key as any)}
-                  style={{
-                    padding: '10px 18px',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    color: selectedSourceSubTab === subTab.key ? '#ffffff' : '#6b7280',
-                    background: selectedSourceSubTab === subTab.key ? '#3b82f6' : '#ffffff',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  {subTab.label}
-                </button>
-              ))}
+              )}
             </div>
+          )}
 
-            {/* Source List */}
-            {selectedSourceSubTab === 'list' && (
-              <div>
-                <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                  SourceList
-                </h3>
-                <SourceList
-                  sources={mockSources}
-                  onSourceClick={source => setSelectedSource(source)}
-                  onSync={() => {
-                    /* Source sync triggered */
-                  }}
-                  onConfigure={() => {
-                    /* Source configure triggered */
-                  }}
-                  onTogglePause={() => {
-                    /* Source pause toggled */
-                  }}
-                  onDelete={() => {
-                    /* Source deleted */
-                  }}
-                  onCreateNew={() => {
-                    /* New source creation */
-                  }}
-                  view="grid"
-                  showSearch
-                />
+          {/* Source Management Tab */}
+          {selectedTab === 'sources' && (
+            <div>
+              {/* Sub Tabs */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '12px',
+                  marginBottom: '24px',
+                  flexWrap: 'wrap',
+                }}
+              >
+                {[
+                  { key: 'list', label: 'Source List' },
+                  { key: 'detail', label: 'Source Detail' },
+                  { key: 'config', label: 'Config Form' },
+                  { key: 'mapping', label: 'Mapping Editor' },
+                  { key: 'sync', label: 'Sync Monitoring' },
+                ].map(subTab => (
+                  <button
+                    key={subTab.key}
+                    type="button"
+                    onClick={() => setSelectedSourceSubTab(subTab.key as any)}
+                    style={{
+                      padding: '10px 18px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: selectedSourceSubTab === subTab.key ? '#ffffff' : '#6b7280',
+                      background: selectedSourceSubTab === subTab.key ? '#3b82f6' : '#ffffff',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    {subTab.label}
+                  </button>
+                ))}
               </div>
-            )}
 
-            {/* Source Detail */}
-            {selectedSourceSubTab === 'detail' && selectedSource && (
-              <div>
-                <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                  SourceDetail
-                </h3>
-                <SourceDetail
-                  source={selectedSource}
-                  mode="inline"
-                  showLogs
-                  onEdit={() => {
-                    /* Source edited */
-                  }}
-                  onSync={() => {
-                    /* Source synced */
-                  }}
-                  onDelete={() => {
-                    /* Source deleted */
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Config Form */}
-            {selectedSourceSubTab === 'config' && (
-              <div>
-                <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                  SourceConfigForm
-                </h3>
-                <SourceConfigForm
-                  connectorType="office365-mail"
-                  onSave={() => {
-                    /* Config saved */
-                  }}
-                  onCancel={() => {
-                    /* Config cancelled */
-                  }}
-                  onTestConnection={async () => ({
-                    success: true,
-                    message: 'Connexion réussie!',
-                    details: {
-                      endpoint: 'https://graph.microsoft.com/v1.0',
-                      auth: 'ok',
-                      permissions: ['Mail.Read', 'User.Read'],
-                      latency: 145,
-                    },
-                  })}
-                />
-              </div>
-            )}
-
-            {/* Mapping Editor */}
-            {selectedSourceSubTab === 'mapping' && (
-              <div>
-                <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                  SourceMappingEditor
-                </h3>
-                <SourceMappingEditor
-                  connectorType="office365-mail"
-                  mappings={[
-                    { id: '1', sourceField: 'subject', targetField: 'title' },
-                    { id: '2', sourceField: 'bodyPreview', targetField: 'content' },
-                    {
-                      id: '3',
-                      sourceField: 'from.emailAddress.address',
-                      targetField: 'metadata.author',
-                    },
-                    {
-                      id: '4',
-                      sourceField: 'receivedDateTime',
-                      targetField: 'metadata.startDate',
-                      transform: 'date',
-                    },
-                  ]}
-                  onMappingsChange={() => {
-                    /* Mappings changed */
-                  }}
-                  sourceFields={[
-                    'subject',
-                    'bodyPreview',
-                    'from.emailAddress.address',
-                    'receivedDateTime',
-                    'categories',
-                  ]}
-                  showTransforms
-                />
-              </div>
-            )}
-
-            {/* Sync Monitoring */}
-            {selectedSourceSubTab === 'sync' && selectedSource && (
-              <div style={{ display: 'grid', gap: '24px' }}>
+              {/* Source List */}
+              {selectedSourceSubTab === 'list' && (
                 <div>
                   <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                    SourceSyncStatus (en cours)
+                    SourceList
                   </h3>
-                  <SourceSyncStatus
-                    source={selectedSource}
-                    syncStatus={mockSyncStatus}
-                    onCancel={() => {
-                      /* Sync cancelled */
+                  <SourceList
+                    sources={mockSources}
+                    onSourceClick={source => setSelectedSource(source)}
+                    onSync={() => {
+                      /* Source sync triggered */
                     }}
-                    onRetry={() => {
-                      /* Sync retry */
+                    onConfigure={() => {
+                      /* Source configure triggered */
                     }}
                     onTogglePause={() => {
-                      /* Sync pause toggled */
+                      /* Source pause toggled */
                     }}
-                    showLogs={false}
-                    compact={false}
+                    onDelete={() => {
+                      /* Source deleted */
+                    }}
+                    onCreateNew={() => {
+                      /* New source creation */
+                    }}
+                    view="grid"
+                    showSearch
                   />
                 </div>
+              )}
 
+              {/* Source Detail */}
+              {selectedSourceSubTab === 'detail' && selectedSource && (
                 <div>
                   <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                    SourceSyncHistory
+                    SourceDetail
                   </h3>
-                  <SourceSyncHistory
+                  <SourceDetail
                     source={selectedSource}
-                    history={mockSyncHistory}
-                    maxEntries={50}
-                    showFilters
-                    onExport={() => {
-                      /* History exported */
+                    mode="inline"
+                    showLogs
+                    onEdit={() => {
+                      /* Source edited */
+                    }}
+                    onSync={() => {
+                      /* Source synced */
+                    }}
+                    onDelete={() => {
+                      /* Source deleted */
                     }}
                   />
                 </div>
+              )}
 
+              {/* Config Form */}
+              {selectedSourceSubTab === 'config' && (
                 <div>
                   <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
-                    SourceTestConnection
+                    SourceConfigForm
                   </h3>
-                  <SourceTestConnection
-                    connectorType={selectedSource.connectorType}
-                    config={selectedSource.config}
-                    onTest={async () => ({
+                  <SourceConfigForm
+                    connectorType="office365-mail"
+                    onSave={() => {
+                      /* Config saved */
+                    }}
+                    onCancel={() => {
+                      /* Config cancelled */
+                    }}
+                    onTestConnection={async () => ({
                       success: true,
-                      message: 'Connexion établie avec succès',
+                      message: 'Connexion réussie!',
                       details: {
                         endpoint: 'https://graph.microsoft.com/v1.0',
                         auth: 'ok',
-                        permissions: ['Mail.Read', 'Mail.ReadWrite', 'User.Read'],
-                        latency: 128,
-                        sampleData: {
-                          subject: 'Test Email',
-                          from: { emailAddress: { address: 'test@example.com' } },
-                        },
+                        permissions: ['Mail.Read', 'User.Read'],
+                        latency: 145,
                       },
                     })}
-                    autoTest={false}
                   />
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
 
-        {/* Office365 Sync Tab */}
-        {selectedTab === 'office365' && (
-          <div>
-            <div
-              style={{
-                maxWidth: '800px',
-                margin: '0 auto',
-                background: '#ffffff',
-                borderRadius: '12px',
-                padding: '32px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              }}
-            >
-              <h2 style={{ margin: '0 0 16px', fontSize: '24px', fontWeight: 600 }}>
-                Synchronisation Office365 → PostgreSQL
-              </h2>
-
-              <p style={{ margin: '0 0 24px', color: '#6b7280', lineHeight: 1.6 }}>
-                Synchronise vos emails Office365 directement dans PostgreSQL en utilisant le token
-                fourni par l'extension Firefox.
-              </p>
-
-              <div
-                style={{
-                  padding: '16px',
-                  background: '#f3f4f6',
-                  borderRadius: '8px',
-                  marginBottom: '24px',
-                  fontSize: '14px',
-                  lineHeight: 1.6,
-                }}
-              >
-                <strong>Prérequis :</strong>
-                <ul style={{ margin: '8px 0 0', paddingLeft: '20px' }}>
-                  <li>Extension Firefox Cartae installée et connectée à Office365</li>
-                  <li>Backend database-api en cours d'exécution (port 3001)</li>
-                  <li>PostgreSQL avec table cartae_items créée</li>
-                </ul>
-              </div>
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '16px',
-                  marginBottom: '16px',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={handleOffice365Sync}
-                  disabled={syncLoading}
-                  style={{
-                    padding: '16px 24px',
-                    fontSize: '16px',
-                    fontWeight: 600,
-                    color: '#ffffff',
-                    background: syncLoading ? '#9ca3af' : '#3b82f6',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: syncLoading ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: syncLoading ? 'none' : '0 2px 4px rgba(59, 130, 246, 0.3)',
-                  }}
-                >
-                  {syncLoading ? '⏳ Synchronisation...' : '📧 Synchroniser Emails'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleTeamsSync}
-                  disabled={teamsSyncLoading}
-                  style={{
-                    padding: '16px 24px',
-                    fontSize: '16px',
-                    fontWeight: 600,
-                    color: '#ffffff',
-                    background: teamsSyncLoading ? '#9ca3af' : '#8b5cf6',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: teamsSyncLoading ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: teamsSyncLoading ? 'none' : '0 2px 4px rgba(139, 92, 246, 0.3)',
-                  }}
-                >
-                  {teamsSyncLoading ? '⏳ Synchronisation...' : '💬 Synchroniser Teams'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={debugTokens}
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    color: '#6b7280',
-                    background: '#ffffff',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  🔍 Debug Tokens
-                </button>
-              </div>
-
-              {/* Résultats de la synchronisation Emails */}
-              {syncResult && (
-                <div
-                  style={{
-                    marginTop: '8px',
-                    padding: '20px',
-                    background: syncResult.success ? '#f0fdf4' : '#fef2f2',
-                    border: `2px solid ${syncResult.success ? '#86efac' : '#fca5a5'}`,
-                    borderRadius: '8px',
-                  }}
-                >
-                  <h3
-                    style={{
-                      margin: '0 0 12px',
-                      fontSize: '18px',
-                      fontWeight: 600,
-                      color: syncResult.success ? '#166534' : '#991b1b',
-                    }}
-                  >
-                    {syncResult.success
-                      ? '✅ Synchronisation Emails réussie'
-                      : '❌ Erreur synchronisation Emails'}
+              {/* Mapping Editor */}
+              {selectedSourceSubTab === 'mapping' && (
+                <div>
+                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                    SourceMappingEditor
                   </h3>
-
-                  {syncResult.success ? (
-                    <div style={{ color: '#166534', fontSize: '14px', lineHeight: 1.6 }}>
-                      <p style={{ margin: '0 0 8px' }}>
-                        <strong>Emails importés :</strong> {syncResult.itemsImported || 0}
-                      </p>
-                      <p style={{ margin: '0 0 8px' }}>
-                        <strong>Emails ignorés (déjà existants) :</strong>{' '}
-                        {syncResult.itemsSkipped || 0}
-                      </p>
-                      <p style={{ margin: '0 0 8px' }}>
-                        <strong>Total traité :</strong> {syncResult.totalProcessed || 0}
-                      </p>
-
-                      {syncResult.errors && syncResult.errors.length > 0 && (
-                        <div style={{ marginTop: '16px' }}>
-                          <p style={{ margin: '0 0 8px', fontWeight: 600 }}>
-                            ⚠️ Erreurs partielles ({syncResult.errors.length}) :
-                          </p>
-                          <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px' }}>
-                            {syncResult.errors.map((err, idx) => (
-                              <li key={idx} style={{ marginBottom: '4px' }}>
-                                {err}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <p style={{ margin: 0, color: '#991b1b', fontSize: '14px' }}>
-                      {syncResult.error || 'Une erreur inconnue est survenue'}
-                    </p>
-                  )}
+                  <SourceMappingEditor
+                    connectorType="office365-mail"
+                    mappings={[
+                      { id: '1', sourceField: 'subject', targetField: 'title' },
+                      { id: '2', sourceField: 'bodyPreview', targetField: 'content' },
+                      {
+                        id: '3',
+                        sourceField: 'from.emailAddress.address',
+                        targetField: 'metadata.author',
+                      },
+                      {
+                        id: '4',
+                        sourceField: 'receivedDateTime',
+                        targetField: 'metadata.startDate',
+                        transform: 'date',
+                      },
+                    ]}
+                    onMappingsChange={() => {
+                      /* Mappings changed */
+                    }}
+                    sourceFields={[
+                      'subject',
+                      'bodyPreview',
+                      'from.emailAddress.address',
+                      'receivedDateTime',
+                      'categories',
+                    ]}
+                    showTransforms
+                  />
                 </div>
               )}
 
-              {/* Résultats de la synchronisation Teams */}
-              {teamsSyncResult && (
-                <div
-                  style={{
-                    marginTop: '8px',
-                    padding: '20px',
-                    background: teamsSyncResult.success ? '#f5f3ff' : '#fef2f2',
-                    border: `2px solid ${teamsSyncResult.success ? '#c4b5fd' : '#fca5a5'}`,
-                    borderRadius: '8px',
-                  }}
-                >
-                  <h3
-                    style={{
-                      margin: '0 0 12px',
-                      fontSize: '18px',
-                      fontWeight: 600,
-                      color: teamsSyncResult.success ? '#5b21b6' : '#991b1b',
-                    }}
-                  >
-                    {teamsSyncResult.success
-                      ? '✅ Synchronisation Teams réussie'
-                      : '❌ Erreur synchronisation Teams'}
-                  </h3>
-
-                  {teamsSyncResult.success ? (
-                    <div style={{ color: '#5b21b6', fontSize: '14px', lineHeight: 1.6 }}>
-                      <p style={{ margin: '0 0 8px' }}>
-                        <strong>Chats importés :</strong> {teamsSyncResult.itemsImported || 0}
-                      </p>
-                      <p style={{ margin: '0 0 8px' }}>
-                        <strong>Chats ignorés (déjà existants) :</strong>{' '}
-                        {teamsSyncResult.itemsSkipped || 0}
-                      </p>
-                      <p style={{ margin: '0 0 8px' }}>
-                        <strong>Total traité :</strong> {teamsSyncResult.totalProcessed || 0}
-                      </p>
-
-                      {teamsSyncResult.errors && teamsSyncResult.errors.length > 0 && (
-                        <div style={{ marginTop: '16px' }}>
-                          <p style={{ margin: '0 0 8px', fontWeight: 600 }}>
-                            ⚠️ Erreurs partielles ({teamsSyncResult.errors.length}) :
-                          </p>
-                          <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px' }}>
-                            {teamsSyncResult.errors.map((err, idx) => (
-                              <li key={idx} style={{ marginBottom: '4px' }}>
-                                {err}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <p style={{ margin: 0, color: '#991b1b', fontSize: '14px' }}>
-                      {teamsSyncResult.error || 'Une erreur inconnue est survenue'}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Affichage des emails importés */}
-              {office365Items.length > 0 && (
-                <div style={{ marginTop: '32px' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '16px',
-                    }}
-                  >
-                    <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>
-                      📧 Emails importés ({office365Items.length})
+              {/* Sync Monitoring */}
+              {selectedSourceSubTab === 'sync' && selectedSource && (
+                <div style={{ display: 'grid', gap: '24px' }}>
+                  <div>
+                    <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                      SourceSyncStatus (en cours)
                     </h3>
-                    <button
-                      type="button"
-                      onClick={fetchOffice365Items}
-                      disabled={itemsLoading}
-                      style={{
-                        padding: '8px 16px',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        color: '#3b82f6',
-                        background: '#ffffff',
-                        border: '1px solid #3b82f6',
-                        borderRadius: '6px',
-                        cursor: itemsLoading ? 'not-allowed' : 'pointer',
+                    <SourceSyncStatus
+                      source={selectedSource}
+                      syncStatus={mockSyncStatus}
+                      onCancel={() => {
+                        /* Sync cancelled */
                       }}
-                    >
-                      {itemsLoading ? '⏳ Chargement...' : '🔄 Actualiser'}
-                    </button>
+                      onRetry={() => {
+                        /* Sync retry */
+                      }}
+                      onTogglePause={() => {
+                        /* Sync pause toggled */
+                      }}
+                      showLogs={false}
+                      compact={false}
+                    />
                   </div>
 
-                  {/* Liste dépliante d'emails */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {office365Items.map(item => (
-                      <div key={item.id}>
-                        {/* Carte email */}
-                        <CartaeItemCard
-                          item={item}
-                          onClick={() => {
-                            // Toggle : si déjà sélectionné, on ferme, sinon on ouvre
-                            setSelectedItem(selectedItem?.id === item.id ? null : item);
-                          }}
-                          showActions
-                          style={{
-                            cursor: 'pointer',
-                            border:
-                              selectedItem?.id === item.id
-                                ? '2px solid #3b82f6'
-                                : '1px solid #e5e7eb',
-                            background: selectedItem?.id === item.id ? '#eff6ff' : '#ffffff',
-                          }}
-                        />
+                  <div>
+                    <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                      SourceSyncHistory
+                    </h3>
+                    <SourceSyncHistory
+                      source={selectedSource}
+                      history={mockSyncHistory}
+                      maxEntries={50}
+                      showFilters
+                      onExport={() => {
+                        /* History exported */
+                      }}
+                    />
+                  </div>
 
-                        {/* Détail déplié */}
-                        {selectedItem?.id === item.id && (
-                          <div
-                            style={{
-                              marginTop: '8px',
-                              marginLeft: '16px',
-                              padding: '20px',
-                              background: '#f9fafb',
-                              borderLeft: '3px solid #3b82f6',
-                              borderRadius: '0 8px 8px 0',
-                            }}
-                          >
-                            <CartaeItemDetail
-                              item={item}
-                              mode="inline"
-                              showRelationships={false}
-                              showAIInsights={false}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                  <div>
+                    <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                      SourceTestConnection
+                    </h3>
+                    <SourceTestConnection
+                      connectorType={selectedSource.connectorType}
+                      config={selectedSource.config}
+                      onTest={async () => ({
+                        success: true,
+                        message: 'Connexion établie avec succès',
+                        details: {
+                          endpoint: 'https://graph.microsoft.com/v1.0',
+                          auth: 'ok',
+                          permissions: ['Mail.Read', 'Mail.ReadWrite', 'User.Read'],
+                          latency: 128,
+                          sampleData: {
+                            subject: 'Test Email',
+                            from: { emailAddress: { address: 'test@example.com' } },
+                          },
+                        },
+                      })}
+                      autoTest={false}
+                    />
                   </div>
                 </div>
               )}
-
-              {/* Bouton pour charger les emails si liste vide */}
-              {office365Items.length === 0 && !itemsLoading && !syncResult && (
-                <div
-                  style={{
-                    marginTop: '32px',
-                    padding: '24px',
-                    background: '#f9fafb',
-                    borderRadius: '8px',
-                    textAlign: 'center',
-                  }}
-                >
-                  <p style={{ margin: '0 0 16px', color: '#6b7280' }}>
-                    Aucun email importé pour le moment.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={fetchOffice365Items}
-                    style={{
-                      padding: '12px 24px',
-                      fontSize: '15px',
-                      fontWeight: 500,
-                      color: '#ffffff',
-                      background: '#10b981',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    📥 Charger les emails existants
-                  </button>
-                </div>
-              )}
-
-              {/* Indicateur de chargement */}
-              {itemsLoading && (
-                <div
-                  style={{
-                    marginTop: '32px',
-                    textAlign: 'center',
-                    padding: '40px',
-                    color: '#6b7280',
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '48px',
-                      marginBottom: '16px',
-                    }}
-                  >
-                    ⏳
-                  </div>
-                  <p style={{ margin: 0, fontSize: '16px', fontWeight: 500 }}>
-                    Chargement des emails...
-                  </p>
-                </div>
-              )}
-
-              {/* Informations techniques */}
-              <div
-                style={{
-                  marginTop: '24px',
-                  padding: '16px',
-                  background: '#f9fafb',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  color: '#6b7280',
-                  lineHeight: 1.6,
-                }}
-              >
-                <p style={{ margin: '0 0 8px', fontWeight: 600 }}>ℹ️ Informations techniques</p>
-                <p style={{ margin: '0 0 4px' }}>
-                  • <strong>Backend API :</strong> http://localhost:3001/api/office365/sync
-                </p>
-                <p style={{ margin: '0 0 4px' }}>
-                  • <strong>User ID :</strong> 4397e804-31e5-44c4-b89e-82058fa8502b
-                  (demo@cartae.local)
-                </p>
-                <p style={{ margin: '0 0 4px' }}>
-                  • <strong>Limite :</strong> 50 emails maximum par synchronisation
-                </p>
-                <p style={{ margin: '0' }}>
-                  • <strong>Dossier :</strong> Inbox
-                </p>
-              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Office365 Sync Tab */}
+          {selectedTab === 'office365' && <Office365SyncTab />}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

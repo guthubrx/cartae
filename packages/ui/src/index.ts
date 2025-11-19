@@ -14,3 +14,6 @@ export * from './utils';
 
 // Data
 export * from './data';
+
+// Services
+export * from './services';

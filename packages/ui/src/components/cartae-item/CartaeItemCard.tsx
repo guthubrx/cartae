@@ -8,6 +8,7 @@
 import React from 'react';
 import type { CartaeItem } from '@cartae/core/types/CartaeItem';
 import type { PriorityLevel } from '@cartae/core/types/CartaeMetadata';
+import sanitizeHtml from 'sanitize-html';
 import {
   FileText,
   Mail,
@@ -22,6 +23,8 @@ import {
   Star,
   Archive,
   MoreVertical,
+  Code,
+  Eye,
 } from 'lucide-react';
 
 /**
@@ -139,6 +142,7 @@ export const CartaeItemCard: React.FC<CartaeItemCardProps> = ({
   style,
   className = '',
 }) => {
+  const [showHtmlSource, setShowHtmlSource] = React.useState(false);
   const TypeIcon = TYPE_ICONS[item.type] || FileText;
   const typeColor = TYPE_COLORS[item.type] || '#64748B';
 
@@ -183,6 +187,55 @@ export const CartaeItemCard: React.FC<CartaeItemCardProps> = ({
     });
   };
 
+  // Nettoyer et simplifier le HTML (retirer les styles inline, les tableaux complexes)
+  const cleanHtml = (html: string): string =>
+    sanitizeHtml(html, {
+      allowedTags: [
+        'p',
+        'br',
+        'strong',
+        'b',
+        'em',
+        'i',
+        'u',
+        'a',
+        'ul',
+        'ol',
+        'li',
+        'blockquote',
+        'div',
+        'span',
+      ],
+      allowedAttributes: {
+        a: ['href'],
+      },
+      // Transformer les tableaux en texte simple
+      transformTags: {
+        table: 'div',
+        tr: 'div',
+        td: 'span',
+        th: 'span',
+      },
+    });
+
+  // Extraire le texte brut du HTML (pour aperçu dans la carte)
+  const getPlainTextPreview = (htmlOrText: string): string => {
+    // Si c'est du HTML (commence par <), extraire le texte
+    if (htmlOrText.trim().startsWith('<')) {
+      // Créer un élément temporaire pour parser le HTML nettoyé
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = cleanHtml(htmlOrText);
+      const text = tempDiv.textContent || tempDiv.innerText || '';
+      // Nettoyer : enlever espaces multiples et retours à la ligne
+      return text.replace(/\s+/g, ' ').trim();
+    }
+    // Sinon retourner tel quel (texte brut)
+    return htmlOrText;
+  };
+
+  // Détecter si le contenu est du HTML
+  const isHtmlContent = (content: string): boolean => content.trim().startsWith('<');
+
   return (
     <div
       className={`cartae-item-card ${className}`}
@@ -201,13 +254,13 @@ export const CartaeItemCard: React.FC<CartaeItemCardProps> = ({
         opacity: item.archived ? 0.6 : 1,
         ...style,
       }}
-      onMouseEnter={(e) => {
+      onMouseEnter={e => {
         if (onClick) {
           (e.currentTarget as HTMLElement).style.borderColor = typeColor;
           (e.currentTarget as HTMLElement).style.boxShadow = `0 2px 8px ${typeColor}22`;
         }
       }}
-      onMouseLeave={(e) => {
+      onMouseLeave={e => {
         if (onClick) {
           (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border, #e5e7eb)';
           (e.currentTarget as HTMLElement).style.boxShadow = 'none';
@@ -343,10 +396,10 @@ export const CartaeItemCard: React.FC<CartaeItemCardProps> = ({
                   justifyContent: 'center',
                   transition: 'background 0.2s ease',
                 }}
-                onMouseEnter={(e) => {
+                onMouseEnter={e => {
                   (e.currentTarget as HTMLElement).style.background = '#F3F4F6';
                 }}
-                onMouseLeave={(e) => {
+                onMouseLeave={e => {
                   (e.currentTarget as HTMLElement).style.background = 'transparent';
                 }}
               >
@@ -376,10 +429,10 @@ export const CartaeItemCard: React.FC<CartaeItemCardProps> = ({
                   justifyContent: 'center',
                   transition: 'background 0.2s ease',
                 }}
-                onMouseEnter={(e) => {
+                onMouseEnter={e => {
                   (e.currentTarget as HTMLElement).style.background = '#F3F4F6';
                 }}
-                onMouseLeave={(e) => {
+                onMouseLeave={e => {
                   (e.currentTarget as HTMLElement).style.background = 'transparent';
                 }}
               >
@@ -401,10 +454,10 @@ export const CartaeItemCard: React.FC<CartaeItemCardProps> = ({
                 justifyContent: 'center',
                 transition: 'background 0.2s ease',
               }}
-              onMouseEnter={(e) => {
+              onMouseEnter={e => {
                 (e.currentTarget as HTMLElement).style.background = '#F3F4F6';
               }}
-              onMouseLeave={(e) => {
+              onMouseLeave={e => {
                 (e.currentTarget as HTMLElement).style.background = 'transparent';
               }}
             >
@@ -416,27 +469,35 @@ export const CartaeItemCard: React.FC<CartaeItemCardProps> = ({
 
       {/* Content preview (si pas compact) */}
       {!compact && item.content && (
-        <p
-          style={{
-            margin: 0,
-            fontSize: '13px',
-            color: 'var(--color-text-secondary, #6b7280)',
-            lineHeight: 1.5,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-          }}
-        >
-          {item.content}
-        </p>
+        <div>
+          {/* Preview court pour emails Office365 */}
+          <p
+            style={{
+              margin: 0,
+              fontSize: '13px',
+              color: 'var(--color-text-secondary, #6b7280)',
+              lineHeight: 1.5,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              wordBreak: 'break-word',
+              maxWidth: '100%',
+            }}
+          >
+            {/* Utiliser bodyPreview si disponible (Office365), sinon extraire du content */}
+            {(item.metadata as any)?.office365?.bodyPreview
+              ? getPlainTextPreview((item.metadata as any).office365.bodyPreview)
+              : getPlainTextPreview(item.content)}
+          </p>
+        </div>
       )}
 
       {/* Tags */}
       {showBadges.tags && item.tags.length > 0 && (
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          {displayedTags.map((tag) => (
+          {displayedTags.map(tag => (
             <div
               key={tag}
               style={{

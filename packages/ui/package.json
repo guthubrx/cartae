@@ -15,12 +15,13 @@
     "@cartae/design": "workspace:*",
     "@cartae/mindmap-core": "workspace:*",
     "@xyflow/react": "^12.0.0",
+    "hotkeys-js": "^3.13.7",
+    "immer": "^10.0.3",
+    "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "zustand": "^4.4.7",
-    "immer": "^10.0.3",
-    "hotkeys-js": "^3.13.7",
-    "lucide-react": "^0.294.0"
+    "sanitize-html": "^2.17.0",
+    "zustand": "^4.4.7"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
