@@ -225,6 +225,9 @@ function emailToCartaeItem(email: GraphEmail, userId: string) {
       // Preview court pour liste
       bodyPreview: email.BodyPreview,
 
+      // Categories Outlook (séparées des tags Cartae)
+      categories: email.Categories || [],
+
       // Expéditeur enrichi
       fromName: email.From?.EmailAddress?.Name,
       fromEmail: email.From?.EmailAddress?.Address,

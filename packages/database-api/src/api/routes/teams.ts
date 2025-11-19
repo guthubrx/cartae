@@ -401,6 +401,7 @@ function chatToCartaeItem(chat: GraphChat, userId: string, messages?: GraphMessa
           id: msg.id,
           etag: msg.etag,
           messageType: msg.messageType,
+          replyToId: msg.replyToId, // Threading support
 
           // Dates
           createdDateTime: msg.createdDateTime,
