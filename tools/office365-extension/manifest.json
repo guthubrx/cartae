@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "Cartae Office 365 Token Interceptor",
+  "version": "1.0.0",
+  "description": "Intercepte automatiquement les tokens Office 365 (OWA, Graph, SharePoint, Teams) pour Cartae",
+
+  "background": {
+    "scripts": ["background.js"]
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["http://localhost/*", "http://127.0.0.1/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_start"
+    }
+  ],
+
+  "permissions": ["storage", "tabs", "webRequest", "webRequestBlocking", "<all_urls>"]
+}

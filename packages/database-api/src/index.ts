@@ -31,6 +31,8 @@ import summariesRouter from './api/routes/summaries';
 import authRouter from './api/routes/auth';
 import usersRouter from './api/routes/users';
 import auditRouter from './api/routes/audit';
+import office365Router from './api/routes/office365';
+import teamsRouter from './api/routes/teams';
 
 // Middlewares
 import { errorHandler, notFoundHandler } from './api/middlewares/errorHandler';
@@ -162,6 +164,8 @@ async function createApp(): Promise<Application> {
   app.use('/api/auth', authRouter);
   app.use('/api/users', usersRouter);
   app.use('/api/audit', auditRouter);
+  app.use('/api/office365', office365Router);
+  app.use('/api/office365/teams', teamsRouter);
 
   // ========== Error handlers (doivent être après les routes) ==========
 
