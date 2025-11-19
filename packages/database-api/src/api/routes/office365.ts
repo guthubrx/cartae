@@ -21,7 +21,7 @@ const SyncRequestSchema = z.object({
 
 /**
  * Interface Email OWA REST API v2.0 - VERSION ENRICHIE
- * Note: OWA API retourne des champs en PascalCase (pas camelCase)
+ * Note: OWA REST API v2.0 retourne des champs en PascalCase
  * Docs: https://learn.microsoft.com/en-us/previous-versions/office/office-365-api/api/version-2.0/mail-rest-operations
  */
 interface GraphEmail {
@@ -82,7 +82,7 @@ interface GraphEmail {
 
   // Statuts et propriétés
   HasAttachments: boolean;
-  Importance: 'low' | 'normal' | 'high';
+  Importance: 'Low' | 'Normal' | 'High';
   IsRead: boolean;
   IsDraft?: boolean;
   Categories: string[];
@@ -108,39 +108,35 @@ interface GraphEmail {
 
   // Flag/Suivi
   Flag?: {
-    FlagStatus: 'notFlagged' | 'complete' | 'flagged';
+    FlagStatus: 'NotFlagged' | 'Complete' | 'Flagged';
     StartDateTime?: string;
     DueDateTime?: string;
   };
 }
 
 /**
- * Appelle OWA (Outlook Web Access) API pour récupérer emails
- * Note: Utilise exactement le même endpoint que Session 64 qui fonctionnait
+ * Appelle OWA REST API v2.0 pour récupérer emails
+ * Utilise le token OWA (audience: outlook.office.com)
+ * Docs: https://learn.microsoft.com/en-us/previous-versions/office/office-365-api/api/version-2.0/mail-rest-operations
  */
-async function fetchEmailsFromGraph(
-  token: string,
-  maxEmails: number
-): Promise<GraphEmail[]> {
-  // OWA API endpoint - identique à Session 64 OwaEmailService.ts
+async function fetchEmailsFromGraph(token: string, maxEmails: number): Promise<GraphEmail[]> {
+  // OWA REST API v2.0 endpoint
   const OWA_BASE_URL = 'https://outlook.office365.com/api';
 
-  // Demander les pièces jointes et le corps complet
-  const endpoint = `${OWA_BASE_URL}/v2.0/me/mailfolders/inbox/messages?$top=${Math.min(maxEmails, 200)}&$orderby=receivedDateTime desc&$expand=Attachments`;
+  // Demander les emails avec pièces jointes et corps complet
+  const endpoint = `${OWA_BASE_URL}/v2.0/me/mailfolders/inbox/messages?$top=${Math.min(maxEmails, 200)}&$orderby=ReceivedDateTime desc&$expand=Attachments`;
 
   const response = await fetch(endpoint, {
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
-      'Accept': 'application/json',
+      Accept: 'application/json',
     },
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(
-      `OWA API error: ${response.status} ${response.statusText} - ${errorText}`
-    );
+    throw new Error(`OWA API error: ${response.status} ${response.statusText} - ${errorText}`);
   }
 
   const data = await response.json();
@@ -148,21 +144,22 @@ async function fetchEmailsFromGraph(
 }
 
 /**
- * Transforme un email OWA en CartaeItem pour PostgreSQL - VERSION ENRICHIE
- * Note: Utilise les champs PascalCase de l'API OWA
+ * Transforme un email OWA API en CartaeItem pour PostgreSQL - VERSION ENRICHIE
+ * Note: Utilise les champs PascalCase de OWA REST API v2.0
  */
 function emailToCartaeItem(email: GraphEmail, userId: string) {
   // Date du message (pas de l'import)
   const receivedDate = new Date(email.ReceivedDateTime);
 
   // Extraire les pièces jointes (nom, type, taille)
-  const attachments = email.Attachments?.map(att => ({
-    id: att.Id,
-    name: att.Name,
-    contentType: att.ContentType,
-    size: att.Size,
-    isInline: att.IsInline,
-  })) || [];
+  const attachments =
+    email.Attachments?.map(att => ({
+      id: att.Id,
+      name: att.Name,
+      contentType: att.ContentType,
+      size: att.Size,
+      isInline: att.IsInline,
+    })) || [];
 
   // Construire metadata enrichie avec TOUS les champs disponibles
   const metadata: any = {
@@ -170,14 +167,14 @@ function emailToCartaeItem(email: GraphEmail, userId: string) {
     author: email.From?.EmailAddress?.Address || 'unknown',
     participants: email.ToRecipients?.map(r => r.EmailAddress.Address) || [],
     startDate: email.ReceivedDateTime,
-    priority: email.Importance === 'high' ? 'high' : email.Importance === 'low' ? 'low' : 'medium',
+    priority: email.Importance === 'High' ? 'high' : email.Importance === 'Low' ? 'low' : 'medium',
     status: email.IsRead ? 'read' : 'unread',
 
     // Champs extensibles spécifiques Office365
     office365: {
       // Corps complet
       bodyContent: email.Body?.Content || email.BodyPreview,
-      bodyContentType: email.Body?.ContentType || 'Text',
+      bodyContentType: email.Body?.ContentType || 'text',
 
       // Expéditeur enrichi
       fromName: email.From?.EmailAddress?.Name,
@@ -185,24 +182,28 @@ function emailToCartaeItem(email: GraphEmail, userId: string) {
       senderName: email.Sender?.EmailAddress?.Name,
 
       // Destinataires en copie
-      ccRecipients: email.CcRecipients?.map(r => ({
-        email: r.EmailAddress.Address,
-        name: r.EmailAddress.Name,
-      })) || [],
-      bccRecipients: email.BccRecipients?.map(r => ({
-        email: r.EmailAddress.Address,
-        name: r.EmailAddress.Name,
-      })) || [],
-      replyTo: email.ReplyTo?.map(r => ({
-        email: r.EmailAddress.Address,
-        name: r.EmailAddress.Name,
-      })) || [],
+      ccRecipients:
+        email.CcRecipients?.map(r => ({
+          email: r.EmailAddress.Address,
+          name: r.EmailAddress.Name,
+        })) || [],
+      bccRecipients:
+        email.BccRecipients?.map(r => ({
+          email: r.EmailAddress.Address,
+          name: r.EmailAddress.Name,
+        })) || [],
+      replyTo:
+        email.ReplyTo?.map(r => ({
+          email: r.EmailAddress.Address,
+          name: r.EmailAddress.Name,
+        })) || [],
 
       // Participants enrichis (avec noms)
-      toRecipients: email.ToRecipients?.map(r => ({
-        email: r.EmailAddress.Address,
-        name: r.EmailAddress.Name,
-      })) || [],
+      toRecipients:
+        email.ToRecipients?.map(r => ({
+          email: r.EmailAddress.Address,
+          name: r.EmailAddress.Name,
+        })) || [],
 
       // Dates supplémentaires
       sentDateTime: email.SentDateTime,

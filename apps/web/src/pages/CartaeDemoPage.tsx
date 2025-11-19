@@ -27,7 +27,10 @@ import type { CartaeItem } from '@cartae/core/types/CartaeItem';
 import type { DataSource, SyncStatus, SyncHistoryEntry } from '@cartae/ui';
 import { SourceManager } from '@cartae/core/sources/SourceManager';
 import { IndexedDBSourceStorage } from '@cartae/core/sources/IndexedDBSourceStorage';
-import { Office365MailBackendConnector, Office365TeamsBackendConnector } from '@cartae/core/sources/connectors';
+import {
+  Office365MailBackendConnector,
+  Office365TeamsBackendConnector,
+} from '@cartae/core/sources/connectors';
 
 // Mock data
 const mockItems: CartaeItem[] = [
@@ -35,7 +38,7 @@ const mockItems: CartaeItem[] = [
     id: 'item-1',
     title: 'Réunion projet Cartae',
     type: 'event',
-    content: 'Discuter de l\'architecture et des prochaines étapes du projet',
+    content: "Discuter de l'architecture et des prochaines étapes du projet",
     tags: ['projet', 'cartae', 'réunion'],
     categories: ['work'],
     source: { connector: 'office365-calendar', sourceId: 'cal-123' },
@@ -77,7 +80,7 @@ const mockItems: CartaeItem[] = [
     id: 'item-3',
     title: 'TODO: Finir documentation API',
     type: 'task',
-    content: 'Documenter tous les endpoints REST de l\'API Cartae avec exemples',
+    content: "Documenter tous les endpoints REST de l'API Cartae avec exemples",
     tags: ['documentation', 'api', 'dev'],
     categories: ['development'],
     source: { connector: 'obsidian', sourceId: 'note-789' },
@@ -226,8 +229,12 @@ const mockSyncHistory: SyncHistoryEntry[] = [
 
 export const CartaeDemoPage: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<'items' | 'sources' | 'office365'>('items');
-  const [selectedItemSubTab, setSelectedItemSubTab] = useState<'list' | 'detail' | 'editor' | 'timeline' | 'search'>('list');
-  const [selectedSourceSubTab, setSelectedSourceSubTab] = useState<'list' | 'detail' | 'config' | 'mapping' | 'sync'>('list');
+  const [selectedItemSubTab, setSelectedItemSubTab] = useState<
+    'list' | 'detail' | 'editor' | 'timeline' | 'search'
+  >('list');
+  const [selectedSourceSubTab, setSelectedSourceSubTab] = useState<
+    'list' | 'detail' | 'config' | 'mapping' | 'sync'
+  >('list');
   const [selectedItem, setSelectedItem] = useState<CartaeItem | null>(mockItems[0]);
   const [selectedSource, setSelectedSource] = useState<DataSource | null>(mockSources[0]);
 
@@ -260,7 +267,9 @@ export const CartaeDemoPage: React.FC = () => {
 
   // Unified View Filters/Sort State
   const [unifiedSearchText, setUnifiedSearchText] = useState('');
-  const [unifiedSortMode, setUnifiedSortMode] = useState<'date-desc' | 'date-asc' | 'title-asc' | 'title-desc'>('date-desc');
+  const [unifiedSortMode, setUnifiedSortMode] = useState<
+    'date-desc' | 'date-asc' | 'title-asc' | 'title-desc'
+  >('date-desc');
   const [unifiedTypeFilter, setUnifiedTypeFilter] = useState<'all' | 'email' | 'message'>('all');
 
   // SourceManager State (Session 119 unified architecture)
@@ -286,7 +295,11 @@ export const CartaeDemoPage: React.FC = () => {
       manager.registerConnector(mailConnector);
       manager.registerConnector(teamsConnector);
 
-      console.log('[SourceManager] ✅ Connecteurs enregistrés:', mailConnector.type, teamsConnector.type);
+      console.log(
+        '[SourceManager] ✅ Connecteurs enregistrés:',
+        mailConnector.type,
+        teamsConnector.type
+      );
 
       sourceManagerRef.current = manager;
       setSourceManagerReady(true);
@@ -315,28 +328,35 @@ export const CartaeDemoPage: React.FC = () => {
       if (!browserStorage) {
         retryCount++;
         if (retryCount < MAX_RETRIES) {
-          console.log(`[Office365] Extension pas encore prête, retry ${retryCount}/${MAX_RETRIES}...`);
+          console.log(
+            `[Office365] Extension pas encore prête, retry ${retryCount}/${MAX_RETRIES}...`
+          );
           timeoutId = window.setTimeout(checkAndLoadToken, 1000); // Retry après 1 sec
           return;
         }
-        console.warn('[Office365] Extension non disponible après 20s (window.cartaeBrowserStorage manquant)');
+        console.warn(
+          '[Office365] Extension non disponible après 20s (window.cartaeBrowserStorage manquant)'
+        );
         return;
       }
 
       console.log('[Office365] Extension détectée, lecture token...');
 
       // Lire le token OWA depuis browser.storage.local
-      browserStorage.get(['cartae-o365-token-owa', 'cartae-o365-token-owa-captured-at'])
+      browserStorage
+        .get(['cartae-o365-token-owa', 'cartae-o365-token-owa-captured-at'])
         .then((result: any) => {
           const token = result['cartae-o365-token-owa'];
           const capturedAt = result['cartae-o365-token-owa-captured-at'];
 
           if (token) {
-            console.log('[Office365] ✅ Token OWA trouvé (capturé à ' + capturedAt + ')');
-            console.log('[Office365] Token (début):', token.substring(0, 50) + '...');
+            console.log(`[Office365] ✅ Token OWA trouvé (capturé à ${capturedAt})`);
+            console.log('[Office365] Token (début):', `${token.substring(0, 50)}...`);
             setCurrentToken(token);
           } else {
-            console.log('[Office365] ℹ️ Pas de token OWA dans storage - allez sur outlook.office.com pour vous connecter');
+            console.log(
+              '[Office365] ℹ️ Pas de token OWA dans storage - allez sur outlook.office.com pour vous connecter'
+            );
           }
         })
         .catch((error: any) => {
@@ -431,7 +451,9 @@ export const CartaeDemoPage: React.FC = () => {
       return dateB - dateA; // DESC (plus récent en premier)
     });
 
-    console.log(`[AllSources] 🎯 Total items réels: ${allFetchedItems.length} (Mail + Teams, triés par date DESC)`);
+    console.log(
+      `[AllSources] 🎯 Total items réels: ${allFetchedItems.length} (Mail + Teams, triés par date DESC)`
+    );
     setAllItems(allFetchedItems);
   };
 
@@ -444,23 +466,26 @@ export const CartaeDemoPage: React.FC = () => {
       // Vérifier que l'extension est présente
       const browserStorage = (window as any).cartaeBrowserStorage;
       if (!browserStorage) {
-        throw new Error('Extension Cartae non détectée. Installez l\'extension Firefox pour synchroniser Office365.');
+        throw new Error(
+          "Extension Cartae non détectée. Installez l'extension Firefox pour synchroniser Office365."
+        );
       }
 
       console.log('[Office365] Lecture token depuis browser.storage...');
 
-      // Récupérer le token depuis browser.storage.local
-      const result = await browserStorage.get(['cartae-o365-token-owa']);
-      const token = result['cartae-o365-token-owa'];
+      // Récupérer le token OWA (a Mail.Read) au lieu de Graph (n'a que Chat.Read)
+      const result = await browserStorage.get(['cartae-o365-token-owa', 'cartae-o365-token-graph']);
+      // Préférer OWA pour les emails (a Mail.Read), fallback sur Graph
+      const token = result['cartae-o365-token-owa'] || result['cartae-o365-token-graph'];
 
       console.log('[Office365] Token récupéré:', token ? `${token.substring(0, 20)}...` : 'null');
 
       if (!token) {
         throw new Error(
           '🔑 Token Outlook non disponible.\n\n' +
-          '📍 Visitez Outlook Web pour obtenir un token :\n' +
-          '   • https://outlook.office.com/mail\n\n' +
-          '⚠️ L\'extension va capturer automatiquement le token lors de votre connexion.'
+            '📍 Visitez Outlook pour obtenir un token :\n' +
+            '   • https://outlook.office.com/mail\n\n' +
+            "⚠️ L'extension va capturer automatiquement le token lors de votre connexion."
         );
       }
 
@@ -513,7 +538,9 @@ export const CartaeDemoPage: React.FC = () => {
       // Vérifier que l'extension est présente
       const browserStorage = (window as any).cartaeBrowserStorage;
       if (!browserStorage) {
-        throw new Error('Extension Cartae non détectée. Installez l\'extension Firefox pour synchroniser Teams.');
+        throw new Error(
+          "Extension Cartae non détectée. Installez l'extension Firefox pour synchroniser Teams."
+        );
       }
 
       console.log('[Teams] Lecture tokens depuis browser.storage...');
@@ -522,7 +549,7 @@ export const CartaeDemoPage: React.FC = () => {
       // Après reconnexion à Teams, token Graph aura Chat.Read
       const result = await browserStorage.get([
         'cartae-o365-token-graph',
-        'cartae-o365-token-teams'
+        'cartae-o365-token-teams',
       ]);
 
       let token = result['cartae-o365-token-graph'];
@@ -533,18 +560,21 @@ export const CartaeDemoPage: React.FC = () => {
         tokenSource = 'teams-legacy';
       }
 
-      console.log('[Teams] Token récupéré:', token ? `${token.substring(0, 20)}... (source: ${tokenSource})` : 'null');
+      console.log(
+        '[Teams] Token récupéré:',
+        token ? `${token.substring(0, 20)}... (source: ${tokenSource})` : 'null'
+      );
 
       if (!token) {
         throw new Error(
           '🔑 Aucun token Microsoft disponible.\n\n' +
-          '📍 ÉTAPES POUR RÉSOUDRE:\n' +
-          '1. Rechargez l\'extension Firefox (about:debugging)\n' +
-          '2. Ouvrez https://teams.microsoft.com\n' +
-          '3. Reconnectez-vous si nécessaire\n' +
-          '4. L\'extension capturera automatiquement les tokens\n' +
-          '5. Rechargez cette page et retestez\n\n' +
-          'ℹ️  L\'extension a été mise à jour pour mieux distinguer les tokens Teams.'
+            '📍 ÉTAPES POUR RÉSOUDRE:\n' +
+            "1. Rechargez l'extension Firefox (about:debugging)\n" +
+            '2. Ouvrez https://teams.microsoft.com\n' +
+            '3. Reconnectez-vous si nécessaire\n' +
+            "4. L'extension capturera automatiquement les tokens\n" +
+            '5. Rechargez cette page et retestez\n\n' +
+            "ℹ️  L'extension a été mise à jour pour mieux distinguer les tokens Teams."
         );
       }
 
@@ -626,7 +656,10 @@ export const CartaeDemoPage: React.FC = () => {
             const payload = JSON.parse(atob(parts[1]));
             console.log('  🔐 Scopes:', payload.scp || payload.scope || 'Aucun scope trouvé');
             console.log('  👤 Audience:', payload.aud || 'Inconnu');
-            console.log('  ⏰ Expire:', payload.exp ? new Date(payload.exp * 1000).toISOString() : 'Inconnu');
+            console.log(
+              '  ⏰ Expire:',
+              payload.exp ? new Date(payload.exp * 1000).toISOString() : 'Inconnu'
+            );
           }
         } catch (decodeError) {
           console.log('  ⚠️  Impossible de décoder le token JWT');
@@ -651,9 +684,9 @@ export const CartaeDemoPage: React.FC = () => {
     // 2. Filtre par recherche (titre + contenu)
     if (unifiedSearchText.trim()) {
       const search = unifiedSearchText.toLowerCase();
-      filtered = filtered.filter(item =>
-        item.title.toLowerCase().includes(search) ||
-        item.content?.toLowerCase().includes(search)
+      filtered = filtered.filter(
+        item =>
+          item.title.toLowerCase().includes(search) || item.content?.toLowerCase().includes(search)
       );
     }
 
@@ -683,20 +716,24 @@ export const CartaeDemoPage: React.FC = () => {
   }, [allItems, unifiedTypeFilter, unifiedSearchText, unifiedSortMode]);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#f9fafb',
-      fontFamily: 'system-ui, sans-serif',
-    }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        background: '#f9fafb',
+        fontFamily: 'system-ui, sans-serif',
+      }}
+    >
       {/* Header */}
-      <div style={{
-        background: '#ffffff',
-        borderBottom: '2px solid #e5e7eb',
-        padding: '20px 32px',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-      }}>
+      <div
+        style={{
+          background: '#ffffff',
+          borderBottom: '2px solid #e5e7eb',
+          padding: '20px 32px',
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+        }}
+      >
         <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 600, color: '#1f2937' }}>
           Session 119 - UI Components Demo
         </h1>
@@ -706,17 +743,19 @@ export const CartaeDemoPage: React.FC = () => {
       </div>
 
       {/* Main Tabs */}
-      <div style={{
-        background: '#ffffff',
-        borderBottom: '1px solid #e5e7eb',
-        padding: '0 32px',
-      }}>
+      <div
+        style={{
+          background: '#ffffff',
+          borderBottom: '1px solid #e5e7eb',
+          padding: '0 32px',
+        }}
+      >
         <div style={{ display: 'flex', gap: '32px' }}>
           {[
             { key: 'items', label: 'CartaeItem Components' },
             { key: 'sources', label: 'Source Management Components' },
             { key: 'office365', label: 'Office365 Sync (Live)' },
-          ].map((tab) => (
+          ].map(tab => (
             <button
               key={tab.key}
               type="button"
@@ -728,7 +767,8 @@ export const CartaeDemoPage: React.FC = () => {
                 color: selectedTab === tab.key ? '#3b82f6' : '#6b7280',
                 background: 'transparent',
                 border: 'none',
-                borderBottom: selectedTab === tab.key ? '3px solid #3b82f6' : '3px solid transparent',
+                borderBottom:
+                  selectedTab === tab.key ? '3px solid #3b82f6' : '3px solid transparent',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
               }}
@@ -745,19 +785,21 @@ export const CartaeDemoPage: React.FC = () => {
         {selectedTab === 'items' && (
           <div>
             {/* Sub Tabs */}
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              marginBottom: '24px',
-              flexWrap: 'wrap',
-            }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: '12px',
+                marginBottom: '24px',
+                flexWrap: 'wrap',
+              }}
+            >
               {[
                 { key: 'list', label: 'List & Cards' },
                 { key: 'detail', label: 'Detail & Preview' },
                 { key: 'editor', label: 'Editor & Form' },
                 { key: 'timeline', label: 'Timeline & Relations' },
                 { key: 'search', label: 'Search & Filter' },
-              ].map((subTab) => (
+              ].map(subTab => (
                 <button
                   key={subTab.key}
                   type="button"
@@ -788,95 +830,109 @@ export const CartaeDemoPage: React.FC = () => {
                   </h3>
 
                   {/* Info box avec compteur */}
-                  <div style={{ marginBottom: '16px', padding: '12px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+                  <div
+                    style={{
+                      marginBottom: '16px',
+                      padding: '12px',
+                      background: '#f0f9ff',
+                      borderRadius: '8px',
+                      border: '1px solid #bfdbfe',
+                    }}
+                  >
                     <p style={{ margin: 0, fontSize: '14px', color: '#1e40af' }}>
-                      📊 <strong>{filteredUnifiedItems.length}</strong> item{filteredUnifiedItems.length > 1 ? 's' : ''} affiché{filteredUnifiedItems.length > 1 ? 's' : ''} sur <strong>{allItems.length}</strong> total
+                      📊 <strong>{filteredUnifiedItems.length}</strong> item
+                      {filteredUnifiedItems.length > 1 ? 's' : ''} affiché
+                      {filteredUnifiedItems.length > 1 ? 's' : ''} sur{' '}
+                      <strong>{allItems.length}</strong> total
                     </p>
                   </div>
 
-                    {/* Contrôles : Recherche + Tri + Filtre Type */}
-                    <div style={{
+                  {/* Contrôles : Recherche + Tri + Filtre Type */}
+                  <div
+                    style={{
                       display: 'grid',
                       gridTemplateColumns: '1fr auto auto',
                       gap: '12px',
                       marginBottom: '16px',
                       alignItems: 'center',
-                    }}>
-                      {/* Recherche */}
-                      <input
-                        type="text"
-                        placeholder="🔍 Rechercher dans titre ou contenu..."
-                        value={unifiedSearchText}
-                        onChange={(e) => setUnifiedSearchText(e.target.value)}
-                        style={{
-                          padding: '10px 14px',
-                          fontSize: '14px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          outline: 'none',
-                        }}
-                      />
+                    }}
+                  >
+                    {/* Recherche */}
+                    <input
+                      type="text"
+                      placeholder="🔍 Rechercher dans titre ou contenu..."
+                      value={unifiedSearchText}
+                      onChange={e => setUnifiedSearchText(e.target.value)}
+                      style={{
+                        padding: '10px 14px',
+                        fontSize: '14px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        outline: 'none',
+                      }}
+                    />
 
-                      {/* Sélecteur de tri */}
-                      <select
-                        value={unifiedSortMode}
-                        onChange={(e) => setUnifiedSortMode(e.target.value as any)}
-                        style={{
-                          padding: '10px 14px',
-                          fontSize: '14px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          background: '#ffffff',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <option value="date-desc">📅 Date ↓ (récent)</option>
-                        <option value="date-asc">📅 Date ↑ (ancien)</option>
-                        <option value="title-asc">🔤 Titre A→Z</option>
-                        <option value="title-desc">🔤 Titre Z→A</option>
-                      </select>
+                    {/* Sélecteur de tri */}
+                    <select
+                      value={unifiedSortMode}
+                      onChange={e => setUnifiedSortMode(e.target.value as any)}
+                      style={{
+                        padding: '10px 14px',
+                        fontSize: '14px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        background: '#ffffff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="date-desc">📅 Date ↓ (récent)</option>
+                      <option value="date-asc">📅 Date ↑ (ancien)</option>
+                      <option value="title-asc">🔤 Titre A→Z</option>
+                      <option value="title-desc">🔤 Titre Z→A</option>
+                    </select>
 
-                      {/* Filtre par type */}
-                      <select
-                        value={unifiedTypeFilter}
-                        onChange={(e) => setUnifiedTypeFilter(e.target.value as any)}
-                        style={{
-                          padding: '10px 14px',
-                          fontSize: '14px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          background: '#ffffff',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <option value="all">📋 Tous les types</option>
-                        <option value="email">📧 Emails uniquement</option>
-                        <option value="message">💬 Teams uniquement</option>
-                      </select>
-                    </div>
+                    {/* Filtre par type */}
+                    <select
+                      value={unifiedTypeFilter}
+                      onChange={e => setUnifiedTypeFilter(e.target.value as any)}
+                      style={{
+                        padding: '10px 14px',
+                        fontSize: '14px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        background: '#ffffff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="all">📋 Tous les types</option>
+                      <option value="email">📧 Emails uniquement</option>
+                      <option value="message">💬 Teams uniquement</option>
+                    </select>
+                  </div>
 
                   {/* Liste dépliante de TOUS les items (pattern Office365 Sync) */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {filteredUnifiedItems.length === 0 ? (
-                      <div style={{
-                        padding: '40px',
-                        textAlign: 'center',
-                        background: '#f9fafb',
-                        borderRadius: '8px',
-                        color: '#6b7280',
-                      }}>
+                      <div
+                        style={{
+                          padding: '40px',
+                          textAlign: 'center',
+                          background: '#f9fafb',
+                          borderRadius: '8px',
+                          color: '#6b7280',
+                        }}
+                      >
                         <p style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 500 }}>
                           {allItems.length === 0 ? 'Aucun item à afficher' : 'Aucun résultat'}
                         </p>
                         <p style={{ margin: 0, fontSize: '14px' }}>
                           {allItems.length === 0
-                            ? 'Synchronisez Office365 depuis l\'onglet correspondant'
-                            : 'Modifiez les filtres ou la recherche'
-                          }
+                            ? "Synchronisez Office365 depuis l'onglet correspondant"
+                            : 'Modifiez les filtres ou la recherche'}
                         </p>
                       </div>
                     ) : (
-                      filteredUnifiedItems.map((item) => (
+                      filteredUnifiedItems.map(item => (
                         <div key={item.id}>
                           {/* Carte item */}
                           <CartaeItemCard
@@ -885,24 +941,29 @@ export const CartaeDemoPage: React.FC = () => {
                               // Toggle : si déjà sélectionné, on ferme, sinon on ouvre
                               setSelectedItem(selectedItem?.id === item.id ? null : item);
                             }}
-                            showActions={true}
+                            showActions
                             style={{
                               cursor: 'pointer',
-                              border: selectedItem?.id === item.id ? '2px solid #3b82f6' : '1px solid #e5e7eb',
+                              border:
+                                selectedItem?.id === item.id
+                                  ? '2px solid #3b82f6'
+                                  : '1px solid #e5e7eb',
                               background: selectedItem?.id === item.id ? '#eff6ff' : '#ffffff',
                             }}
                           />
 
                           {/* Détail déplié */}
                           {selectedItem?.id === item.id && (
-                            <div style={{
-                              marginTop: '8px',
-                              marginLeft: '16px',
-                              padding: '20px',
-                              background: '#f9fafb',
-                              borderLeft: '3px solid #3b82f6',
-                              borderRadius: '0 8px 8px 0',
-                            }}>
+                            <div
+                              style={{
+                                marginTop: '8px',
+                                marginLeft: '16px',
+                                padding: '20px',
+                                background: '#f9fafb',
+                                borderLeft: '3px solid #3b82f6',
+                                borderRadius: '0 8px 8px 0',
+                              }}
+                            >
                               <CartaeItemDetail
                                 item={item}
                                 mode="inline"
@@ -911,9 +972,9 @@ export const CartaeDemoPage: React.FC = () => {
                               />
                             </div>
                           )}
-                      </div>
-                    ))
-                  )}
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
@@ -923,17 +984,21 @@ export const CartaeDemoPage: React.FC = () => {
             {selectedItemSubTab === 'detail' && selectedItem && (
               <div style={{ display: 'grid', gap: '24px' }}>
                 <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>CartaeItemDetail</h3>
+                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                    CartaeItemDetail
+                  </h3>
                   <CartaeItemDetail
                     item={selectedItem}
                     mode="inline"
-                    showRelationships={true}
-                    showAIInsights={true}
+                    showRelationships
+                    showAIInsights
                   />
                 </div>
 
                 <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>CartaeItemPreview</h3>
+                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                    CartaeItemPreview
+                  </h3>
                   <div style={{ padding: '40px', background: '#ffffff', borderRadius: '8px' }}>
                     <p style={{ marginBottom: '20px', color: '#6b7280' }}>
                       Survolez la carte ci-dessous pour voir le preview:
@@ -950,22 +1015,34 @@ export const CartaeDemoPage: React.FC = () => {
             {selectedItemSubTab === 'editor' && (
               <div style={{ display: 'grid', gap: '24px' }}>
                 <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>CartaeItemEditor (mode inline)</h3>
+                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                    CartaeItemEditor (mode inline)
+                  </h3>
                   <CartaeItemEditor
                     item={selectedItem || undefined}
-                    onSave={() => {/* Item saved */}}
-                    onCancel={() => {/* Editing cancelled */}}
+                    onSave={() => {
+                      /* Item saved */
+                    }}
+                    onCancel={() => {
+                      /* Editing cancelled */
+                    }}
                     mode="inline"
-                    showDelete={true}
+                    showDelete
                   />
                 </div>
 
                 <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>CartaeItemForm (simplifié)</h3>
+                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                    CartaeItemForm (simplifié)
+                  </h3>
                   <CartaeItemForm
-                    onSave={() => {/* Item saved */}}
-                    onCancel={() => {/* Form cancelled */}}
-                    showMetadata={true}
+                    onSave={() => {
+                      /* Item saved */
+                    }}
+                    onCancel={() => {
+                      /* Form cancelled */
+                    }}
+                    showMetadata
                   />
                 </div>
               </div>
@@ -975,15 +1052,16 @@ export const CartaeDemoPage: React.FC = () => {
             {selectedItemSubTab === 'timeline' && selectedItem && (
               <div style={{ display: 'grid', gap: '24px' }}>
                 <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>CartaeItemTimeline</h3>
-                  <CartaeItemTimeline
-                    item={selectedItem}
-                    relativeTime={true}
-                  />
+                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                    CartaeItemTimeline
+                  </h3>
+                  <CartaeItemTimeline item={selectedItem} relativeTime />
                 </div>
 
                 <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>CartaeItemRelationships</h3>
+                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                    CartaeItemRelationships
+                  </h3>
                   <CartaeItemRelationships
                     item={selectedItem}
                     relations={[
@@ -1003,7 +1081,7 @@ export const CartaeDemoPage: React.FC = () => {
                       },
                     ]}
                     view="list"
-                    groupByType={true}
+                    groupByType
                   />
                 </div>
               </div>
@@ -1013,24 +1091,30 @@ export const CartaeDemoPage: React.FC = () => {
             {selectedItemSubTab === 'search' && (
               <div style={{ display: 'grid', gap: '24px' }}>
                 <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>CartaeItemSearch</h3>
+                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                    CartaeItemSearch
+                  </h3>
                   <CartaeItemSearch
                     items={mockItems}
-                    showSuggestions={true}
-                    showHistory={true}
-                    onItemClick={(item) => setSelectedItem(item)}
+                    showSuggestions
+                    showHistory
+                    onItemClick={item => setSelectedItem(item)}
                   />
                 </div>
 
                 <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>CartaeItemFilter</h3>
+                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                    CartaeItemFilter
+                  </h3>
                   <CartaeItemFilter
                     filters={{}}
-                    onFiltersChange={() => {/* Filters changed */}}
+                    onFiltersChange={() => {
+                      /* Filters changed */
+                    }}
                     availableTags={['projet', 'cartae', 'urgent', 'client', 'dev']}
                     availableSources={['office365-mail', 'office365-calendar', 'obsidian']}
-                    showResetButton={true}
-                    showActiveCount={true}
+                    showResetButton
+                    showActiveCount
                   />
                 </div>
               </div>
@@ -1042,19 +1126,21 @@ export const CartaeDemoPage: React.FC = () => {
         {selectedTab === 'sources' && (
           <div>
             {/* Sub Tabs */}
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              marginBottom: '24px',
-              flexWrap: 'wrap',
-            }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: '12px',
+                marginBottom: '24px',
+                flexWrap: 'wrap',
+              }}
+            >
               {[
                 { key: 'list', label: 'Source List' },
                 { key: 'detail', label: 'Source Detail' },
                 { key: 'config', label: 'Config Form' },
                 { key: 'mapping', label: 'Mapping Editor' },
                 { key: 'sync', label: 'Sync Monitoring' },
-              ].map((subTab) => (
+              ].map(subTab => (
                 <button
                   key={subTab.key}
                   type="button"
@@ -1079,17 +1165,29 @@ export const CartaeDemoPage: React.FC = () => {
             {/* Source List */}
             {selectedSourceSubTab === 'list' && (
               <div>
-                <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>SourceList</h3>
+                <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                  SourceList
+                </h3>
                 <SourceList
                   sources={mockSources}
-                  onSourceClick={(source) => setSelectedSource(source)}
-                  onSync={() => {/* Source sync triggered */}}
-                  onConfigure={() => {/* Source configure triggered */}}
-                  onTogglePause={() => {/* Source pause toggled */}}
-                  onDelete={() => {/* Source deleted */}}
-                  onCreateNew={() => {/* New source creation */}}
+                  onSourceClick={source => setSelectedSource(source)}
+                  onSync={() => {
+                    /* Source sync triggered */
+                  }}
+                  onConfigure={() => {
+                    /* Source configure triggered */
+                  }}
+                  onTogglePause={() => {
+                    /* Source pause toggled */
+                  }}
+                  onDelete={() => {
+                    /* Source deleted */
+                  }}
+                  onCreateNew={() => {
+                    /* New source creation */
+                  }}
                   view="grid"
-                  showSearch={true}
+                  showSearch
                 />
               </div>
             )}
@@ -1097,14 +1195,22 @@ export const CartaeDemoPage: React.FC = () => {
             {/* Source Detail */}
             {selectedSourceSubTab === 'detail' && selectedSource && (
               <div>
-                <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>SourceDetail</h3>
+                <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                  SourceDetail
+                </h3>
                 <SourceDetail
                   source={selectedSource}
                   mode="inline"
-                  showLogs={true}
-                  onEdit={() => {/* Source edited */}}
-                  onSync={() => {/* Source synced */}}
-                  onDelete={() => {/* Source deleted */}}
+                  showLogs
+                  onEdit={() => {
+                    /* Source edited */
+                  }}
+                  onSync={() => {
+                    /* Source synced */
+                  }}
+                  onDelete={() => {
+                    /* Source deleted */
+                  }}
                 />
               </div>
             )}
@@ -1112,11 +1218,17 @@ export const CartaeDemoPage: React.FC = () => {
             {/* Config Form */}
             {selectedSourceSubTab === 'config' && (
               <div>
-                <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>SourceConfigForm</h3>
+                <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                  SourceConfigForm
+                </h3>
                 <SourceConfigForm
                   connectorType="office365-mail"
-                  onSave={() => {/* Config saved */}}
-                  onCancel={() => {/* Config cancelled */}}
+                  onSave={() => {
+                    /* Config saved */
+                  }}
+                  onCancel={() => {
+                    /* Config cancelled */
+                  }}
                   onTestConnection={async () => ({
                     success: true,
                     message: 'Connexion réussie!',
@@ -1134,18 +1246,37 @@ export const CartaeDemoPage: React.FC = () => {
             {/* Mapping Editor */}
             {selectedSourceSubTab === 'mapping' && (
               <div>
-                <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>SourceMappingEditor</h3>
+                <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                  SourceMappingEditor
+                </h3>
                 <SourceMappingEditor
                   connectorType="office365-mail"
                   mappings={[
                     { id: '1', sourceField: 'subject', targetField: 'title' },
                     { id: '2', sourceField: 'bodyPreview', targetField: 'content' },
-                    { id: '3', sourceField: 'from.emailAddress.address', targetField: 'metadata.author' },
-                    { id: '4', sourceField: 'receivedDateTime', targetField: 'metadata.startDate', transform: 'date' },
+                    {
+                      id: '3',
+                      sourceField: 'from.emailAddress.address',
+                      targetField: 'metadata.author',
+                    },
+                    {
+                      id: '4',
+                      sourceField: 'receivedDateTime',
+                      targetField: 'metadata.startDate',
+                      transform: 'date',
+                    },
                   ]}
-                  onMappingsChange={() => {/* Mappings changed */}}
-                  sourceFields={['subject', 'bodyPreview', 'from.emailAddress.address', 'receivedDateTime', 'categories']}
-                  showTransforms={true}
+                  onMappingsChange={() => {
+                    /* Mappings changed */
+                  }}
+                  sourceFields={[
+                    'subject',
+                    'bodyPreview',
+                    'from.emailAddress.address',
+                    'receivedDateTime',
+                    'categories',
+                  ]}
+                  showTransforms
                 />
               </div>
             )}
@@ -1154,31 +1285,45 @@ export const CartaeDemoPage: React.FC = () => {
             {selectedSourceSubTab === 'sync' && selectedSource && (
               <div style={{ display: 'grid', gap: '24px' }}>
                 <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>SourceSyncStatus (en cours)</h3>
+                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                    SourceSyncStatus (en cours)
+                  </h3>
                   <SourceSyncStatus
                     source={selectedSource}
                     syncStatus={mockSyncStatus}
-                    onCancel={() => {/* Sync cancelled */}}
-                    onRetry={() => {/* Sync retry */}}
-                    onTogglePause={() => {/* Sync pause toggled */}}
+                    onCancel={() => {
+                      /* Sync cancelled */
+                    }}
+                    onRetry={() => {
+                      /* Sync retry */
+                    }}
+                    onTogglePause={() => {
+                      /* Sync pause toggled */
+                    }}
                     showLogs={false}
                     compact={false}
                   />
                 </div>
 
                 <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>SourceSyncHistory</h3>
+                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                    SourceSyncHistory
+                  </h3>
                   <SourceSyncHistory
                     source={selectedSource}
                     history={mockSyncHistory}
                     maxEntries={50}
-                    showFilters={true}
-                    onExport={() => {/* History exported */}}
+                    showFilters
+                    onExport={() => {
+                      /* History exported */
+                    }}
                   />
                 </div>
 
                 <div>
-                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>SourceTestConnection</h3>
+                  <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: 600 }}>
+                    SourceTestConnection
+                  </h3>
                   <SourceTestConnection
                     connectorType={selectedSource.connectorType}
                     config={selectedSource.config}
@@ -1207,30 +1352,35 @@ export const CartaeDemoPage: React.FC = () => {
         {/* Office365 Sync Tab */}
         {selectedTab === 'office365' && (
           <div>
-            <div style={{
-              maxWidth: '800px',
-              margin: '0 auto',
-              background: '#ffffff',
-              borderRadius: '12px',
-              padding: '32px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            }}>
+            <div
+              style={{
+                maxWidth: '800px',
+                margin: '0 auto',
+                background: '#ffffff',
+                borderRadius: '12px',
+                padding: '32px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              }}
+            >
               <h2 style={{ margin: '0 0 16px', fontSize: '24px', fontWeight: 600 }}>
                 Synchronisation Office365 → PostgreSQL
               </h2>
 
               <p style={{ margin: '0 0 24px', color: '#6b7280', lineHeight: 1.6 }}>
-                Synchronise vos emails Office365 directement dans PostgreSQL en utilisant le token fourni par l'extension Firefox.
+                Synchronise vos emails Office365 directement dans PostgreSQL en utilisant le token
+                fourni par l'extension Firefox.
               </p>
 
-              <div style={{
-                padding: '16px',
-                background: '#f3f4f6',
-                borderRadius: '8px',
-                marginBottom: '24px',
-                fontSize: '14px',
-                lineHeight: 1.6,
-              }}>
+              <div
+                style={{
+                  padding: '16px',
+                  background: '#f3f4f6',
+                  borderRadius: '8px',
+                  marginBottom: '24px',
+                  fontSize: '14px',
+                  lineHeight: 1.6,
+                }}
+              >
                 <strong>Prérequis :</strong>
                 <ul style={{ margin: '8px 0 0', paddingLeft: '20px' }}>
                   <li>Extension Firefox Cartae installée et connectée à Office365</li>
@@ -1239,7 +1389,14 @@ export const CartaeDemoPage: React.FC = () => {
                 </ul>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '16px',
+                  marginBottom: '16px',
+                }}
+              >
                 <button
                   type="button"
                   onClick={handleOffice365Sync}
@@ -1301,20 +1458,26 @@ export const CartaeDemoPage: React.FC = () => {
 
               {/* Résultats de la synchronisation Emails */}
               {syncResult && (
-                <div style={{
-                  marginTop: '8px',
-                  padding: '20px',
-                  background: syncResult.success ? '#f0fdf4' : '#fef2f2',
-                  border: `2px solid ${syncResult.success ? '#86efac' : '#fca5a5'}`,
-                  borderRadius: '8px',
-                }}>
-                  <h3 style={{
-                    margin: '0 0 12px',
-                    fontSize: '18px',
-                    fontWeight: 600,
-                    color: syncResult.success ? '#166534' : '#991b1b',
-                  }}>
-                    {syncResult.success ? '✅ Synchronisation Emails réussie' : '❌ Erreur synchronisation Emails'}
+                <div
+                  style={{
+                    marginTop: '8px',
+                    padding: '20px',
+                    background: syncResult.success ? '#f0fdf4' : '#fef2f2',
+                    border: `2px solid ${syncResult.success ? '#86efac' : '#fca5a5'}`,
+                    borderRadius: '8px',
+                  }}
+                >
+                  <h3
+                    style={{
+                      margin: '0 0 12px',
+                      fontSize: '18px',
+                      fontWeight: 600,
+                      color: syncResult.success ? '#166534' : '#991b1b',
+                    }}
+                  >
+                    {syncResult.success
+                      ? '✅ Synchronisation Emails réussie'
+                      : '❌ Erreur synchronisation Emails'}
                   </h3>
 
                   {syncResult.success ? (
@@ -1323,7 +1486,8 @@ export const CartaeDemoPage: React.FC = () => {
                         <strong>Emails importés :</strong> {syncResult.itemsImported || 0}
                       </p>
                       <p style={{ margin: '0 0 8px' }}>
-                        <strong>Emails ignorés (déjà existants) :</strong> {syncResult.itemsSkipped || 0}
+                        <strong>Emails ignorés (déjà existants) :</strong>{' '}
+                        {syncResult.itemsSkipped || 0}
                       </p>
                       <p style={{ margin: '0 0 8px' }}>
                         <strong>Total traité :</strong> {syncResult.totalProcessed || 0}
@@ -1336,7 +1500,9 @@ export const CartaeDemoPage: React.FC = () => {
                           </p>
                           <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px' }}>
                             {syncResult.errors.map((err, idx) => (
-                              <li key={idx} style={{ marginBottom: '4px' }}>{err}</li>
+                              <li key={idx} style={{ marginBottom: '4px' }}>
+                                {err}
+                              </li>
                             ))}
                           </ul>
                         </div>
@@ -1352,20 +1518,26 @@ export const CartaeDemoPage: React.FC = () => {
 
               {/* Résultats de la synchronisation Teams */}
               {teamsSyncResult && (
-                <div style={{
-                  marginTop: '8px',
-                  padding: '20px',
-                  background: teamsSyncResult.success ? '#f5f3ff' : '#fef2f2',
-                  border: `2px solid ${teamsSyncResult.success ? '#c4b5fd' : '#fca5a5'}`,
-                  borderRadius: '8px',
-                }}>
-                  <h3 style={{
-                    margin: '0 0 12px',
-                    fontSize: '18px',
-                    fontWeight: 600,
-                    color: teamsSyncResult.success ? '#5b21b6' : '#991b1b',
-                  }}>
-                    {teamsSyncResult.success ? '✅ Synchronisation Teams réussie' : '❌ Erreur synchronisation Teams'}
+                <div
+                  style={{
+                    marginTop: '8px',
+                    padding: '20px',
+                    background: teamsSyncResult.success ? '#f5f3ff' : '#fef2f2',
+                    border: `2px solid ${teamsSyncResult.success ? '#c4b5fd' : '#fca5a5'}`,
+                    borderRadius: '8px',
+                  }}
+                >
+                  <h3
+                    style={{
+                      margin: '0 0 12px',
+                      fontSize: '18px',
+                      fontWeight: 600,
+                      color: teamsSyncResult.success ? '#5b21b6' : '#991b1b',
+                    }}
+                  >
+                    {teamsSyncResult.success
+                      ? '✅ Synchronisation Teams réussie'
+                      : '❌ Erreur synchronisation Teams'}
                   </h3>
 
                   {teamsSyncResult.success ? (
@@ -1374,7 +1546,8 @@ export const CartaeDemoPage: React.FC = () => {
                         <strong>Chats importés :</strong> {teamsSyncResult.itemsImported || 0}
                       </p>
                       <p style={{ margin: '0 0 8px' }}>
-                        <strong>Chats ignorés (déjà existants) :</strong> {teamsSyncResult.itemsSkipped || 0}
+                        <strong>Chats ignorés (déjà existants) :</strong>{' '}
+                        {teamsSyncResult.itemsSkipped || 0}
                       </p>
                       <p style={{ margin: '0 0 8px' }}>
                         <strong>Total traité :</strong> {teamsSyncResult.totalProcessed || 0}
@@ -1387,7 +1560,9 @@ export const CartaeDemoPage: React.FC = () => {
                           </p>
                           <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px' }}>
                             {teamsSyncResult.errors.map((err, idx) => (
-                              <li key={idx} style={{ marginBottom: '4px' }}>{err}</li>
+                              <li key={idx} style={{ marginBottom: '4px' }}>
+                                {err}
+                              </li>
                             ))}
                           </ul>
                         </div>
@@ -1404,12 +1579,14 @@ export const CartaeDemoPage: React.FC = () => {
               {/* Affichage des emails importés */}
               {office365Items.length > 0 && (
                 <div style={{ marginTop: '32px' }}>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '16px',
-                  }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '16px',
+                    }}
+                  >
                     <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>
                       📧 Emails importés ({office365Items.length})
                     </h3>
@@ -1434,7 +1611,7 @@ export const CartaeDemoPage: React.FC = () => {
 
                   {/* Liste dépliante d'emails */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {office365Items.map((item) => (
+                    {office365Items.map(item => (
                       <div key={item.id}>
                         {/* Carte email */}
                         <CartaeItemCard
@@ -1443,24 +1620,29 @@ export const CartaeDemoPage: React.FC = () => {
                             // Toggle : si déjà sélectionné, on ferme, sinon on ouvre
                             setSelectedItem(selectedItem?.id === item.id ? null : item);
                           }}
-                          showActions={true}
+                          showActions
                           style={{
                             cursor: 'pointer',
-                            border: selectedItem?.id === item.id ? '2px solid #3b82f6' : '1px solid #e5e7eb',
+                            border:
+                              selectedItem?.id === item.id
+                                ? '2px solid #3b82f6'
+                                : '1px solid #e5e7eb',
                             background: selectedItem?.id === item.id ? '#eff6ff' : '#ffffff',
                           }}
                         />
 
                         {/* Détail déplié */}
                         {selectedItem?.id === item.id && (
-                          <div style={{
-                            marginTop: '8px',
-                            marginLeft: '16px',
-                            padding: '20px',
-                            background: '#f9fafb',
-                            borderLeft: '3px solid #3b82f6',
-                            borderRadius: '0 8px 8px 0',
-                          }}>
+                          <div
+                            style={{
+                              marginTop: '8px',
+                              marginLeft: '16px',
+                              padding: '20px',
+                              background: '#f9fafb',
+                              borderLeft: '3px solid #3b82f6',
+                              borderRadius: '0 8px 8px 0',
+                            }}
+                          >
                             <CartaeItemDetail
                               item={item}
                               mode="inline"
@@ -1477,13 +1659,15 @@ export const CartaeDemoPage: React.FC = () => {
 
               {/* Bouton pour charger les emails si liste vide */}
               {office365Items.length === 0 && !itemsLoading && !syncResult && (
-                <div style={{
-                  marginTop: '32px',
-                  padding: '24px',
-                  background: '#f9fafb',
-                  borderRadius: '8px',
-                  textAlign: 'center',
-                }}>
+                <div
+                  style={{
+                    marginTop: '32px',
+                    padding: '24px',
+                    background: '#f9fafb',
+                    borderRadius: '8px',
+                    textAlign: 'center',
+                  }}
+                >
                   <p style={{ margin: '0 0 16px', color: '#6b7280' }}>
                     Aucun email importé pour le moment.
                   </p>
@@ -1508,16 +1692,22 @@ export const CartaeDemoPage: React.FC = () => {
 
               {/* Indicateur de chargement */}
               {itemsLoading && (
-                <div style={{
-                  marginTop: '32px',
-                  textAlign: 'center',
-                  padding: '40px',
-                  color: '#6b7280',
-                }}>
-                  <div style={{
-                    fontSize: '48px',
-                    marginBottom: '16px',
-                  }}>⏳</div>
+                <div
+                  style={{
+                    marginTop: '32px',
+                    textAlign: 'center',
+                    padding: '40px',
+                    color: '#6b7280',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: '48px',
+                      marginBottom: '16px',
+                    }}
+                  >
+                    ⏳
+                  </div>
                   <p style={{ margin: 0, fontSize: '16px', fontWeight: 500 }}>
                     Chargement des emails...
                   </p>
@@ -1525,21 +1715,24 @@ export const CartaeDemoPage: React.FC = () => {
               )}
 
               {/* Informations techniques */}
-              <div style={{
-                marginTop: '24px',
-                padding: '16px',
-                background: '#f9fafb',
-                borderRadius: '8px',
-                fontSize: '13px',
-                color: '#6b7280',
-                lineHeight: 1.6,
-              }}>
+              <div
+                style={{
+                  marginTop: '24px',
+                  padding: '16px',
+                  background: '#f9fafb',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  color: '#6b7280',
+                  lineHeight: 1.6,
+                }}
+              >
                 <p style={{ margin: '0 0 8px', fontWeight: 600 }}>ℹ️ Informations techniques</p>
                 <p style={{ margin: '0 0 4px' }}>
                   • <strong>Backend API :</strong> http://localhost:3001/api/office365/sync
                 </p>
                 <p style={{ margin: '0 0 4px' }}>
-                  • <strong>User ID :</strong> 4397e804-31e5-44c4-b89e-82058fa8502b (demo@cartae.local)
+                  • <strong>User ID :</strong> 4397e804-31e5-44c4-b89e-82058fa8502b
+                  (demo@cartae.local)
                 </p>
                 <p style={{ margin: '0 0 4px' }}>
                   • <strong>Limite :</strong> 50 emails maximum par synchronisation
