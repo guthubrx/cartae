@@ -179,10 +179,7 @@ export interface SourceListProps {
 }
 
 // Configuration visuelle par type de connector
-const CONNECTOR_CONFIG: Record<
-  ConnectorType,
-  { label: string; color: string; icon: string }
-> = {
+const CONNECTOR_CONFIG: Record<ConnectorType, { label: string; color: string; icon: string }> = {
   'office365-mail': { label: 'Office 365 Mail', color: '#0078d4', icon: '📧' },
   'office365-calendar': { label: 'Office 365 Calendar', color: '#0078d4', icon: '📅' },
   'office365-contacts': { label: 'Office 365 Contacts', color: '#0078d4', icon: '👤' },
@@ -194,10 +191,7 @@ const CONNECTOR_CONFIG: Record<
 };
 
 // Configuration par status
-const STATUS_CONFIG: Record<
-  SourceStatus,
-  { label: string; color: string; icon: React.FC<any> }
-> = {
+const STATUS_CONFIG: Record<SourceStatus, { label: string; color: string; icon: React.FC<any> }> = {
   active: { label: 'Actif', color: '#10b981', icon: CheckCircle },
   paused: { label: 'En pause', color: '#f59e0b', icon: Pause },
   error: { label: 'Erreur', color: '#ef4444', icon: AlertCircle },
@@ -237,7 +231,8 @@ const SourceCard: React.FC<{
   onTogglePause?: (source: DataSource) => void;
   onDelete?: (source: DataSource) => void;
 }> = ({ source, onClick, onSync, onConfigure, onTogglePause, onDelete }) => {
-  const connectorConfig = CONNECTOR_CONFIG[source.connectorType];
+  // Protection : si le connectorType n'existe pas dans CONNECTOR_CONFIG, utiliser 'custom' par défaut
+  const connectorConfig = CONNECTOR_CONFIG[source.connectorType] || CONNECTOR_CONFIG.custom;
   const statusConfig = STATUS_CONFIG[source.status];
   const StatusIcon = statusConfig.icon;
 
@@ -253,14 +248,13 @@ const SourceCard: React.FC<{
         transition: 'all 0.15s ease',
         fontFamily: 'system-ui, sans-serif',
       }}
-      onMouseEnter={(e) => {
+      onMouseEnter={e => {
         if (onClick) {
           (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
-          (e.currentTarget as HTMLElement).style.boxShadow =
-            '0 4px 12px rgba(0, 0, 0, 0.1)';
+          (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
         }
       }}
-      onMouseLeave={(e) => {
+      onMouseLeave={e => {
         if (onClick) {
           (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
           (e.currentTarget as HTMLElement).style.boxShadow = 'none';
@@ -425,7 +419,7 @@ const SourceCard: React.FC<{
           paddingTop: '12px',
           borderTop: '1px solid var(--color-border, #e5e7eb)',
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
       >
         {/* Sync Now */}
         <button
@@ -536,7 +530,7 @@ export const SourceList: React.FC<SourceListProps> = ({
   const [currentView, setCurrentView] = useState<'list' | 'grid'>(view);
 
   // Filter sources by search
-  const filteredSources = sources.filter((source) => {
+  const filteredSources = sources.filter(source => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -548,10 +542,10 @@ export const SourceList: React.FC<SourceListProps> = ({
   // Stats
   const stats = {
     total: sources.length,
-    active: sources.filter((s) => s.status === 'active').length,
-    paused: sources.filter((s) => s.status === 'paused').length,
-    errors: sources.filter((s) => s.status === 'error').length,
-    syncing: sources.filter((s) => s.status === 'syncing').length,
+    active: sources.filter(s => s.status === 'active').length,
+    paused: sources.filter(s => s.status === 'paused').length,
+    errors: sources.filter(s => s.status === 'error').length,
+    syncing: sources.filter(s => s.status === 'syncing').length,
   };
 
   return (
@@ -677,7 +671,7 @@ export const SourceList: React.FC<SourceListProps> = ({
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             placeholder="Rechercher une source..."
             style={{
               width: '100%',
@@ -703,7 +697,7 @@ export const SourceList: React.FC<SourceListProps> = ({
             gap: '16px',
           }}
         >
-          {filteredSources.map((source) => (
+          {filteredSources.map(source => (
             <SourceCard
               key={source.id}
               source={source}
@@ -724,9 +718,7 @@ export const SourceList: React.FC<SourceListProps> = ({
             fontSize: '14px',
           }}
         >
-          {searchQuery
-            ? `Aucune source trouvée pour "${searchQuery}"`
-            : 'Aucune source configurée'}
+          {searchQuery ? `Aucune source trouvée pour "${searchQuery}"` : 'Aucune source configurée'}
         </div>
       )}
     </div>

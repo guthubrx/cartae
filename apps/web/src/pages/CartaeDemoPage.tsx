@@ -160,7 +160,7 @@ const mockSources: DataSource[] = [
   {
     id: 'source-4',
     name: 'Microsoft Teams',
-    connectorType: 'office365-teams-backend',
+    connectorType: 'custom',
     status: 'active',
     config: {
       tenantId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
