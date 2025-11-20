@@ -8,6 +8,8 @@
 import React, { useState } from 'react';
 import { CartaeItemCard, CartaeItemDetail } from '@cartae/ui';
 import type { CartaeItem } from '@cartae/core/types/CartaeItem';
+import { useBackendHealth } from '../hooks/useBackendHealth';
+import { BackendStatusBanner } from '../components/BackendStatusBanner';
 
 const Office365SyncTab: React.FC = () => {
   // Office365 Sync State
@@ -57,6 +59,9 @@ const Office365SyncTab: React.FC = () => {
   const [office365Items, setOffice365Items] = useState<CartaeItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<CartaeItem | null>(null);
+
+  // Backend Health Check (Session 127 - vérification backend disponible)
+  const { state: backendHealthState, recheck: recheckBackendHealth } = useBackendHealth();
 
   // Charger le token depuis browser.storage au chargement (avec retry pour race condition)
   React.useEffect(() => {
@@ -567,6 +572,13 @@ const Office365SyncTab: React.FC = () => {
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
           }}
         >
+          {/* Backend Health Check Banner (Session 127) */}
+          <BackendStatusBanner
+            status={backendHealthState.status}
+            error={backendHealthState.error}
+            onRecheck={recheckBackendHealth}
+          />
+
           <h2 style={{ margin: '0 0 16px', fontSize: '24px', fontWeight: 600 }}>
             Synchronisation Office365 → PostgreSQL
           </h2>

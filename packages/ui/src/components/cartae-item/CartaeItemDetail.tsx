@@ -13,6 +13,7 @@ import React, { useState } from 'react';
 import type { CartaeItem } from '@cartae/core/types/CartaeItem';
 import type { PriorityLevel } from '@cartae/core/types/CartaeMetadata';
 import sanitizeHtml from 'sanitize-html';
+import { TeamsMessagesThread } from '../teams/TeamsMessagesThread';
 import {
   X,
   Edit,
@@ -922,6 +923,154 @@ export const CartaeItemDetail: React.FC<CartaeItemDetailProps> = ({
               </div>
             </details>
           )}
+
+          {/* Checklist Planner - affichage si type=task et checklist existe */}
+          {item.type === 'task' && (item.metadata as any)?.taskDetails?.checklist && (
+            <div
+              style={{
+                padding: '16px',
+                background: '#F9FAFB',
+                borderRadius: '8px',
+                marginTop: '16px',
+                border: '1px solid #E5E7EB',
+              }}
+            >
+              <h3
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  marginBottom: '12px',
+                  color: '#111827',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <span>✅</span>
+                <span>
+                  Checklist ({(item.metadata as any).taskDetails.checklistCompletedCount || 0}/
+                  {(item.metadata as any).taskDetails.checklistCount || 0})
+                </span>
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {(item.metadata as any).taskDetails.checklist.map((checklistItem: any) => (
+                  <div
+                    key={checklistItem.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px',
+                      background: 'white',
+                      borderRadius: '4px',
+                      border: '1px solid #E5E7EB',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checklistItem.isChecked}
+                      disabled
+                      style={{
+                        cursor: 'not-allowed',
+                        width: '16px',
+                        height: '16px',
+                        accentColor: '#10B981',
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: '14px',
+                        textDecoration: checklistItem.isChecked ? 'line-through' : 'none',
+                        color: checklistItem.isChecked ? '#9CA3AF' : '#374151',
+                        flex: 1,
+                      }}
+                    >
+                      {checklistItem.title}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Messages Teams - affichage si messages existent */}
+          {(item.metadata as any)?.office365?.messages &&
+            (item.metadata as any).office365.messages.length > 0 && (
+              <div style={{ marginTop: '16px' }}>
+                <h3
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    marginBottom: '8px',
+                    color: '#111827',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <span>💬</span>
+                  <span>
+                    Conversation Teams ({(item.metadata as any).office365.messages.length}{' '}
+                    {(item.metadata as any).office365.messages.length > 1 ? 'messages' : 'message'})
+                  </span>
+                </h3>
+                <TeamsMessagesThread messages={(item.metadata as any).office365.messages} />
+              </div>
+            )}
+
+          {/* Catégories Outlook - affichage si catégories existent */}
+          {(item.metadata as any)?.office365?.categories &&
+            (item.metadata as any).office365.categories.length > 0 && (
+              <div style={{ marginTop: '16px' }}>
+                <h3
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    marginBottom: '8px',
+                    color: '#111827',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <span>🏷️</span>
+                  <span>Catégories Outlook</span>
+                </h3>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '8px',
+                    flexWrap: 'wrap',
+                    padding: '12px',
+                    background: '#F9FAFB',
+                    borderRadius: '8px',
+                    border: '1px solid #E5E7EB',
+                  }}
+                >
+                  {(item.metadata as any).office365.categories.map(
+                    (category: string, idx: number) => (
+                      <span
+                        key={idx}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          borderRadius: '16px',
+                          background: '#DBEAFE',
+                          border: '1px solid #3B82F6',
+                          fontSize: '13px',
+                          color: '#1E40AF',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {category}
+                      </span>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
 
           {/* Tags */}
           {item.tags.length > 0 && (
