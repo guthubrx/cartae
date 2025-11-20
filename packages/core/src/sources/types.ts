@@ -34,6 +34,26 @@ export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
 /**
  * Configuration d'une source de données
+ *
+ * @deprecated Utiliser UnifiedSource à la place (packages/core/src/sources/types/UnifiedSource.ts)
+ * @see UnifiedSource
+ *
+ * Migration:
+ * ```typescript
+ * // Avant (déprécié)
+ * import { SourceConfig } from '@cartae/core/sources';
+ * const source: SourceConfig = { ... };
+ *
+ * // Après (recommandé)
+ * import { UnifiedSource } from '@cartae/core/sources/types';
+ * const source: UnifiedSource = { ... };
+ *
+ * // OU utiliser adapter temporaire
+ * import { sourceConfigToUnified } from '@cartae/core/sources/adapters/LegacyAdapters';
+ * const unified = sourceConfigToUnified(legacySource);
+ * ```
+ *
+ * Ce type sera supprimé en Q3 2025 après migration complète.
  */
 export interface SourceConfig {
   /** ID unique de la source */
@@ -78,6 +98,24 @@ export interface SourceConfig {
 
 /**
  * Field mapping - Association champ source → champ CartaeItem
+ *
+ * @deprecated Utiliser FieldMapping de UnifiedSource.ts (plus complet avec transformParams et validation)
+ * @see FieldMapping (packages/core/src/sources/types/UnifiedSource.ts)
+ *
+ * Migration:
+ * ```typescript
+ * // Avant (déprécié)
+ * import { FieldMapping } from '@cartae/core/sources';
+ *
+ * // Après (recommandé)
+ * import { FieldMapping } from '@cartae/core/sources/types';
+ * // La nouvelle version inclut:
+ * // - transformParams (pour transformations complexes)
+ * // - validation (regex, min/max, enum)
+ * // - Documentation TypeDoc exhaustive
+ * ```
+ *
+ * Ce type sera supprimé en Q3 2025 après migration complète.
  */
 export interface FieldMapping {
   /** ID unique du mapping */
@@ -101,6 +139,26 @@ export interface FieldMapping {
 
 /**
  * Type de transformation de données
+ *
+ * @deprecated Utiliser TransformType de UnifiedSource.ts (20+ transformations au lieu de 12)
+ * @see TransformType (packages/core/src/sources/types/UnifiedSource.ts)
+ *
+ * Migration:
+ * ```typescript
+ * // Avant (déprécié - 12 transformations)
+ * import { TransformType } from '@cartae/core/sources';
+ *
+ * // Après (recommandé - 20+ transformations)
+ * import { TransformType } from '@cartae/core/sources/types';
+ * // Nouvelles transformations disponibles:
+ * // - capitalize, slug (string)
+ * // - first, last (array)
+ * // - date-iso, date-unix, date-format (date)
+ * // - extract-email, extract-urls (avancé)
+ * // - markdown-to-text, html-to-text (avancé)
+ * ```
+ *
+ * Ce type sera supprimé en Q3 2025 après migration complète.
  */
 export type TransformType =
   | 'none'
