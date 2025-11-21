@@ -517,7 +517,6 @@ router.post('/sync', async (req: Request, res: Response) => {
               )
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
               ON CONFLICT ((source->>'sourceId'), user_id)
-              WHERE source->>'connector' = 'planner'
               DO UPDATE SET
                 title = EXCLUDED.title,
                 content = EXCLUDED.content,
@@ -744,7 +743,6 @@ router.post('/sync-stream', async (req: Request, res: Response) => {
               created_at, updated_at, metadata
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             ON CONFLICT ((source->>'sourceId'), user_id)
-            WHERE source->>'connector' = 'planner'
             DO UPDATE SET
               title = EXCLUDED.title,
               content = EXCLUDED.content,

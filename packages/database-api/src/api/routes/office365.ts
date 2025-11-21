@@ -386,7 +386,6 @@ router.post('/sync', async (req: Request, res: Response) => {
             user_id, type, title, content, tags, categories, source, metadata, archived, favorite, created_at, updated_at
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           ON CONFLICT ((source->>'sourceId'), user_id)
-          WHERE source->>'connector' = 'office365-mail-simple'
           DO NOTHING
           RETURNING id`,
           [
