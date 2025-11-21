@@ -34,6 +34,7 @@ import auditRouter from './api/routes/audit';
 import office365Router from './api/routes/office365';
 import teamsRouter from './api/routes/teams';
 import plannerRouter from './api/routes/planner';
+import sourcesRouter from './api/routes/sources';
 
 // Middlewares
 import { errorHandler, notFoundHandler } from './api/middlewares/errorHandler';
@@ -43,6 +44,9 @@ import { testConnection } from './db/client';
 
 // Vault & Secrets Management
 import { getSecretsManager } from './vault/SecretsManager';
+
+// Sync Worker (Session 129)
+import { startSyncWorker, stopSyncWorker } from './workers/syncWorker';
 
 dotenv.config();
 
@@ -168,6 +172,8 @@ async function createApp(): Promise<Application> {
   app.use('/api/office365', office365Router);
   app.use('/api/office365/teams', teamsRouter);
   app.use('/api/office365/planner', plannerRouter);
+  app.use('/api/sources', sourcesRouter);
+  app.use('/api/sync-queue', sourcesRouter); // Queue endpoints also in sourcesRouter
 
   // ========== Error handlers (doivent être après les routes) ==========
 
@@ -224,6 +230,19 @@ async function startServer() {
       console.log(`🌐 Server: http://localhost:${PORT}`);
       console.log(`💚 Health check: http://localhost:${PORT}/health`);
       console.log('');
+
+      // Démarrer le sync worker (Session 129)
+      const syncWorkerEnabled = process.env.SYNC_WORKER_ENABLED !== 'false';
+      if (syncWorkerEnabled) {
+        startSyncWorker({
+          enabled: true,
+          checkInterval: parseInt(process.env.SYNC_WORKER_CHECK_INTERVAL || '60000', 10),
+          maxConcurrentSyncs: parseInt(process.env.SYNC_WORKER_MAX_CONCURRENT || '5', 10),
+        });
+        console.log('🔄 Sync worker started');
+      } else {
+        console.log('⏸️  Sync worker disabled (SYNC_WORKER_ENABLED=false)');
+      }
       console.log('📋 Available endpoints:');
       console.log(`   POST   /api/parse          - Parse and store CartaeItem`);
       console.log(`   POST   /api/parse/batch    - Batch parse items`);
