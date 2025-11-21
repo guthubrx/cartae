@@ -2,7 +2,7 @@
  * Office365ConnectorBase - Classe abstraite de base pour les connecteurs Office 365
  *
  * Fournit les fonctionnalités communes à tous les connecteurs Office 365 :
- * - Initialisation du TokenInterceptorService
+ * - Initialisation du TokenRefreshManager
  * - Validation de configuration de base
  * - Utilitaires pour gestion des tokens
  * - Gestion des erreurs
@@ -13,6 +13,7 @@
 import type { SourceConnector } from '../SourceManager';
 import type { FieldMapping, TestConnectionResult, SyncOptions } from '../types';
 import type { CartaeItem } from '../../types/CartaeItem';
+import type { IOffice365AuthService } from '@cartae/office365-connector-core/types/IOffice365AuthService';
 
 /**
  * Configuration de base pour tous les connecteurs Office 365
@@ -29,17 +30,6 @@ export interface Office365BaseConfig {
 }
 
 /**
- * Interface pour TokenInterceptorService (simplifié pour types)
- */
-export interface ITokenInterceptor {
-  startMonitoring(): Promise<void>;
-  stopMonitoring(): void;
-  getToken(service: 'owa' | 'graph' | 'sharepoint' | 'teams'): Promise<string | null>;
-  hasTokens(): boolean;
-  isAuthenticated(): boolean;
-}
-
-/**
  * Classe abstraite de base pour tous les connecteurs Office 365
  */
 export abstract class Office365ConnectorBase implements SourceConnector {
@@ -49,9 +39,9 @@ export abstract class Office365ConnectorBase implements SourceConnector {
   abstract type: string;
 
   /**
-   * Service d'interception de tokens
+   * Service de gestion de tokens (TokenRefreshManager)
    */
-  protected tokenInterceptor: ITokenInterceptor | null = null;
+  protected tokenService: IOffice365AuthService | null = null;
 
   /**
    * Configuration du connecteur
@@ -69,30 +59,33 @@ export abstract class Office365ConnectorBase implements SourceConnector {
   };
 
   /**
-   * Initialiser le TokenInterceptorService
+   * Initialiser le TokenRefreshManager
    */
-  protected async initializeTokenInterceptor(): Promise<void> {
-    if (this.tokenInterceptor) {
+  protected async initializeTokenService(): Promise<void> {
+    if (this.tokenService) {
       return; // Déjà initialisé
     }
 
     try {
       // Import dynamique pour éviter dépendance circulaire
-      const { TokenInterceptorService } = await import(
-        '@cartae-private/office365-connector/src/services/auth/TokenInterceptorService'
+      const { TokenRefreshManager } = await import(
+        '@cartae/office365-connector-core/services/TokenRefreshManager'
+      );
+      const { OAuthRefreshStrategy, IFrameRefreshStrategy } = await import(
+        '@cartae/office365-connector-core/strategies'
       );
 
-      this.tokenInterceptor = new TokenInterceptorService();
-      await this.tokenInterceptor.startMonitoring();
+      this.tokenService = new TokenRefreshManager([
+        new OAuthRefreshStrategy(), // Priorité 1: OAuth standard
+        new IFrameRefreshStrategy(), // Priorité 2: Fallback iframe
+      ]);
+      await this.tokenService.startMonitoring();
 
-      console.log('[Office365ConnectorBase] TokenInterceptorService initialisé');
+      console.log('[Office365ConnectorBase] TokenRefreshManager initialisé');
     } catch (error) {
-      console.error(
-        '[Office365ConnectorBase] Erreur initialisation TokenInterceptorService:',
-        error
-      );
+      console.error('[Office365ConnectorBase] Erreur initialisation TokenRefreshManager:', error);
       throw new Error(
-        "Impossible d'initialiser TokenInterceptorService. " +
+        "Impossible d'initialiser TokenRefreshManager. " +
           "Vérifiez que l'extension Firefox Office365 est chargée."
       );
     }
@@ -104,11 +97,11 @@ export abstract class Office365ConnectorBase implements SourceConnector {
   protected async getServiceToken(
     serviceType: 'owa' | 'graph' | 'sharepoint' | 'teams'
   ): Promise<string> {
-    if (!this.tokenInterceptor) {
-      await this.initializeTokenInterceptor();
+    if (!this.tokenService) {
+      await this.initializeTokenService();
     }
 
-    const token = await this.tokenInterceptor!.getToken(serviceType);
+    const token = await this.tokenService!.getToken(serviceType);
 
     if (!token) {
       throw new Error(
@@ -125,15 +118,15 @@ export abstract class Office365ConnectorBase implements SourceConnector {
    * Vérifier si l'authentification est disponible
    */
   protected async isAuthenticationAvailable(): Promise<boolean> {
-    if (!this.tokenInterceptor) {
+    if (!this.tokenService) {
       try {
-        await this.initializeTokenInterceptor();
+        await this.initializeTokenService();
       } catch {
         return false;
       }
     }
 
-    return this.tokenInterceptor!.isAuthenticated();
+    return this.tokenService!.isAuthenticated();
   }
 
   /**
@@ -262,9 +255,9 @@ export abstract class Office365ConnectorBase implements SourceConnector {
    * Nettoyer les ressources
    */
   destroy(): void {
-    if (this.tokenInterceptor) {
-      this.tokenInterceptor.stopMonitoring();
-      this.tokenInterceptor = null;
+    if (this.tokenService) {
+      this.tokenService.stopMonitoring();
+      this.tokenService = null;
     }
     this.config = null;
   }

@@ -12,7 +12,11 @@ import {
   IPluginContext,
 } from './types/DataPluginInterface';
 
-import { Office365AuthService } from './services/Office365AuthService';
+import { TokenRefreshManager } from '@cartae/office365-connector-core/services/TokenRefreshManager';
+import {
+  OAuthRefreshStrategy,
+  IFrameRefreshStrategy,
+} from '@cartae/office365-connector-core/strategies';
 import { OwaEmailService } from './services/OwaEmailService';
 import { TeamsService } from './services/TeamsService';
 import { SharePointService } from './services/SharePointService';
@@ -37,24 +41,39 @@ import { PlannerTransformer } from './transformers/PlannerTransformer';
  */
 export class Office365Plugin implements DataPluginInterface {
   // Services
-  private authService: Office365AuthService;
+  private authService: TokenRefreshManager;
+
   private emailService: OwaEmailService;
+
   private teamsService: TeamsService;
+
   private sharePointService: SharePointService;
+
   private plannerService: PlannerService;
 
   // État
   public connectionState: ConnectionState = 'disconnected';
+
   private syncInterval: NodeJS.Timeout | null = null;
+
   private context: IPluginContext | null = null;
 
   // Plugin interface
   name: string = 'office365-plugin';
+
   version: string = '1.0.0';
+
   description: string = 'Office 365 Data Plugin - Emails, Teams, SharePoint, Planner';
 
   constructor() {
-    this.authService = new Office365AuthService();
+    // Configuration TokenRefreshManager avec stratégies
+    // Priorité 1: OAuth (si refresh_token disponible)
+    // Priorité 2: IFrame (fallback toujours fonctionnel)
+    this.authService = new TokenRefreshManager([
+      new OAuthRefreshStrategy(), // Essaye OAuth d'abord
+      new IFrameRefreshStrategy(), // Fallback iframe si OAuth échoue
+    ]);
+
     this.emailService = new OwaEmailService(this.authService);
     this.teamsService = new TeamsService(this.authService);
     this.sharePointService = new SharePointService(this.authService);
@@ -97,7 +116,7 @@ export class Office365Plugin implements DataPluginInterface {
           return false;
         }
         // Attendre 500ms avant de re-vérifier
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       this.connectionState = 'connected';
@@ -164,9 +183,7 @@ export class Office365Plugin implements DataPluginInterface {
 
       // Transformer les messages Teams
       if (chats.length > 0) {
-        const teamItems = chats.flatMap((chat) =>
-          TeamsTransformer.chatToCartaeItems(chat)
-        );
+        const teamItems = chats.flatMap(chat => TeamsTransformer.chatToCartaeItems(chat));
         allItems.push(...teamItems);
       }
 
@@ -184,10 +201,7 @@ export class Office365Plugin implements DataPluginInterface {
 
       // Trier par date décroissante et limiter
       return allItems
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        )
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, limit);
     } catch (error) {
       console.error('[Office365Plugin] Error getting recent items:', error);
@@ -214,12 +228,12 @@ export class Office365Plugin implements DataPluginInterface {
 
       // Filtrer par type
       if (options.types && options.types.length > 0) {
-        filtered = filtered.filter((item) => options.types!.includes(item.type));
+        filtered = filtered.filter(item => options.types!.includes(item.type));
       }
 
       // Filtrer par tags
       if (options.tags && options.tags.length > 0) {
-        filtered = filtered.filter((item) =>
+        filtered = filtered.filter(item =>
           options.tags!.some((tag: string) => item.tags.includes(tag))
         );
       }
@@ -227,22 +241,22 @@ export class Office365Plugin implements DataPluginInterface {
       // Filtrer par dates
       if (options.startDate) {
         const startDate = new Date(options.startDate);
-        filtered = filtered.filter((item) => new Date(item.createdAt) >= startDate);
+        filtered = filtered.filter(item => new Date(item.createdAt) >= startDate);
       }
 
       if (options.endDate) {
         const endDate = new Date(options.endDate);
-        filtered = filtered.filter((item) => new Date(item.createdAt) <= endDate);
+        filtered = filtered.filter(item => new Date(item.createdAt) <= endDate);
       }
 
       // Filtrer par query texte
       if (options.query) {
         const queryLower = options.query.toLowerCase();
         filtered = filtered.filter(
-          (item) =>
+          item =>
             item.title.toLowerCase().includes(queryLower) ||
             (item.content && item.content.toLowerCase().includes(queryLower)) ||
-            item.tags.some((tag) => tag.toLowerCase().includes(queryLower))
+            item.tags.some(tag => tag.toLowerCase().includes(queryLower))
         );
       }
 
@@ -310,9 +324,7 @@ export class Office365Plugin implements DataPluginInterface {
    * Vérifie si le plugin est connecté
    */
   isConnected(): boolean {
-    return (
-      this.connectionState === 'connected' && this.authService.isAuthenticated()
-    );
+    return this.connectionState === 'connected' && this.authService.isAuthenticated();
   }
 
   /**
@@ -328,7 +340,7 @@ export class Office365Plugin implements DataPluginInterface {
     const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
     this.syncInterval = setInterval(() => {
-      this.sync().catch((error) => {
+      this.sync().catch(error => {
         console.error('[Office365Plugin] Auto-sync error:', error);
       });
     }, SYNC_INTERVAL);

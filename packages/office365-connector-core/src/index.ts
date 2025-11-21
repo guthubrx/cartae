@@ -2,7 +2,17 @@
  * Export principal du package office365-connector-core
  */
 
-export { TokenInterceptorService } from './services/TokenInterceptorService';
-export type { IOffice365AuthService } from './types/IOffice365AuthService';
-export type { TokenData } from './types/auth.types';
+// Services
+export { TokenRefreshManager } from './services/TokenRefreshManager';
 
+// Strategies
+export { OAuthRefreshStrategy, IFrameRefreshStrategy } from './strategies';
+
+// Types
+export type {
+  ITokenRefreshStrategy,
+  TokenType,
+  TokenData,
+} from './strategies/ITokenRefreshStrategy';
+
+export type { IOffice365AuthService } from './types/IOffice365AuthService';
