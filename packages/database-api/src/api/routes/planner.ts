@@ -368,7 +368,7 @@ function taskToCartaeItem(
     title: task.title,
     type: 'task', // Type Cartae pour les tâches
     content: details?.description || '',
-    tags: categories.length > 0 ? categories : null,
+    tags: categories.length > 0 ? categories : [],
     categories: [plan.title], // Le plan comme catégorie principale
     source: {
       connector: 'planner',
@@ -516,7 +516,7 @@ router.post('/sync', async (req: Request, res: Response) => {
                 created_at, updated_at, metadata
               )
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-              ON CONFLICT ((source->>'sourceId'), user_id)
+              ON CONFLICT ((source->>'connector'), (source->>'sourceId'), user_id)
               DO UPDATE SET
                 title = EXCLUDED.title,
                 content = EXCLUDED.content,
@@ -696,9 +696,11 @@ router.post('/sync-stream', async (req: Request, res: Response) => {
     let tasksCount = 0;
     for (const plan of plans) {
       const tasks = await fetchPlanTasks(plan.id, accessToken);
+      console.log(`[Planner SSE] Plan ${plan.title}: ${tasks.length} tâches trouvées`);
       tasksCount += Math.min(tasks.length, maxTasks - tasksCount);
       if (tasksCount >= maxTasks) break;
     }
+    console.log(`[Planner SSE] Total tasksCount pour synchronisation: ${tasksCount}`);
     sendEvent('progress', {
       phase: 'counting',
       current: tasksCount,
@@ -707,6 +709,7 @@ router.post('/sync-stream', async (req: Request, res: Response) => {
     });
 
     // Phase 3 : Synchronisation avec progression
+    console.log('[Planner SSE] Phase 3 démarrée - Début de la synchronisation');
     sendEvent('progress', {
       phase: 'syncing',
       current: 0,
@@ -714,8 +717,13 @@ router.post('/sync-stream', async (req: Request, res: Response) => {
       message: 'Synchronisation en cours...',
     });
 
+    console.log(`[Planner SSE] Démarrage boucle plans - ${plans.length} plans à traiter`);
     for (const plan of plans) {
-      if (totalTasks >= maxTasks) break;
+      console.log(`[Planner SSE] Traitement du plan: ${plan.title}`);
+      if (totalTasks >= maxTasks) {
+        console.log(`[Planner SSE] Limite maxTasks atteinte (${maxTasks})`);
+        break;
+      }
 
       // Récupérer les buckets du plan
       const buckets = await fetchPlanBuckets(plan.id, accessToken);
@@ -725,8 +733,14 @@ router.post('/sync-stream', async (req: Request, res: Response) => {
       // Récupérer les tâches du plan
       const tasks = await fetchPlanTasks(plan.id, accessToken);
       const tasksToProcess = tasks.slice(0, maxTasks - totalTasks);
+      console.log(
+        `[Planner SSE] Plan ${plan.title}: ${tasks.length} tâches, ${tasksToProcess.length} à traiter (totalTasks: ${totalTasks}/${maxTasks})`
+      );
 
       for (const task of tasksToProcess) {
+        console.log(
+          `[Planner SSE] Traitement tâche ${totalTasks + 1}/${tasksCount}: ${task.title.substring(0, 50)}...`
+        );
         try {
           // Récupérer les détails de la tâche
           const details = await fetchTaskDetails(task.id, accessToken);
@@ -742,7 +756,7 @@ router.post('/sync-stream', async (req: Request, res: Response) => {
               source, archived, favorite,
               created_at, updated_at, metadata
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-            ON CONFLICT ((source->>'sourceId'), user_id)
+            ON CONFLICT ((source->>'connector'), (source->>'sourceId'), user_id)
             DO UPDATE SET
               title = EXCLUDED.title,
               content = EXCLUDED.content,
@@ -785,6 +799,7 @@ router.post('/sync-stream', async (req: Request, res: Response) => {
             total: tasksCount,
             message: `Synchronisation : ${totalTasks}/${tasksCount} tâches`,
           });
+          console.log(`[Planner SSE] ✅ Événement progress envoyé: ${totalTasks}/${tasksCount}`);
         } catch (error) {
           console.error('[Planner/Stream] Erreur traitement tâche:', task.id, error);
           errors.push(
