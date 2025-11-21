@@ -31,7 +31,6 @@ import {
   Office365MailBackendConnector,
   Office365TeamsBackendConnector,
 } from '@cartae/core/sources/connectors';
-import { office365TokenRefresher } from '@cartae/ui';
 import Office365SyncTab from './Office365SyncTab';
 
 // Mock data
@@ -293,19 +292,8 @@ export const CartaeDemoPage: React.FC = () => {
     }
   }, [sourceManagerReady]);
 
-  // Démarrer le rafraîchissement automatique des tokens Office365
-  useEffect(() => {
-    console.log(
-      '[CartaeDemoPage] 🚀 Démarrage du rafraîchissement automatique des tokens Office365'
-    );
-    office365TokenRefresher.start();
-
-    // Cleanup : arrêter le refresher au démontage du composant
-    return () => {
-      console.log('[CartaeDemoPage] ⏹️ Arrêt du rafraîchissement automatique des tokens');
-      office365TokenRefresher.stop();
-    };
-  }, []);
+  // Session 133: Token refresh is now handled automatically by TokenRefreshManager in Office365Plugin
+  // No need to manually start/stop the refresher anymore
 
   // Fetch All Sources Items (Unified Architecture Session 119)
   const fetchAllSourcesItems = async () => {
